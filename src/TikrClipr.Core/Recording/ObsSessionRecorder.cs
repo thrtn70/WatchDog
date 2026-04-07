@@ -13,7 +13,7 @@ public sealed class ObsSessionRecorder : ISessionRecorder
     private readonly VideoEncoder _videoEncoder;
     private readonly AudioEncoder _audioEncoder;
 
-    private FileOutput? _fileOutput;
+    private RecordingOutput? _recordingOutput;
     private Timer? _segmentTimer;
     private Timer? _maxDurationTimer;
     private readonly Stopwatch _elapsed = new();
@@ -115,18 +115,20 @@ public sealed class ObsSessionRecorder : ISessionRecorder
 
         try
         {
-            _fileOutput = new FileOutput("TikrClipr Session Recording");
-            _fileOutput.SetVideoEncoder(_videoEncoder);
-            _fileOutput.SetAudioEncoder(_audioEncoder, 0);
-            _fileOutput.SetPath(CurrentOutputPath);
-
-            if (!_fileOutput.Start())
+            var format = _config.FileFormat.ToLowerInvariant() switch
             {
-                var msg = $"Failed to start session recording output to: {Path.GetFileName(CurrentOutputPath)}";
-                _logger.LogError("{Message}", msg);
-                Error?.Invoke(msg);
-                return false;
-            }
+                "mkv" => RecordingFormat.MKV,
+                "flv" => RecordingFormat.FLV,
+                _ => RecordingFormat.Mp4,
+            };
+
+            _recordingOutput = new RecordingOutput($"TikrClipr Session {_segmentIndex}")
+                .SetPath(CurrentOutputPath)
+                .SetFormat(format);
+            _recordingOutput.SetVideoEncoder(_videoEncoder);
+            _recordingOutput.SetAudioEncoder(_audioEncoder, 0);
+
+            _recordingOutput.Start();
 
             _logger.LogInformation("Recording segment {Index}: {Path}",
                 _segmentIndex, Path.GetFileName(CurrentOutputPath));
@@ -171,12 +173,12 @@ public sealed class ObsSessionRecorder : ISessionRecorder
 
     private void StopCurrentOutput()
     {
-        if (_fileOutput is null) return;
+        if (_recordingOutput is null) return;
 
         try
         {
-            _fileOutput.Stop();
-            _fileOutput.Dispose();
+            _recordingOutput.Stop();
+            _recordingOutput.Dispose();
 
             if (CurrentOutputPath is not null && File.Exists(CurrentOutputPath))
             {
@@ -190,7 +192,7 @@ public sealed class ObsSessionRecorder : ISessionRecorder
         }
         finally
         {
-            _fileOutput = null;
+            _recordingOutput = null;
         }
     }
 
