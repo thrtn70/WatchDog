@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Threading;
+using UserControl = System.Windows.Controls.UserControl;
 
 namespace TikrClipr.App.Controls;
 

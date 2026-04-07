@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 
 namespace TikrClipr.Core.ClipEditor;
@@ -25,14 +24,13 @@ public sealed partial class FFmpegClipEditor : IClipEditor
         var ext = Path.GetExtension(inputPath);
         var outputPath = Path.Combine(dir, $"{name}_trimmed{ext}");
 
-        var args = $"-ss {FormatTime(start)} -to {FormatTime(end)} -i \"{inputPath}\" -c copy -avoid_negative_ts make_zero \"{outputPath}\"";
-
         _logger.LogInformation("Trimming clip: {Input} [{Start} -> {End}]", inputPath, start, end);
 
-        var result = await RunFFmpegAsync(args, ct);
+        await RunFFmpegAsync(["-ss", FormatTime(start), "-to", FormatTime(end), "-i", inputPath,
+            "-c", "copy", "-avoid_negative_ts", "make_zero", outputPath], ct);
 
         if (!File.Exists(outputPath))
-            throw new InvalidOperationException($"FFmpeg trim failed. Stderr: {result}");
+            throw new InvalidOperationException($"FFmpeg trim failed for: {inputPath}");
 
         _logger.LogInformation("Trim complete: {Output}", outputPath);
         return outputPath;
@@ -47,9 +45,8 @@ public sealed partial class FFmpegClipEditor : IClipEditor
         var name = Path.GetFileNameWithoutExtension(inputPath);
         var outputPath = Path.Combine(dir, $"{name}_thumb.jpg");
 
-        var args = $"-ss {FormatTime(timestamp)} -i \"{inputPath}\" -vframes 1 -q:v 2 \"{outputPath}\"";
-
-        await RunFFmpegAsync(args, ct);
+        await RunFFmpegAsync(["-ss", FormatTime(timestamp), "-i", inputPath,
+            "-vframes", "1", "-q:v", "2", outputPath], ct);
 
         if (!File.Exists(outputPath))
             throw new InvalidOperationException("FFmpeg thumbnail generation failed.");
@@ -62,13 +59,16 @@ public sealed partial class FFmpegClipEditor : IClipEditor
     /// </summary>
     public async Task<TimeSpan> GetDurationAsync(string inputPath, CancellationToken ct = default)
     {
-        var ffprobePath = Path.Combine(Path.GetDirectoryName(_ffmpegPath)!, "ffprobe.exe");
-        if (!File.Exists(ffprobePath))
+        var ffprobeDir = Path.GetDirectoryName(_ffmpegPath);
+        var ffprobePath = ffprobeDir is not null
+            ? Path.Combine(ffprobeDir, "ffprobe.exe")
+            : null;
+        if (ffprobePath is null || !File.Exists(ffprobePath))
             ffprobePath = "ffprobe";
 
-        var args = $"-v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{inputPath}\"";
-
-        var result = await RunProcessAsync(ffprobePath, args, ct);
+        var result = await RunProcessAsync(ffprobePath,
+            ["-v", "error", "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", inputPath], ct);
         var trimmed = result.Trim();
 
         if (double.TryParse(trimmed, System.Globalization.NumberStyles.Float,
@@ -100,12 +100,13 @@ public sealed partial class FFmpegClipEditor : IClipEditor
         {
             ct.ThrowIfCancellationRequested();
             var time = TimeSpan.FromSeconds(i * interval);
-            var outputPath = Path.Combine(stripDir, $"{name}_strip_{i:D3}.jpg");
+            var outputPath = Path.Combine(stripDir, $"{name}_strip_{i:D3}_w{thumbnailWidth}.jpg");
 
             if (!File.Exists(outputPath))
             {
-                var args = $"-ss {FormatTime(time)} -i \"{inputPath}\" -vframes 1 -vf scale={thumbnailWidth}:-1 -q:v 4 \"{outputPath}\"";
-                await RunFFmpegAsync(args, ct);
+                await RunFFmpegAsync(["-ss", FormatTime(time), "-i", inputPath,
+                    "-vframes", "1", "-vf", $"scale={thumbnailWidth}:-1",
+                    "-q:v", "4", outputPath], ct);
             }
 
             if (File.Exists(outputPath))
@@ -116,38 +117,49 @@ public sealed partial class FFmpegClipEditor : IClipEditor
         return paths;
     }
 
-    private async Task<string> RunFFmpegAsync(string args, CancellationToken ct)
+    private Task<string> RunFFmpegAsync(string[] args, CancellationToken ct)
     {
-        // -y to overwrite output without prompting
-        return await RunProcessAsync(_ffmpegPath, $"-y {args}", ct);
+        // Prepend -y to overwrite output without prompting
+        var fullArgs = new string[args.Length + 1];
+        fullArgs[0] = "-y";
+        args.CopyTo(fullArgs, 1);
+        return RunProcessAsync(_ffmpegPath, fullArgs, ct);
     }
 
-    private async Task<string> RunProcessAsync(string executable, string args, CancellationToken ct)
+    private async Task<string> RunProcessAsync(string executable, string[] args, CancellationToken ct)
     {
-        _logger.LogDebug("Running: {Exe} {Args}", executable, args);
+        _logger.LogDebug("Running: {Exe} {Args}", executable, string.Join(' ', args));
 
-        using var process = new Process
+        var startInfo = new ProcessStartInfo
         {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = executable,
-                Arguments = args,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            }
+            FileName = executable,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
         };
+        foreach (var arg in args)
+            startInfo.ArgumentList.Add(arg);
 
+        using var process = new Process { StartInfo = startInfo };
         process.Start();
 
-        var stdout = await process.StandardOutput.ReadToEndAsync(ct);
-        var stderr = await process.StandardError.ReadToEndAsync(ct);
-
+        // Drain stdout and stderr concurrently to prevent pipe deadlock —
+        // FFmpeg writes heavily to stderr; sequential reads can deadlock if the pipe fills.
+        var stdoutTask = process.StandardOutput.ReadToEndAsync(ct);
+        var stderrTask = process.StandardError.ReadToEndAsync(ct);
+        await Task.WhenAll(stdoutTask, stderrTask);
         await process.WaitForExitAsync(ct);
 
+        var stdout = stdoutTask.Result;
+        var stderr = stderrTask.Result;
+
         if (process.ExitCode != 0)
+        {
             _logger.LogWarning("Process exited with code {Code}. Stderr: {Stderr}", process.ExitCode, stderr);
+            throw new InvalidOperationException(
+                $"{Path.GetFileName(executable)} exited with code {process.ExitCode}. Stderr: {stderr}");
+        }
 
         return string.IsNullOrEmpty(stdout) ? stderr : stdout;
     }
