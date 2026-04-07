@@ -75,9 +75,11 @@ public sealed class SessionRecordingHostedService : IHostedService, IDisposable
             return;
         }
 
+        var safeName = string.Concat(
+            e.Game.DisplayName.Split(Path.GetInvalidFileNameChars()));
         var outputDir = Path.Combine(
             _settings.Storage.SavePath,
-            e.Game.DisplayName,
+            safeName,
             "Sessions");
 
         try

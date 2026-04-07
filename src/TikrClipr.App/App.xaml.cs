@@ -144,14 +144,14 @@ public partial class App : Application
         // Capture engine
         services.AddSingleton<ICaptureEngine, ObsCaptureEngine>();
 
-        // Session recording
+        // Session recording — only allocate OBS encoders when mode requires it
         services.AddSingleton(sp => sp.GetRequiredService<AppSettings>().Recording);
         services.AddSingleton<ISessionRecorder>(sp =>
         {
             var config = sp.GetRequiredService<SessionRecordingConfig>();
-            var captureEngine = sp.GetRequiredService<ICaptureEngine>() as ObsCaptureEngine;
-            // The session recorder shares the same encoders created by ObsCaptureEngine.
-            // For now, create a standalone instance — encoders are lightweight to duplicate.
+            if (!config.IsSessionRecordingEnabled)
+                return new NullSessionRecorder();
+
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
             var captureConfig = sp.GetRequiredService<CaptureConfig>();
             return new ObsSessionRecorder(

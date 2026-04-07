@@ -17,6 +17,7 @@ public sealed class ObsSessionRecorder : ISessionRecorder
     private Timer? _segmentTimer;
     private Timer? _maxDurationTimer;
     private readonly Stopwatch _elapsed = new();
+    private readonly SemaphoreSlim _lock = new(1, 1);
     private string _outputDirectory = string.Empty;
     private GameInfo? _currentGame;
     private int _segmentIndex;
@@ -65,7 +66,7 @@ public sealed class ObsSessionRecorder : ISessionRecorder
         if (_config.SegmentDurationMinutes > 0)
         {
             _segmentTimer = new Timer(
-                _ => SplitSegment(),
+                _ => SplitSegmentSafe(),
                 null,
                 TimeSpan.FromMinutes(_config.SegmentDurationMinutes),
                 TimeSpan.FromMinutes(_config.SegmentDurationMinutes));
@@ -75,7 +76,7 @@ public sealed class ObsSessionRecorder : ISessionRecorder
         if (_config.MaxDurationMinutes > 0)
         {
             _maxDurationTimer = new Timer(
-                _ => _ = StopAsync(),
+                _ => StopSafe(),
                 null,
                 TimeSpan.FromMinutes(_config.MaxDurationMinutes),
                 Timeout.InfiniteTimeSpan);
@@ -137,6 +138,26 @@ public sealed class ObsSessionRecorder : ISessionRecorder
             Error?.Invoke($"Recording segment failed: {ex.Message}");
             return false;
         }
+    }
+
+    private async void SplitSegmentSafe()
+    {
+        try
+        {
+            await _lock.WaitAsync();
+            try { SplitSegment(); }
+            finally { _lock.Release(); }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during segment split");
+        }
+    }
+
+    private async void StopSafe()
+    {
+        try { await StopAsync(); }
+        catch (Exception ex) { _logger.LogError(ex, "Error during auto-stop"); }
     }
 
     private void SplitSegment()
