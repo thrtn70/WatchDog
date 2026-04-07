@@ -18,8 +18,8 @@ public sealed class NullSessionRecorder : ISessionRecorder
     public Task StopAsync(CancellationToken ct = default)
         => Task.CompletedTask;
 
-    public event Action<string>? SegmentSaved;
-    public event Action<string>? Error;
+    public event Action<string>? SegmentSaved { add { } remove { } }
+    public event Action<string>? Error { add { } remove { } }
 
     public void Dispose() { }
 }

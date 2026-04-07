@@ -117,8 +117,8 @@ public sealed class ObsSessionRecorder : ISessionRecorder
         {
             var format = _config.FileFormat.ToLowerInvariant() switch
             {
-                "mkv" => RecordingFormat.MKV,
-                "flv" => RecordingFormat.FLV,
+                "mkv" => RecordingFormat.Mkv,
+                "flv" => RecordingFormat.Flv,
                 _ => RecordingFormat.Mp4,
             };
 
