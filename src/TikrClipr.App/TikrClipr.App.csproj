@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Resources\TikrClipr.ico</ApplicationIcon>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TikrClipr.Core\TikrClipr.Core.csproj" />
+    <ProjectReference Include="..\TikrClipr.Native\TikrClipr.Native.csproj" />
+  </ItemGroup>
+
+  <!-- Application icon -->
+  <ItemGroup>
+    <Resource Include="Resources\TikrClipr.ico" />
+  </ItemGroup>
+
+  <!-- Copy OBS runtime binaries to output directory -->
+  <ItemGroup>
+    <Content Include="$(MSBuildThisFileDirectory)..\..\obs-runtime\**\*"
+             CopyToOutputDirectory="PreserveNewest"
+             Link="%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
+    <PackageReference Include="H.NotifyIcon.Wpf" Version="2.*">
+      <NoWarn>NU1701</NoWarn>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.*" />
+  </ItemGroup>
+
+</Project>

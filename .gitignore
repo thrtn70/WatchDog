@@ -1,0 +1,75 @@
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Ll]og/
+[Ll]ogs/
+bld/
+
+# Visual Studio files
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.opensdf
+*.cachefile
+*.VC.db
+*.VC.VC.opendb
+[Tt]est[Rr]esult*/
+[Dd]ebugPublic/
+[Bb]uild[Ll]og.*
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Rider
+.idea/
+*.sln.iml
+
+# VS Code
+.vscode/
+
+# Roslyn
+*.ide/
+
+# OBS runtime binaries (downloaded via setup-obs-runtime.ps1)
+obs-runtime/
+
+# FFmpeg runtime (downloaded via setup-ffmpeg.ps1)
+ffmpeg-runtime/
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# User secrets
+**/appsettings.Development.json
+**/secrets.json
+**/*.pfx
+
+# Claude Code artifacts
+.claude/
+
+# Publish output
+publish/
