@@ -3,10 +3,12 @@ using Application = System.Windows.Application;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ObsKit.NET.Encoders;
 using TikrClipr.Core.Capture;
 using TikrClipr.Core.Events;
 using TikrClipr.Core.GameDetection;
 using TikrClipr.Core.Hotkeys;
+using TikrClipr.Core.Recording;
 using TikrClipr.Core.Settings;
 using TikrClipr.App.Services;
 using TikrClipr.App.ViewModels;
@@ -142,6 +144,23 @@ public partial class App : Application
         // Capture engine
         services.AddSingleton<ICaptureEngine, ObsCaptureEngine>();
 
+        // Session recording
+        services.AddSingleton(sp => sp.GetRequiredService<AppSettings>().Recording);
+        services.AddSingleton<ISessionRecorder>(sp =>
+        {
+            var config = sp.GetRequiredService<SessionRecordingConfig>();
+            var captureEngine = sp.GetRequiredService<ICaptureEngine>() as ObsCaptureEngine;
+            // The session recorder shares the same encoders created by ObsCaptureEngine.
+            // For now, create a standalone instance — encoders are lightweight to duplicate.
+            var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+            var captureConfig = sp.GetRequiredService<CaptureConfig>();
+            return new ObsSessionRecorder(
+                config,
+                VideoEncoder.CreateX264(name: "Session x264", bitrate: captureConfig.Bitrate, preset: "veryfast"),
+                AudioEncoder.CreateAac(bitrate: captureConfig.AudioBitrate),
+                loggerFactory.CreateLogger<ObsSessionRecorder>());
+        });
+
         // Clip editor and storage
         services.AddSingleton<Core.ClipEditor.IClipEditor, Core.ClipEditor.FFmpegClipEditor>();
         services.AddSingleton(sp =>
@@ -170,5 +189,6 @@ public partial class App : Application
         // Hosted services (background workers)
         services.AddHostedService<GameDetectorHostedService>();
         services.AddHostedService<HotkeyListenerHostedService>();
+        services.AddHostedService<SessionRecordingHostedService>();
     }
 }

@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using TikrClipr.Core.Capture;
 using TikrClipr.Core.Events;
+using TikrClipr.Core.Recording;
 
 namespace TikrClipr.App.ViewModels;
 
@@ -16,6 +17,8 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
     private readonly IEventBus _eventBus;
     private readonly IDisposable _clipSavedSub;
     private readonly IDisposable _stateChangedSub;
+    private readonly IDisposable _sessionStartedSub;
+    private readonly IDisposable _sessionStoppedSub;
 
     [ObservableProperty]
     private string _statusText = "TikrClipr - Idle";
@@ -26,6 +29,9 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _isRecording;
 
+    [ObservableProperty]
+    private bool _isSessionRecording;
+
     public TrayIconViewModel(ICaptureEngine captureEngine, IEventBus eventBus)
     {
         _captureEngine = captureEngine;
@@ -33,6 +39,8 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
 
         _clipSavedSub = eventBus.Subscribe<ClipSavedEvent>(OnClipSaved);
         _stateChangedSub = eventBus.Subscribe<BufferStateChangedEvent>(OnStateChanged);
+        _sessionStartedSub = eventBus.Subscribe<SessionRecordingStartedEvent>(OnSessionStarted);
+        _sessionStoppedSub = eventBus.Subscribe<SessionRecordingStoppedEvent>(OnSessionStopped);
 
         captureEngine.StateChanged += state =>
             Application.Current?.Dispatcher.Invoke(() => UpdateState(state));
@@ -120,9 +128,30 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
         Application.Current?.Dispatcher.Invoke(() => UpdateState(e.NewState));
     }
 
+    private void OnSessionStarted(SessionRecordingStartedEvent e)
+    {
+        Application.Current?.Dispatcher.Invoke(() =>
+        {
+            IsSessionRecording = true;
+            var game = e.Game?.DisplayName ?? "Desktop";
+            StatusText = $"TikrClipr - Recording session: {game}";
+        });
+    }
+
+    private void OnSessionStopped(SessionRecordingStoppedEvent e)
+    {
+        Application.Current?.Dispatcher.Invoke(() =>
+        {
+            IsSessionRecording = false;
+            UpdateState(_captureEngine.State);
+        });
+    }
+
     public void Dispose()
     {
         _clipSavedSub.Dispose();
         _stateChangedSub.Dispose();
+        _sessionStartedSub.Dispose();
+        _sessionStoppedSub.Dispose();
     }
 }

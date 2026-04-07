@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using TikrClipr.Core.Capture;
 using TikrClipr.Core.Hotkeys;
+using TikrClipr.Core.Recording;
 using TikrClipr.Core.Settings;
 
 namespace TikrClipr.App.ViewModels;
@@ -32,6 +33,11 @@ public partial class SettingsViewModel : ObservableObject
 
     // Desktop capture
     [ObservableProperty] private bool _desktopCaptureEnabled;
+
+    // Recording mode
+    [ObservableProperty] private RecordingMode _recordingMode;
+    [ObservableProperty] private int _segmentDurationMinutes;
+    [ObservableProperty] private int _maxDurationMinutes;
 
     // App settings
     [ObservableProperty] private bool _startWithWindows;
@@ -84,6 +90,12 @@ public partial class SettingsViewModel : ObservableObject
                 SavePath = SavePath,
                 MaxStorageGb = MaxStorageGb,
                 AutoDeleteDays = AutoDeleteDays,
+            },
+            Recording = _settings.Recording with
+            {
+                Mode = RecordingMode,
+                SegmentDurationMinutes = SegmentDurationMinutes,
+                MaxDurationMinutes = MaxDurationMinutes,
             },
             Hotkey = _settings.Hotkey with
             {
@@ -140,6 +152,10 @@ public partial class SettingsViewModel : ObservableObject
         SavePath = settings.Storage.SavePath;
         MaxStorageGb = settings.Storage.MaxStorageGb;
         AutoDeleteDays = settings.Storage.AutoDeleteDays;
+
+        RecordingMode = settings.Recording.Mode;
+        SegmentDurationMinutes = settings.Recording.SegmentDurationMinutes;
+        MaxDurationMinutes = settings.Recording.MaxDurationMinutes;
 
         SaveClipKey = settings.Hotkey.SaveClipKey;
         SaveClipModifiers = settings.Hotkey.Modifiers;

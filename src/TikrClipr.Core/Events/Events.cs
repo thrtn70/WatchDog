@@ -12,3 +12,9 @@ public sealed record ClipSavedEvent(string FilePath, GameInfo? Game, DateTimeOff
 public sealed record BufferStateChangedEvent(CaptureState NewState);
 
 public sealed record CaptureErrorEvent(string Message, Exception? Exception = null);
+
+public sealed record SessionRecordingStartedEvent(string OutputPath, GameInfo? Game);
+
+public sealed record SessionRecordingSegmentSavedEvent(string FilePath, GameInfo? Game, TimeSpan Elapsed);
+
+public sealed record SessionRecordingStoppedEvent(GameInfo? Game, TimeSpan TotalDuration);

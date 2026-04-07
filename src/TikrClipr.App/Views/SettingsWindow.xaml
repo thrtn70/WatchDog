@@ -82,6 +82,27 @@
                 </StackPanel>
             </GroupBox>
 
+            <!-- Recording Mode -->
+            <GroupBox Header="Recording Mode">
+                <StackPanel Margin="8">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="Mode:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <ComboBox ItemsSource="{Binding Source={x:Static helpers:EnumHelper.RecordingModes}}"
+                                  SelectedItem="{Binding RecordingMode}" Width="180"/>
+                    </StackPanel>
+                    <TextBlock Text="ReplayBufferOnly: instant clips via hotkey. SessionRecording: full match files. Both: runs both."
+                               TextWrapping="Wrap" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,8" FontSize="11"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <TextBlock Text="Segment Duration (min):" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBox Text="{Binding SegmentDurationMinutes}" Width="50"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Max Duration (min, 0=unlimited):" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBox Text="{Binding MaxDurationMinutes}" Width="50"/>
+                    </StackPanel>
+                </StackPanel>
+            </GroupBox>
+
             <!-- Hotkey Settings -->
             <GroupBox Header="Hotkeys">
                 <StackPanel Margin="8">

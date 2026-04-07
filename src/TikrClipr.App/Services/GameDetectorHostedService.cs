@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using TikrClipr.Core.Capture;
 using TikrClipr.Core.Events;
 using TikrClipr.Core.GameDetection;
+using TikrClipr.Core.Recording;
 using TikrClipr.Core.Settings;
 
 namespace TikrClipr.App.Services;
@@ -46,7 +47,7 @@ public sealed class GameDetectorHostedService : IHostedService
 
         _logger.LogInformation("Game detector service started — watching for games");
 
-        if (_settings.DesktopCaptureEnabled)
+        if (_settings.DesktopCaptureEnabled && _settings.Recording.IsReplayBufferEnabled)
         {
             try
             {
@@ -57,6 +58,11 @@ public sealed class GameDetectorHostedService : IHostedService
             {
                 _logger.LogError(ex, "Failed to start desktop capture");
             }
+        }
+        else if (!_settings.Recording.IsReplayBufferEnabled)
+        {
+            _logger.LogInformation("Replay buffer disabled (mode: {Mode}) — skipping desktop capture",
+                _settings.Recording.Mode);
         }
     }
 
@@ -98,11 +104,15 @@ public sealed class GameDetectorHostedService : IHostedService
     private async void OnGameStarted(GameInfo game)
     {
         _logger.LogInformation("Game detected: {Game} — starting capture", game.DisplayName);
-        _eventBus.Publish(new GameDetectedEvent(game));
 
         try
         {
-            await _captureEngine.StartAsync(game);
+            if (_settings.Recording.IsReplayBufferEnabled)
+                await _captureEngine.StartAsync(game);
+
+            // Publish AFTER capture engine is initialized so session recorder
+            // can safely use OBS resources
+            _eventBus.Publish(new GameDetectedEvent(game));
         }
         catch (Exception ex)
         {
