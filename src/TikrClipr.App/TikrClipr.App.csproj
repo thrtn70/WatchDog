@@ -6,12 +6,17 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Resources\TikrClipr.ico</ApplicationIcon>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
-    <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\TikrClipr.Core\TikrClipr.Core.csproj" />
     <ProjectReference Include="..\TikrClipr.Native\TikrClipr.Native.csproj" />
+  </ItemGroup>
+
+  <!-- WinForms framework reference for FolderBrowserDialog only —
+       UseWindowsForms is NOT set to avoid global using conflicts with WPF types -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
   </ItemGroup>
 
   <!-- Application icon -->
