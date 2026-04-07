@@ -19,7 +19,8 @@ public sealed partial class FFmpegClipEditor : IClipEditor
     /// </summary>
     public async Task<string> TrimAsync(string inputPath, TimeSpan start, TimeSpan end, CancellationToken ct = default)
     {
-        var dir = Path.GetDirectoryName(inputPath)!;
+        var dir = Path.GetDirectoryName(inputPath)
+            ?? throw new ArgumentException("inputPath must not be a root path.", nameof(inputPath));
         var name = Path.GetFileNameWithoutExtension(inputPath);
         var ext = Path.GetExtension(inputPath);
         var outputPath = Path.Combine(dir, $"{name}_trimmed{ext}");
@@ -30,7 +31,10 @@ public sealed partial class FFmpegClipEditor : IClipEditor
             "-c", "copy", "-avoid_negative_ts", "make_zero", outputPath], ct);
 
         if (!File.Exists(outputPath))
-            throw new InvalidOperationException($"FFmpeg trim failed for: {inputPath}");
+        {
+            _logger.LogError("FFmpeg trim produced no output for: {Input}", inputPath);
+            throw new InvalidOperationException("FFmpeg trim failed — no output file produced.");
+        }
 
         _logger.LogInformation("Trim complete: {Output}", outputPath);
         return outputPath;
@@ -41,7 +45,8 @@ public sealed partial class FFmpegClipEditor : IClipEditor
     /// </summary>
     public async Task<string> GenerateThumbnailAsync(string inputPath, TimeSpan timestamp, CancellationToken ct = default)
     {
-        var dir = Path.GetDirectoryName(inputPath)!;
+        var dir = Path.GetDirectoryName(inputPath)
+            ?? throw new ArgumentException("inputPath must not be a root path.", nameof(inputPath));
         var name = Path.GetFileNameWithoutExtension(inputPath);
         var outputPath = Path.Combine(dir, $"{name}_thumb.jpg");
 
@@ -90,7 +95,8 @@ public sealed partial class FFmpegClipEditor : IClipEditor
             return Array.Empty<string>();
 
         var interval = duration.TotalSeconds / frameCount;
-        var dir = Path.GetDirectoryName(inputPath)!;
+        var dir = Path.GetDirectoryName(inputPath)
+            ?? throw new ArgumentException("inputPath must not be a root path.", nameof(inputPath));
         var name = Path.GetFileNameWithoutExtension(inputPath);
         var stripDir = Path.Combine(dir, ".thumbnails");
         Directory.CreateDirectory(stripDir);
@@ -142,7 +148,8 @@ public sealed partial class FFmpegClipEditor : IClipEditor
             startInfo.ArgumentList.Add(arg);
 
         using var process = new Process { StartInfo = startInfo };
-        process.Start();
+        if (!process.Start())
+            throw new InvalidOperationException($"Failed to start process: {Path.GetFileName(executable)}");
 
         // Drain stdout and stderr concurrently to prevent pipe deadlock —
         // FFmpeg writes heavily to stderr; sequential reads can deadlock if the pipe fills.
@@ -158,7 +165,7 @@ public sealed partial class FFmpegClipEditor : IClipEditor
         {
             _logger.LogWarning("Process exited with code {Code}. Stderr: {Stderr}", process.ExitCode, stderr);
             throw new InvalidOperationException(
-                $"{Path.GetFileName(executable)} exited with code {process.ExitCode}. Stderr: {stderr}");
+                $"{Path.GetFileName(executable)} exited with code {process.ExitCode}.");
         }
 
         return string.IsNullOrEmpty(stdout) ? stderr : stdout;
