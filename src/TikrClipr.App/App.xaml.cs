@@ -1,3 +1,4 @@
+using System.Net.Http;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -206,6 +207,10 @@ public partial class App : Application
             };
         });
         services.AddSingleton<Core.Storage.IClipStorage, Core.Storage.ClipStorageManager>();
+
+        // Discord webhook
+        services.AddSingleton(_ => new HttpClient { Timeout = TimeSpan.FromMinutes(10) });
+        services.AddSingleton<Core.Discord.IDiscordWebhookService, Core.Discord.DiscordWebhookService>();
 
         // Hotkey service (singleton, initialized on UI thread before host starts)
         services.AddSingleton<Win32HotkeyService>();

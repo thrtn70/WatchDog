@@ -119,6 +119,9 @@
                                     <MenuItem Header="Open in Explorer"
                                               Command="{Binding DataContext.OpenInExplorerCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                               CommandParameter="{Binding}"/>
+                                    <MenuItem Header="Share to Discord"
+                                              Command="{Binding DataContext.ShareToDiscordCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                              CommandParameter="{Binding}"/>
                                     <Separator/>
                                     <MenuItem Header="Delete" Foreground="{StaticResource RedBrush}"
                                               Command="{Binding DataContext.DeleteClipCommand, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -246,6 +249,9 @@
                                         Command="{Binding StartTrimCommand}"/>
                                 <Button Content="Open Folder" Margin="0,0,4,0"
                                         Command="{Binding DataContext.OpenInExplorerCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding DataContext.SelectedClip, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                <Button Content="Share" Margin="0,0,4,0"
+                                        Command="{Binding DataContext.ShareToDiscordCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         CommandParameter="{Binding DataContext.SelectedClip, RelativeSource={RelativeSource AncestorType=Window}}"/>
                             </StackPanel>
 

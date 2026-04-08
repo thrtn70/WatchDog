@@ -166,6 +166,34 @@
                 </StackPanel>
             </GroupBox>
 
+            <GroupBox Header="Discord">
+                <StackPanel Margin="8">
+                    <TextBlock Text="Share clips to a Discord channel via webhook. No bot or OAuth needed."
+                               TextWrapping="Wrap" Foreground="{StaticResource SubtextBrush}" FontSize="11"
+                               Margin="0,0,0,8"/>
+                    <TextBlock Text="Webhook URL:" FontSize="11" Margin="0,0,0,2"/>
+                    <TextBox Text="{Binding DiscordWebhookUrl}" Margin="0,0,0,8"/>
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                            <TextBlock Text="Bot Username:" FontSize="11" Margin="0,0,0,2"/>
+                            <TextBox Text="{Binding DiscordUsername}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                            <TextBlock Text="Message Template:" FontSize="11" Margin="0,0,0,2"/>
+                            <TextBox Text="{Binding DiscordMessageTemplate}"/>
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Text="Tokens: {GameName}, {HighlightType}, {Duration}, {FileName}"
+                               Foreground="{StaticResource SubtextBrush}" FontSize="10" Margin="0,0,0,6"/>
+                    <CheckBox Content="Include metadata embed in message"
+                              IsChecked="{Binding DiscordIncludeEmbed}"/>
+                </StackPanel>
+            </GroupBox>
+
             <!-- Actions -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
                 <Button Content="Reset Defaults" Command="{Binding ResetCommand}"

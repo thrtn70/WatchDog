@@ -15,10 +15,19 @@ public sealed record AppSettings
     public HighlightConfig Highlight { get; init; } = new();
     public HotkeySettings Hotkey { get; init; } = new();
     public StorageSettings Storage { get; init; } = new();
+    public DiscordSettings Discord { get; init; } = new();
     public List<CustomGameEntry> CustomGames { get; init; } = [];
     public bool DesktopCaptureEnabled { get; init; } = true;
     public bool StartWithWindows { get; init; } = false;
     public bool StartMinimized { get; init; } = true;
+}
+
+public sealed record DiscordSettings
+{
+    public string WebhookUrl { get; init; } = string.Empty;
+    public string Username { get; init; } = "TikrClipr";
+    public string MessageTemplate { get; init; } = "{GameName} \u2014 {HighlightType}";
+    public bool IncludeEmbed { get; init; } = true;
 }
 
 public sealed record HotkeySettings

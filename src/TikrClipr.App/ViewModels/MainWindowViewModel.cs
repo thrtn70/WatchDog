@@ -8,7 +8,9 @@ using CommunityToolkit.Mvvm.Input;
 using TikrClipr.Core.Capture;
 using TikrClipr.Core.ClipEditor;
 using TikrClipr.Core.Events;
+using TikrClipr.Core.Settings;
 using TikrClipr.Core.Storage;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace TikrClipr.App.ViewModels;
 
@@ -156,16 +158,36 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         if (File.Exists(target.FilePath))
         {
-            // Open explorer with the clip file selected
             Process.Start("explorer.exe", $"/select,\"{target.FilePath}\"");
         }
         else
         {
-            // File gone — open the parent folder instead
             var dir = Path.GetDirectoryName(target.FilePath);
             if (dir is not null && Directory.Exists(dir))
                 Process.Start("explorer.exe", $"\"{dir}\"");
         }
+    }
+
+    [RelayCommand]
+    private void ShareToDiscord(ClipItemViewModel? clip)
+    {
+        var target = clip ?? SelectedClip;
+        if (target is null) return;
+
+        var settings = App.Services.GetRequiredService<ISettingsService>().Load();
+        if (string.IsNullOrWhiteSpace(settings.Discord.WebhookUrl))
+        {
+            System.Windows.MessageBox.Show(
+                "No Discord webhook URL configured.\n\nGo to Settings > Discord to set one up.",
+                "Discord Share",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Information);
+            return;
+        }
+
+        var dialog = new Views.DiscordUploadWindow(target.Metadata);
+        dialog.Owner = System.Windows.Application.Current.MainWindow;
+        dialog.ShowDialog();
     }
 
     private void UpdateCaptureStatus(CaptureState state)
@@ -191,6 +213,7 @@ public sealed class ClipItemViewModel
 
     public ClipItemViewModel(ClipMetadata metadata)
     {
+        Metadata = metadata;
         FilePath = metadata.FilePath;
         FileName = metadata.FileName;
         GameName = metadata.GameName ?? "Unknown";
@@ -200,6 +223,8 @@ public sealed class ClipItemViewModel
         ThumbnailPath = metadata.ThumbnailPath;
         IsFavorite = metadata.IsFavorite;
     }
+
+    public ClipMetadata Metadata { get; }
 
     public string FilePath { get; }
     public string FileName { get; }

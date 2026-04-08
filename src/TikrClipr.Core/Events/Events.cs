@@ -25,3 +25,7 @@ public sealed record HighlightDetectedEvent(
     GameInfo Game,
     DateTimeOffset Timestamp,
     string? Description = null);
+
+public sealed record DiscordUploadStartedEvent(string FilePath, string? GameName);
+
+public sealed record DiscordUploadCompletedEvent(string FilePath, bool Success, string? ErrorMessage = null);

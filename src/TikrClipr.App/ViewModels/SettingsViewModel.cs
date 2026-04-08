@@ -55,6 +55,12 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _startWithWindows;
     [ObservableProperty] private bool _startMinimized;
 
+    // Discord settings
+    [ObservableProperty] private string _discordWebhookUrl = string.Empty;
+    [ObservableProperty] private string _discordUsername = "TikrClipr";
+    [ObservableProperty] private string _discordMessageTemplate = "{GameName} \u2014 {HighlightType}";
+    [ObservableProperty] private bool _discordIncludeEmbed = true;
+
     [ObservableProperty] private string _statusMessage = string.Empty;
 
     // Hotkey settings
@@ -129,6 +135,13 @@ public partial class SettingsViewModel : ObservableObject
                 ToggleRecordingKey = ToggleRecordingKey,
                 ToggleRecordingModifiers = ToggleRecordingModifiers,
             },
+            Discord = _settings.Discord with
+            {
+                WebhookUrl = DiscordWebhookUrl,
+                Username = DiscordUsername,
+                MessageTemplate = DiscordMessageTemplate,
+                IncludeEmbed = DiscordIncludeEmbed,
+            },
             DesktopCaptureEnabled = DesktopCaptureEnabled,
             StartWithWindows = StartWithWindows,
             StartMinimized = StartMinimized,
@@ -195,6 +208,11 @@ public partial class SettingsViewModel : ObservableObject
         SaveClipModifiers = settings.Hotkey.Modifiers;
         ToggleRecordingKey = settings.Hotkey.ToggleRecordingKey;
         ToggleRecordingModifiers = settings.Hotkey.ToggleRecordingModifiers;
+
+        DiscordWebhookUrl = settings.Discord.WebhookUrl;
+        DiscordUsername = settings.Discord.Username;
+        DiscordMessageTemplate = settings.Discord.MessageTemplate;
+        DiscordIncludeEmbed = settings.Discord.IncludeEmbed;
 
         DesktopCaptureEnabled = settings.DesktopCaptureEnabled;
         StartWithWindows = settings.StartWithWindows;
