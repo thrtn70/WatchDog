@@ -273,15 +273,25 @@
             </Border>
         </Grid>
 
-        <!-- Performance overlay (top-right floating) -->
-        <controls:PerformanceOverlay Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Top"
-                                      Margin="0,8,8,0" Width="160"
-                                      DataContext="{Binding Performance}"/>
+        <!-- Floating panels canvas (draggable, resizable overlays) -->
+        <Canvas Grid.Row="1" ClipToBounds="True" x:Name="FloatingPanelCanvas"
+                Loaded="FloatingPanelCanvas_Loaded">
 
-        <!-- Audio mixer (bottom-right floating panel) -->
-        <controls:AudioMixerPanel Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                   Margin="0,0,8,8" Width="260"
-                                   DataContext="{Binding AudioMixer}"/>
+            <controls:FloatingPanel x:Name="PerformancePanel"
+                                     Title="Performance"
+                                     PanelWidth="180" PanelHeight="150"
+                                     MinPanelWidth="140" MinPanelHeight="100"
+                                     PanelTop="8">
+                <controls:PerformanceOverlay DataContext="{Binding Performance}"/>
+            </controls:FloatingPanel>
+
+            <controls:FloatingPanel x:Name="AudioPanel"
+                                     Title="Audio"
+                                     PanelWidth="280" PanelHeight="190"
+                                     MinPanelWidth="200" MinPanelHeight="120">
+                <controls:AudioMixerPanel DataContext="{Binding AudioMixer}"/>
+            </controls:FloatingPanel>
+        </Canvas>
 
         <!-- Status bar -->
         <Border Grid.Row="2" Background="{StaticResource CrustBrush}" Padding="12,6"

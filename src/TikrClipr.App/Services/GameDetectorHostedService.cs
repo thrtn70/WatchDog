@@ -47,12 +47,17 @@ public sealed class GameDetectorHostedService : IHostedService
 
         _logger.LogInformation("Game detector service started — watching for games");
 
-        if (_settings.DesktopCaptureEnabled && _settings.Recording.IsReplayBufferEnabled)
+        // Highlights mode always needs the replay buffer running for auto-clips + F9 hotkey
+        var shouldStartDesktop = _settings.Recording.IsReplayBufferEnabled &&
+            (_settings.DesktopCaptureEnabled || _settings.Recording.IsHighlightModeEnabled);
+
+        if (shouldStartDesktop)
         {
             try
             {
                 await _captureEngine.StartDesktopCaptureAsync(cancellationToken);
-                _logger.LogInformation("Always-on desktop capture started");
+                _logger.LogInformation("Desktop capture started (desktopCapture={Desktop}, highlights={Highlights})",
+                    _settings.DesktopCaptureEnabled, _settings.Recording.IsHighlightModeEnabled);
             }
             catch (Exception ex)
             {
@@ -78,28 +83,38 @@ public sealed class GameDetectorHostedService : IHostedService
 
     private async void OnSettingsChanged(AppSettings newSettings)
     {
-        var wasEnabled = _settings.DesktopCaptureEnabled;
-        _settings = newSettings;
-
-        if (newSettings.DesktopCaptureEnabled && !wasEnabled)
+        try
         {
-            // Desktop capture was just enabled
-            if (_captureEngine.State == CaptureState.Idle)
+            var wasShouldCapture = ShouldHaveDesktopCapture(_settings);
+            _settings = newSettings;
+            var nowShouldCapture = ShouldHaveDesktopCapture(newSettings);
+
+            if (nowShouldCapture && !wasShouldCapture)
             {
-                _logger.LogInformation("Desktop capture enabled via settings, starting");
-                await _captureEngine.StartDesktopCaptureAsync();
+                if (_captureEngine.State == CaptureState.Idle)
+                {
+                    _logger.LogInformation("Desktop capture enabled via settings change, starting");
+                    await _captureEngine.StartDesktopCaptureAsync();
+                }
+            }
+            else if (!nowShouldCapture && wasShouldCapture)
+            {
+                if (_captureEngine.IsDesktopCapture)
+                {
+                    _logger.LogInformation("Desktop capture disabled via settings change, stopping");
+                    await _captureEngine.StopAsync();
+                }
             }
         }
-        else if (!newSettings.DesktopCaptureEnabled && wasEnabled)
+        catch (Exception ex)
         {
-            // Desktop capture was just disabled
-            if (_captureEngine.IsDesktopCapture)
-            {
-                _logger.LogInformation("Desktop capture disabled via settings, stopping");
-                await _captureEngine.StopAsync();
-            }
+            _logger.LogError(ex, "Failed to handle settings change for desktop capture");
         }
     }
+
+    private static bool ShouldHaveDesktopCapture(AppSettings settings) =>
+        settings.Recording.IsReplayBufferEnabled &&
+        (settings.DesktopCaptureEnabled || settings.Recording.IsHighlightModeEnabled);
 
     private async void OnGameStarted(GameInfo game)
     {
@@ -127,7 +142,7 @@ public sealed class GameDetectorHostedService : IHostedService
 
         try
         {
-            if (_settings.DesktopCaptureEnabled)
+            if (_settings.DesktopCaptureEnabled || _settings.Recording.IsHighlightModeEnabled)
             {
                 _logger.LogInformation("Switching back to desktop capture");
                 await _captureEngine.SwitchToDesktopCaptureAsync();
