@@ -91,7 +91,7 @@
                                   SelectedItem="{Binding RecordingMode}" Width="180"/>
                     </StackPanel>
                     <TextBlock Text="ReplayBufferOnly: instant clips via hotkey. SessionRecording: full match files. Both: runs both."
-                               TextWrapping="Wrap" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,8" FontSize="11"/>
+                               TextWrapping="Wrap" Foreground="{StaticResource Surface2Brush}" Margin="0,0,0,8" FontSize="11"/>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                         <TextBlock Text="Segment Duration (min):" VerticalAlignment="Center" Margin="0,0,6,0"/>
                         <TextBox Text="{Binding SegmentDurationMinutes}" Width="50"/>
