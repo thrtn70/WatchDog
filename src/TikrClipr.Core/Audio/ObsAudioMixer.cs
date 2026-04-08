@@ -45,16 +45,32 @@ public sealed class ObsAudioMixer : IAudioMixer
 
     public void ToggleDesktopMute()
     {
-        _isDesktopMuted = !_isDesktopMuted;
-        _desktopAudio?.SetMuted(_isDesktopMuted);
-        _logger.LogInformation("Desktop audio {State}", _isDesktopMuted ? "muted" : "unmuted");
+        var newState = !_isDesktopMuted;
+        try
+        {
+            _desktopAudio?.SetMuted(newState);
+            _isDesktopMuted = newState;
+            _logger.LogInformation("Desktop audio {State}", _isDesktopMuted ? "muted" : "unmuted");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to toggle desktop mute");
+        }
     }
 
     public void ToggleMicMute()
     {
-        _isMicMuted = !_isMicMuted;
-        _micAudio?.SetMuted(_isMicMuted);
-        _logger.LogInformation("Mic audio {State}", _isMicMuted ? "muted" : "unmuted");
+        var newState = !_isMicMuted;
+        try
+        {
+            _micAudio?.SetMuted(newState);
+            _isMicMuted = newState;
+            _logger.LogInformation("Mic audio {State}", _isMicMuted ? "muted" : "unmuted");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to toggle mic mute");
+        }
     }
 
     public void ApplyConfig(AudioMixConfig config)
@@ -62,9 +78,15 @@ public sealed class ObsAudioMixer : IAudioMixer
         SetDesktopVolume(config.DesktopVolume);
         SetMicVolume(config.MicVolume);
 
+        // Sync mute state to match config
         if (!config.DesktopAudioEnabled && !_isDesktopMuted)
             ToggleDesktopMute();
+        else if (config.DesktopAudioEnabled && _isDesktopMuted)
+            ToggleDesktopMute();
+
         if (!config.MicEnabled && !_isMicMuted)
+            ToggleMicMute();
+        else if (config.MicEnabled && _isMicMuted)
             ToggleMicMute();
     }
 }
