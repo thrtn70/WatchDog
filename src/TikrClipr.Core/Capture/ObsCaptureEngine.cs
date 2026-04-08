@@ -255,11 +255,14 @@ public sealed class ObsCaptureEngine : ICaptureEngine
     {
         Obs.AutoDispose = false;
 
-        var (monW, monH) = TikrClipr.Native.Win32.User32.GetPrimaryMonitorResolution();
-        var baseWidth = monW > 0 ? (uint)monW : Config.OutputWidth;
-        var baseHeight = monH > 0 ? (uint)monH : Config.OutputHeight;
+        // Use the configured output resolution as the OBS canvas.
+        // Sources are stretched to fill this canvas via SetBounds,
+        // so clips are always at the desired resolution regardless
+        // of the game's native resolution or aspect ratio.
+        var outW = Config.OutputWidth;
+        var outH = Config.OutputHeight;
 
-        _logger.LogInformation("OBS canvas: {Width}x{Height} (monitor native)", baseWidth, baseHeight);
+        _logger.LogInformation("OBS canvas: {Width}x{Height} (configured output)", outW, outH);
 
         _obsContext = Obs.Initialize(config => config
             .WithLocale("en-US")
@@ -267,7 +270,7 @@ public sealed class ObsCaptureEngine : ICaptureEngine
             .WithModulePath(ObsRuntime.ModuleBinPath, ObsRuntime.ModuleDataPath)
             .ForHeadlessOperation()
             .WithVideo(v => v
-                .Resolution(baseWidth, baseHeight)
+                .Resolution(outW, outH)
                 .Fps(Config.Fps))
             .WithAudio(a => a
                 .WithSampleRate(48000)
@@ -338,6 +341,7 @@ public sealed class ObsCaptureEngine : ICaptureEngine
         _displayCapture = MonitorCapture.FromPrimary();
         _displayCapture.SetCaptureMethod(MonitorCaptureMethod.WindowsGraphicsCapture);
         _displaySceneItem = _scene.AddSource(_displayCapture);
+        StretchToCanvas(_displaySceneItem);
 
         _scene.SetAsProgram();
         _logger.LogInformation("Desktop capture sources created");
@@ -370,15 +374,28 @@ public sealed class ObsCaptureEngine : ICaptureEngine
         };
 
         _gameSceneItem = _scene.AddSource(_gameCapture);
+        StretchToCanvas(_gameSceneItem);
 
         // Fallback monitor capture — visible until game capture hooks.
         // Prevents black frames in the replay buffer while the hook is retrying.
         _displayCapture = MonitorCapture.FromPrimary();
         _displayCapture.SetCaptureMethod(MonitorCaptureMethod.WindowsGraphicsCapture);
         _displaySceneItem = _scene.AddSource(_displayCapture);
+        StretchToCanvas(_displaySceneItem);
 
         _scene.SetAsProgram();
         _logger.LogInformation("Game capture sources created for {Game}", game.DisplayName);
+    }
+
+    /// <summary>
+    /// Stretch the source to fill the entire OBS canvas, ignoring aspect ratio.
+    /// This ensures clips are always at the configured output resolution
+    /// regardless of the game's native resolution (e.g., 4:3 games on a 16:9 output).
+    /// </summary>
+    private void StretchToCanvas(SceneItem? item)
+    {
+        if (item is null) return;
+        item.SetBounds(ObsKit.NET.Native.Types.ObsBoundsType.Stretch, Config.OutputWidth, Config.OutputHeight);
     }
 
     private void DisposeSceneSources()
