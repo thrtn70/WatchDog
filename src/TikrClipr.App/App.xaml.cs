@@ -8,6 +8,9 @@ using TikrClipr.Core.Events;
 using TikrClipr.Core.GameDetection;
 using TikrClipr.Core.Highlights;
 using TikrClipr.Core.Highlights.Cs2;
+using TikrClipr.Core.Highlights.Overwatch2;
+using TikrClipr.Core.Highlights.RainbowSixSiege;
+using TikrClipr.Core.Highlights.Valorant;
 using TikrClipr.Core.Hotkeys;
 using TikrClipr.Core.Recording;
 using TikrClipr.Core.Settings;
@@ -221,6 +224,9 @@ public partial class App : Application
         // Highlight detection
         services.AddSingleton(sp => sp.GetRequiredService<AppSettings>().Highlight);
         services.AddSingleton<IHighlightDetector, Cs2HighlightDetector>();
+        services.AddSingleton<IHighlightDetector, ValorantHighlightDetector>();
+        services.AddSingleton<IHighlightDetector, Ow2HighlightDetector>();
+        services.AddSingleton<IHighlightDetector, R6HighlightDetector>();
         services.AddSingleton<HighlightDetectorRegistry>();
 
         // Hosted services (background workers)

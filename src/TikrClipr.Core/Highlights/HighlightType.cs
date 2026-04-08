@@ -11,4 +11,7 @@ public enum HighlightType
     Ace,
     BombPlant,
     BombDefuse,
+    Assist,
+    Multikill,
+    UltimateUsed,
 }

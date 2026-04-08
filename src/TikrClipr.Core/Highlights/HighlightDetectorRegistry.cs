@@ -23,8 +23,12 @@ public sealed class HighlightDetectorRegistry
 
         foreach (var detector in detectors)
         {
-            _detectors[detector.GameExecutableName] = detector;
-            _logger.LogInformation("Registered highlight detector for {Game}", detector.GameExecutableName);
+            foreach (var exeName in detector.SupportedExecutableNames)
+            {
+                _detectors[exeName] = detector;
+            }
+            _logger.LogInformation("Registered highlight detector for {Game} ({ExeCount} executables)",
+                detector.GameExecutableName, detector.SupportedExecutableNames.Count);
         }
     }
 

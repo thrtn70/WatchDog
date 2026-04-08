@@ -12,5 +12,6 @@ public sealed record HighlightConfig
         HighlightType.RoundWin,
         HighlightType.MatchWin,
         HighlightType.Ace,
+        HighlightType.Multikill,
     ];
 }
