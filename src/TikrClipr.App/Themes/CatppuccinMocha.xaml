@@ -39,6 +39,31 @@
     <SolidColorBrush x:Key="YellowBrush" Color="{StaticResource YellowColor}"/>
     <SolidColorBrush x:Key="PeachBrush" Color="{StaticResource PeachColor}"/>
     <SolidColorBrush x:Key="MauveBrush" Color="{StaticResource MauveColor}"/>
+    <SolidColorBrush x:Key="LavenderBrush" Color="{StaticResource LavenderColor}"/>
+
+    <!-- ── Reusable Effects ───────────────────────────────────────────── -->
+    <DropShadowEffect x:Key="FloatingPanelShadow" BlurRadius="12" ShadowDepth="4"
+                      Direction="270" Opacity="0.4" Color="{StaticResource CrustColor}"/>
+    <DropShadowEffect x:Key="CardHoverShadow" BlurRadius="8" ShadowDepth="2"
+                      Direction="270" Opacity="0.3" Color="{StaticResource CrustColor}"/>
+
+    <!-- ── Typography Hierarchy ───────────────────────────────────────── -->
+    <Style x:Key="Heading1" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="20"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+    </Style>
+
+    <Style x:Key="Heading2" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="15"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+    </Style>
+
+    <Style x:Key="Caption" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Foreground" Value="{StaticResource SubtextBrush}"/>
+    </Style>
 
     <!-- ── TextBlock ──────────────────────────────────────────────────── -->
     <Style TargetType="TextBlock">
@@ -330,7 +355,7 @@
         <Setter Property="BorderThickness" Value="0"/>
     </Style>
 
-    <!-- ── ListBoxItem ────────────────────────────────────────────────── -->
+    <!-- ── ListBoxItem (selection highlight + hover) ─────────────────── -->
     <Style TargetType="ListBoxItem">
         <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
         <Setter Property="Padding" Value="2"/>
@@ -338,12 +363,17 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
                     <Border x:Name="border" Background="Transparent"
-                            Padding="{TemplateBinding Padding}">
+                            BorderBrush="Transparent" BorderThickness="2"
+                            CornerRadius="8" Padding="{TemplateBinding Padding}">
                         <ContentPresenter/>
                     </Border>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="#0AFFFFFF"/>
+                        </Trigger>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="#20FFFFFF"/>
+                            <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                            <Setter TargetName="border" Property="Background" Value="#1589B4FA"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -385,6 +415,112 @@
         <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
         <Setter Property="BorderBrush" Value="{StaticResource Surface1Brush}"/>
         <Setter Property="Padding" Value="8,4"/>
+    </Style>
+
+    <!-- ── Slider ─────────────────────────────────────────────────────── -->
+    <Style x:Key="SliderThumb" TargetType="Thumb">
+        <Setter Property="Width" Value="14"/>
+        <Setter Property="Height" Value="14"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border x:Name="thumb" Width="14" Height="14" CornerRadius="7"
+                            Background="{StaticResource AccentBrush}">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="4" ShadowDepth="1" Opacity="0.3"
+                                              Color="{StaticResource CrustColor}"/>
+                        </Border.Effect>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="thumb" Property="Background" Value="{StaticResource LavenderBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="thumb" Property="Background" Value="{StaticResource AccentBrush}"/>
+                            <Setter TargetName="thumb" Property="Width" Value="16"/>
+                            <Setter TargetName="thumb" Property="Height" Value="16"/>
+                            <Setter TargetName="thumb" Property="CornerRadius" Value="8"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SliderRepeatButton" TargetType="RepeatButton">
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Border Background="Transparent"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SliderFillRepeatButton" TargetType="RepeatButton">
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Border Background="{StaticResource AccentBrush}" Height="4" CornerRadius="2"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="Slider">
+        <Setter Property="Background" Value="{StaticResource Surface1Brush}"/>
+        <Setter Property="Height" Value="20"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Slider">
+                    <Grid VerticalAlignment="Center">
+                        <Border Height="4" CornerRadius="2"
+                                Background="{StaticResource Surface1Brush}"/>
+                        <Track x:Name="PART_Track">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Style="{StaticResource SliderFillRepeatButton}"/>
+                            </Track.DecreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb Style="{StaticResource SliderThumb}"/>
+                            </Track.Thumb>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Style="{StaticResource SliderRepeatButton}"/>
+                            </Track.IncreaseRepeatButton>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ── ProgressBar ────────────────────────────────────────────────── -->
+    <Style TargetType="ProgressBar">
+        <Setter Property="Height" Value="12"/>
+        <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Surface1Brush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ProgressBar">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6">
+                        <Grid ClipToBounds="True">
+                            <Border x:Name="PART_Track"
+                                    Background="{StaticResource Surface1Brush}"/>
+                            <Border x:Name="PART_Indicator" HorizontalAlignment="Left"
+                                    Background="{TemplateBinding Foreground}" CornerRadius="6"/>
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
 </ResourceDictionary>

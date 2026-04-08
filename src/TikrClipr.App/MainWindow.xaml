@@ -21,6 +21,25 @@
             <Setter Property="Margin" Value="4"/>
             <Setter Property="Width" Value="220"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <TranslateTransform Y="0"/>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Effect" Value="{StaticResource CardHoverShadow}"/>
+                    <Setter Property="BorderBrush" Value="{StaticResource Surface2Brush}"/>
+                    <Setter Property="RenderTransform">
+                        <Setter.Value>
+                            <TranslateTransform Y="-2"/>
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+            </Style.Triggers>
         </Style>
     </Window.Resources>
 
@@ -32,9 +51,11 @@
         </Grid.RowDefinitions>
 
         <!-- Toolbar -->
-        <Border Grid.Row="0" Background="{StaticResource MantleBrush}" Padding="12,8">
+        <Border Grid.Row="0" Background="{StaticResource MantleBrush}" Padding="16,10"
+                BorderBrush="{StaticResource Surface1Brush}" BorderThickness="0,0,0,1">
             <Grid>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -48,11 +69,15 @@
                           SelectedItem="{Binding FilterGame}" Width="180"
                           HorizontalAlignment="Left" VerticalAlignment="Center"/>
 
-                <TextBlock Grid.Column="2" Text="{Binding CaptureStatusText}"
-                           VerticalAlignment="Center" Margin="12,0"
-                           Foreground="{StaticResource GreenBrush}" FontWeight="SemiBold"/>
+                <!-- Separator -->
+                <Border Grid.Column="2" Width="1" Height="20" Background="{StaticResource Surface1Brush}"
+                        HorizontalAlignment="Left" Margin="12,0"/>
 
-                <StackPanel Grid.Column="3" Orientation="Horizontal">
+                <TextBlock Grid.Column="3" Text="{Binding CaptureStatusText}"
+                           VerticalAlignment="Center" Margin="12,0"
+                           Foreground="{StaticResource GreenBrush}" FontWeight="SemiBold" FontSize="14"/>
+
+                <StackPanel Grid.Column="4" Orientation="Horizontal">
                     <Button Content="Storage" Click="OnStorageDashboardClick"
                             VerticalAlignment="Center" Margin="0,0,6,0"/>
                     <Button Content="Refresh" Command="{Binding RefreshClipsCommand}"
@@ -165,12 +190,10 @@
                         Position="{Binding Position, Mode=TwoWay}"/>
 
                     <!-- Empty state (shown when no clip is selected) -->
-                    <TextBlock Text="Select a clip to preview" FontSize="14"
-                               Foreground="{StaticResource SubtextBrush}"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                               IsHitTestVisible="False">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                IsHitTestVisible="False">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
                                 <Setter Property="Visibility" Value="Collapsed"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding DataContext.ClipEditor, RelativeSource={RelativeSource AncestorType=Window}}" Value="{x:Null}">
@@ -178,8 +201,18 @@
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
+                        </StackPanel.Style>
+                        <!-- Segoe MDL2 Assets video glyph -->
+                        <TextBlock Text="&#xE714;" FontFamily="Segoe MDL2 Assets" FontSize="36"
+                                   Foreground="{StaticResource Surface2Brush}"
+                                   HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                        <TextBlock Text="No clip selected" FontSize="15" FontWeight="SemiBold"
+                                   Foreground="{StaticResource SubtextBrush}"
+                                   HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                        <TextBlock Text="Choose a clip from the grid to preview and edit"
+                                   FontSize="12" Foreground="{StaticResource OverlayBrush}"
+                                   HorizontalAlignment="Center" TextAlignment="Center"/>
+                    </StackPanel>
 
                     <!-- Timeline -->
                     <controls:VideoTimeline Grid.Row="1" Margin="8,0"
@@ -251,7 +284,8 @@
                                    DataContext="{Binding AudioMixer}"/>
 
         <!-- Status bar -->
-        <Border Grid.Row="2" Background="{StaticResource CrustBrush}" Padding="12,6">
+        <Border Grid.Row="2" Background="{StaticResource CrustBrush}" Padding="12,6"
+                BorderBrush="{StaticResource Surface1Brush}" BorderThickness="0,1,0,0">
             <Grid>
                 <TextBlock Text="{Binding StatusText}" FontSize="11"
                            Foreground="{StaticResource SubtextBrush}" HorizontalAlignment="Left"/>

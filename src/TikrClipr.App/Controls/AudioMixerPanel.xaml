@@ -1,7 +1,9 @@
 <UserControl x:Class="TikrClipr.App.Controls.AudioMixerPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Border Background="{StaticResource SurfaceBrush}" CornerRadius="6" Padding="10">
+    <Border Background="{StaticResource SurfaceBrush}" CornerRadius="8" Padding="12"
+            BorderBrush="{StaticResource Surface1Brush}" BorderThickness="1"
+            Effect="{StaticResource FloatingPanelShadow}">
         <StackPanel>
             <TextBlock Text="Audio" FontWeight="SemiBold" FontSize="12"
                        Foreground="{StaticResource AccentBrush}" Margin="0,0,0,6"/>
