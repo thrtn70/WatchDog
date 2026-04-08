@@ -292,7 +292,7 @@ public sealed class ObsCaptureEngine : ICaptureEngine
         if (_audioConfig.DesktopAudioEnabled)
         {
             _desktopAudio = AudioOutputCapture.FromDefault();
-            _desktopAudio.SetVolume(_audioConfig.DesktopVolume);
+            _desktopAudio.Volume = _audioConfig.DesktopVolume;
             Obs.SetOutputSource(1, _desktopAudio);
             _logger.LogInformation("Desktop audio enabled (volume: {Vol:P0})", _audioConfig.DesktopVolume);
         }
@@ -306,7 +306,7 @@ public sealed class ObsCaptureEngine : ICaptureEngine
             try
             {
                 _micAudio = AudioInputCapture.FromDefault();
-                _micAudio.SetVolume(_audioConfig.MicVolume);
+                _micAudio.Volume = _audioConfig.MicVolume;
                 Obs.SetOutputSource(2, _micAudio);
                 _logger.LogInformation("Microphone enabled (volume: {Vol:P0})", _audioConfig.MicVolume);
             }

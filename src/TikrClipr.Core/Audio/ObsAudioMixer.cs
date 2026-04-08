@@ -32,14 +32,16 @@ public sealed class ObsAudioMixer : IAudioMixer
     public void SetDesktopVolume(float volume)
     {
         _desktopVolume = Math.Clamp(volume, 0f, 1f);
-        _desktopAudio?.SetVolume(_desktopVolume);
+        if (_desktopAudio is not null)
+            _desktopAudio.Volume = _desktopVolume;
         _logger.LogDebug("Desktop volume set to {Volume:P0}", _desktopVolume);
     }
 
     public void SetMicVolume(float volume)
     {
         _micVolume = Math.Clamp(volume, 0f, 1f);
-        _micAudio?.SetVolume(_micVolume);
+        if (_micAudio is not null)
+            _micAudio.Volume = _micVolume;
         _logger.LogDebug("Mic volume set to {Volume:P0}", _micVolume);
     }
 
@@ -48,7 +50,8 @@ public sealed class ObsAudioMixer : IAudioMixer
         var newState = !_isDesktopMuted;
         try
         {
-            _desktopAudio?.SetMuted(newState);
+            if (_desktopAudio is not null)
+                _desktopAudio.IsMuted = newState;
             _isDesktopMuted = newState;
             _logger.LogInformation("Desktop audio {State}", _isDesktopMuted ? "muted" : "unmuted");
         }
@@ -63,7 +66,8 @@ public sealed class ObsAudioMixer : IAudioMixer
         var newState = !_isMicMuted;
         try
         {
-            _micAudio?.SetMuted(newState);
+            if (_micAudio is not null)
+                _micAudio.IsMuted = newState;
             _isMicMuted = newState;
             _logger.LogInformation("Mic audio {State}", _isMicMuted ? "muted" : "unmuted");
         }
