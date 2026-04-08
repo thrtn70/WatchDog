@@ -1,5 +1,6 @@
 using TikrClipr.Core.Capture;
 using TikrClipr.Core.GameDetection;
+using TikrClipr.Core.Highlights;
 
 namespace TikrClipr.Core.Events;
 
@@ -18,3 +19,9 @@ public sealed record SessionRecordingStartedEvent(string OutputPath, GameInfo? G
 public sealed record SessionRecordingSegmentSavedEvent(string FilePath, GameInfo? Game, TimeSpan Elapsed);
 
 public sealed record SessionRecordingStoppedEvent(GameInfo? Game, TimeSpan TotalDuration);
+
+public sealed record HighlightDetectedEvent(
+    HighlightType Type,
+    GameInfo Game,
+    DateTimeOffset Timestamp,
+    string? Description = null);

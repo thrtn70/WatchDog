@@ -6,6 +6,8 @@ using ObsKit.NET.Encoders;
 using TikrClipr.Core.Capture;
 using TikrClipr.Core.Events;
 using TikrClipr.Core.GameDetection;
+using TikrClipr.Core.Highlights;
+using TikrClipr.Core.Highlights.Cs2;
 using TikrClipr.Core.Hotkeys;
 using TikrClipr.Core.Recording;
 using TikrClipr.Core.Settings;
@@ -216,9 +218,15 @@ public partial class App : Application
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<StorageDashboardViewModel>();
 
+        // Highlight detection
+        services.AddSingleton(sp => sp.GetRequiredService<AppSettings>().Highlight);
+        services.AddSingleton<IHighlightDetector, Cs2HighlightDetector>();
+        services.AddSingleton<HighlightDetectorRegistry>();
+
         // Hosted services (background workers)
         services.AddHostedService<GameDetectorHostedService>();
         services.AddHostedService<HotkeyListenerHostedService>();
         services.AddHostedService<SessionRecordingHostedService>();
+        services.AddHostedService<HighlightClipService>();
     }
 }

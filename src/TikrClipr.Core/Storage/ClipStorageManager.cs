@@ -44,8 +44,20 @@ public sealed class ClipStorageManager : IClipStorage
                 .OrderByDescending(c => c.CreatedAt)];
     }
 
-    public async Task<ClipMetadata> IndexClipAsync(string filePath, string? gameName, CancellationToken ct = default)
+    public Task<ClipMetadata> IndexClipAsync(string filePath, string? gameName, CancellationToken ct = default)
+        => IndexClipAsync(filePath, gameName, highlightType: null, ct);
+
+    public async Task<ClipMetadata> IndexClipAsync(string filePath, string? gameName, Highlights.HighlightType? highlightType, CancellationToken ct = default)
     {
+        // Deduplicate: if this file is already indexed, return existing metadata
+        lock (_lock)
+        {
+            var existing = _clips.FirstOrDefault(c =>
+                string.Equals(c.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+            if (existing is not null)
+                return existing;
+        }
+
         var fileInfo = new FileInfo(filePath);
         if (!fileInfo.Exists)
             throw new FileNotFoundException("Clip file not found", filePath);
@@ -73,14 +85,16 @@ public sealed class ClipStorageManager : IClipStorage
             Duration = duration,
             FileSizeBytes = fileInfo.Length,
             ThumbnailPath = thumbPath,
+            HighlightType = highlightType,
         };
 
         lock (_lock)
             _clips.Add(metadata);
 
         SaveIndex();
-        _logger.LogInformation("Indexed clip: {File} ({Duration:mm\\:ss}, {Size:F1}MB)",
-            metadata.FileName, duration, fileInfo.Length / (1024.0 * 1024.0));
+        var highlightTag = highlightType is not null ? $" [{highlightType}]" : "";
+        _logger.LogInformation("Indexed clip: {File} ({Duration:mm\\:ss}, {Size:F1}MB){Tag}",
+            metadata.FileName, duration, fileInfo.Length / (1024.0 * 1024.0), highlightTag);
 
         return metadata;
     }

@@ -39,6 +39,10 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _micAudioEnabled;
     [ObservableProperty] private bool _separateAudioTracks;
 
+    // Highlight settings
+    [ObservableProperty] private int _highlightDelaySeconds;
+    [ObservableProperty] private int _highlightCooldownSeconds;
+
     // Desktop capture
     [ObservableProperty] private bool _desktopCaptureEnabled;
 
@@ -113,6 +117,11 @@ public partial class SettingsViewModel : ObservableObject
                 MicVolume = MicAudioVolume,
                 SeparateAudioTracks = SeparateAudioTracks,
             },
+            Highlight = _settings.Highlight with
+            {
+                PostEventDelaySeconds = HighlightDelaySeconds,
+                CooldownSeconds = HighlightCooldownSeconds,
+            },
             Hotkey = _settings.Hotkey with
             {
                 SaveClipKey = SaveClipKey,
@@ -178,6 +187,9 @@ public partial class SettingsViewModel : ObservableObject
         DesktopAudioEnabled = settings.Audio.DesktopAudioEnabled;
         MicAudioEnabled = settings.Audio.MicEnabled;
         SeparateAudioTracks = settings.Audio.SeparateAudioTracks;
+
+        HighlightDelaySeconds = settings.Highlight.PostEventDelaySeconds;
+        HighlightCooldownSeconds = settings.Highlight.CooldownSeconds;
 
         SaveClipKey = settings.Hotkey.SaveClipKey;
         SaveClipModifiers = settings.Hotkey.Modifiers;

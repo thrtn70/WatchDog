@@ -5,6 +5,7 @@ public enum RecordingMode
     ReplayBufferOnly,
     SessionRecording,
     Both,
+    Highlights,
 }
 
 public sealed record SessionRecordingConfig
@@ -18,5 +19,8 @@ public sealed record SessionRecordingConfig
         Mode is RecordingMode.SessionRecording or RecordingMode.Both;
 
     public bool IsReplayBufferEnabled =>
-        Mode is RecordingMode.ReplayBufferOnly or RecordingMode.Both;
+        Mode is RecordingMode.ReplayBufferOnly or RecordingMode.Both or RecordingMode.Highlights;
+
+    public bool IsHighlightModeEnabled =>
+        Mode is RecordingMode.Highlights;
 }
