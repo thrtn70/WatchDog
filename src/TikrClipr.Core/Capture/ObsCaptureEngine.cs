@@ -355,17 +355,27 @@ public sealed class ObsCaptureEngine : ICaptureEngine
         _gameCapture.SetCaptureCursor(false);
 
         _gameCapture.Hooked += gc =>
-            _logger.LogInformation("Game capture hooked: {Exe}", gc.HookedExecutable);
+        {
+            _logger.LogInformation("Game capture hooked: {Exe} — hiding fallback display capture", gc.HookedExecutable);
+            // Game capture is working — hide the fallback display capture so
+            // we don't composite both sources on top of each other
+            _displaySceneItem?.SetVisible(false);
+        };
         _gameCapture.Unhooked += _ =>
-            _logger.LogWarning("Game capture unhooked");
+        {
+            _logger.LogWarning("Game capture unhooked — showing fallback display capture");
+            // Game capture lost the hook — show fallback so the replay buffer
+            // captures something instead of black frames
+            _displaySceneItem?.SetVisible(true);
+        };
 
         _gameSceneItem = _scene.AddSource(_gameCapture);
 
-        // Fallback monitor capture (hidden)
+        // Fallback monitor capture — visible until game capture hooks.
+        // Prevents black frames in the replay buffer while the hook is retrying.
         _displayCapture = MonitorCapture.FromPrimary();
         _displayCapture.SetCaptureMethod(MonitorCaptureMethod.WindowsGraphicsCapture);
         _displaySceneItem = _scene.AddSource(_displayCapture);
-        _displaySceneItem.SetVisible(false);
 
         _scene.SetAsProgram();
         _logger.LogInformation("Game capture sources created for {Game}", game.DisplayName);
