@@ -25,4 +25,10 @@ public partial class MainWindow : Window
         e.Cancel = true;
         Hide();
     }
+
+    private void OnStorageDashboardClick(object sender, RoutedEventArgs e)
+    {
+        var dashboard = new Views.StorageDashboardWindow();
+        dashboard.ShowDialog();
+    }
 }

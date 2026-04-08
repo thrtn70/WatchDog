@@ -206,10 +206,15 @@ public partial class App : Application
         services.AddSingleton<Win32HotkeyService>();
         services.AddSingleton<IGlobalHotkeyService>(sp => sp.GetRequiredService<Win32HotkeyService>());
 
+        // Performance monitoring
+        services.AddSingleton<Core.Performance.IPerformanceMonitor, Core.Performance.ObsPerformanceMonitor>();
+        services.AddSingleton<PerformanceViewModel>();
+
         // ViewModels
         services.AddSingleton<TrayIconViewModel>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddTransient<SettingsViewModel>();
+        services.AddTransient<StorageDashboardViewModel>();
 
         // Hosted services (background workers)
         services.AddHostedService<GameDetectorHostedService>();

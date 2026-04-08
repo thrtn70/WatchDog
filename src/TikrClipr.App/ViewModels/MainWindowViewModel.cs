@@ -30,6 +30,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     // Audio mixer panel
     public AudioMixerViewModel? AudioMixer { get; }
 
+    // Performance overlay
+    public PerformanceViewModel? Performance { get; }
+
     // Status
     [ObservableProperty] private string _statusText = string.Empty;
     [ObservableProperty] private string _captureStatusText = "Idle";
@@ -39,9 +42,11 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IClipEditor clipEditor,
         ICaptureEngine captureEngine,
         IEventBus eventBus,
-        AudioMixerViewModel? audioMixer = null)
+        AudioMixerViewModel? audioMixer = null,
+        PerformanceViewModel? performance = null)
     {
         AudioMixer = audioMixer;
+        Performance = performance;
         _clipStorage = clipStorage;
         _clipEditorService = clipEditor;
         _captureEngine = captureEngine;
