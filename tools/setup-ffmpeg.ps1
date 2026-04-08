@@ -3,21 +3,13 @@
     Downloads and extracts FFmpeg + FFprobe binaries for TikrClipr.
 
 .DESCRIPTION
-    Downloads a static FFmpeg build from gyan.dev, extracts ffmpeg.exe and
-    ffprobe.exe, and places them in the ffmpeg-runtime directory. These files
-    are copied to the output directory at build time.
-
-.PARAMETER FfmpegVersion
-    FFmpeg release version. Default: 7.1
+    Downloads the latest FFmpeg release essentials build from gyan.dev,
+    extracts ffmpeg.exe and ffprobe.exe, and places them in the ffmpeg-runtime
+    directory. These files are copied to the output directory at build time.
 
 .EXAMPLE
     .\setup-ffmpeg.ps1
-    .\setup-ffmpeg.ps1 -FfmpegVersion 7.1
 #>
-
-param(
-    [string]$FfmpegVersion = "7.1"
-)
 
 $ErrorActionPreference = "Stop"
 
@@ -28,12 +20,12 @@ if (-not (Test-Path (Join-Path $ProjectRoot "TikrClipr.sln"))) {
 
 $FfmpegDir = Join-Path $ProjectRoot "ffmpeg-runtime"
 $TempDir = Join-Path $ProjectRoot ".ffmpeg-temp"
-$ZipUrl = "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-$FfmpegVersion-essentials_build.zip"
+$ZipUrl = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
 $ZipPath = Join-Path $TempDir "ffmpeg.zip"
 
 Write-Host "TikrClipr FFmpeg Setup" -ForegroundColor Cyan
 Write-Host "=====================" -ForegroundColor Cyan
-Write-Host "FFmpeg Version: $FfmpegVersion"
+Write-Host "Source: $ZipUrl"
 Write-Host "Target: $FfmpegDir"
 Write-Host ""
 
@@ -53,11 +45,13 @@ try {
     $ProgressPreference = 'SilentlyContinue'
     Invoke-WebRequest -Uri $ZipUrl -OutFile $ZipPath -UseBasicParsing
 } catch {
-    Write-Host "Failed to download FFmpeg. URL: $ZipUrl" -ForegroundColor Red
-    Write-Host "Error: $_" -ForegroundColor Red
+    Write-Host "Failed to download FFmpeg from: $ZipUrl" -ForegroundColor Red
+    Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host ""
-    Write-Host "You can manually download FFmpeg from: https://www.gyan.dev/ffmpeg/builds/" -ForegroundColor Yellow
-    Write-Host "Extract ffmpeg.exe and ffprobe.exe to: $FfmpegDir" -ForegroundColor Yellow
+    Write-Host "Manual download:" -ForegroundColor Yellow
+    Write-Host "  1. Go to: https://www.gyan.dev/ffmpeg/builds/" -ForegroundColor Yellow
+    Write-Host "  2. Download 'ffmpeg-release-essentials.zip'" -ForegroundColor Yellow
+    Write-Host "  3. Extract ffmpeg.exe and ffprobe.exe from bin/ to: $FfmpegDir" -ForegroundColor Yellow
     exit 1
 }
 
