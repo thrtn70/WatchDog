@@ -13,17 +13,26 @@ public static class FFmpegRuntime
     public static string FfprobePath => ResolveBinary("ffprobe.exe", "ffprobe");
 
     public static bool IsAvailable()
-        => File.Exists(Path.Combine(FfmpegDir, "ffmpeg.exe"))
-           || File.Exists(Path.Combine(AppDir, "ffmpeg.exe"))
-           || IsOnPath("ffmpeg");
+        => IsBinaryAvailable("ffmpeg") && IsBinaryAvailable("ffprobe");
 
     public static string GetMissingComponentsMessage()
     {
-        if (IsAvailable())
-            return "FFmpeg found.";
+        var missing = new List<string>();
+        if (!IsBinaryAvailable("ffmpeg")) missing.Add("ffmpeg");
+        if (!IsBinaryAvailable("ffprobe")) missing.Add("ffprobe");
 
-        return "FFmpeg not found. Run tools/setup-ffmpeg.ps1 to download it, "
-             + "or install FFmpeg and add it to your PATH.";
+        return missing.Count == 0
+            ? "FFmpeg found."
+            : $"Missing FFmpeg components: {string.Join(", ", missing)}. "
+              + "Run tools/setup-ffmpeg.ps1 to download them, or install FFmpeg and add it to your PATH.";
+    }
+
+    private static bool IsBinaryAvailable(string name)
+    {
+        var winName = name + ".exe";
+        return File.Exists(Path.Combine(FfmpegDir, winName))
+               || File.Exists(Path.Combine(AppDir, winName))
+               || IsOnPath(name);
     }
 
     private static string ResolveBinary(string windowsName, string unixName)
