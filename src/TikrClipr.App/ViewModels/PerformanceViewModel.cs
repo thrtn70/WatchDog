@@ -8,8 +8,8 @@ public partial class PerformanceViewModel : ObservableObject, IDisposable
 {
     private readonly IPerformanceMonitor _monitor;
 
-    [ObservableProperty] private string _fpsDisplay = "—";
-    [ObservableProperty] private string _droppedDisplay = "0 (0.0%)";
+    [ObservableProperty] private string _fpsDisplay = "N/A";
+    [ObservableProperty] private string _droppedDisplay = "N/A";
     [ObservableProperty] private string _cpuDisplay = "—";
     [ObservableProperty] private string _ramDisplay = "—";
 
@@ -24,9 +24,11 @@ public partial class PerformanceViewModel : ObservableObject, IDisposable
     {
         Application.Current?.Dispatcher.Invoke(() =>
         {
-            FpsDisplay = $"{snap.RenderFps:F1}";
-            DroppedDisplay = $"{snap.DroppedFrames} ({snap.DropRate:F1}%)";
-            CpuDisplay = $"{snap.CpuUsage:F0}%";
+            FpsDisplay = snap.RenderFps > 0 ? $"{snap.RenderFps:F1}" : "N/A";
+            DroppedDisplay = snap.TotalFrames > 0
+                ? $"{snap.DroppedFrames} ({snap.DropRate:F1}%)"
+                : "N/A";
+            CpuDisplay = $"{snap.CpuUsage:F1}%";
             RamDisplay = $"{snap.MemoryUsageMb} MB";
         });
     }

@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
-using ObsKit.NET;
 
 namespace TikrClipr.Core.Performance;
 
@@ -10,6 +9,8 @@ public sealed class ObsPerformanceMonitor : IPerformanceMonitor
     private readonly object _lock = new();
     private readonly Process _currentProcess = Process.GetCurrentProcess();
     private Timer? _pollTimer;
+    private TimeSpan _prevCpuTime;
+    private DateTime _prevTimestamp;
     private bool _disposed;
 
     public PerformanceSnapshot? Latest { get; private set; }
@@ -20,6 +21,8 @@ public sealed class ObsPerformanceMonitor : IPerformanceMonitor
     public ObsPerformanceMonitor(ILogger<ObsPerformanceMonitor> logger)
     {
         _logger = logger;
+        _prevCpuTime = _currentProcess.TotalProcessorTime;
+        _prevTimestamp = DateTime.UtcNow;
     }
 
     public void Start()
@@ -49,13 +52,26 @@ public sealed class ObsPerformanceMonitor : IPerformanceMonitor
         try
         {
             _currentProcess.Refresh();
+
+            // Calculate CPU usage as delta over interval
+            var now = DateTime.UtcNow;
+            var cpuTime = _currentProcess.TotalProcessorTime;
+            var elapsed = (now - _prevTimestamp).TotalMilliseconds;
+            var cpuDelta = (cpuTime - _prevCpuTime).TotalMilliseconds;
+            var cpuPercent = elapsed > 0
+                ? cpuDelta / (Environment.ProcessorCount * elapsed) * 100
+                : 0;
+
+            _prevCpuTime = cpuTime;
+            _prevTimestamp = now;
+
             var snapshot = new PerformanceSnapshot
             {
-                RenderFps = Obs.ActiveFps,
-                EncodeFps = Obs.ActiveFps,
-                DroppedFrames = (int)Obs.LaggedFrames,
-                TotalFrames = (int)Obs.TotalFrames,
-                CpuUsage = Obs.CurrentCpuUsage,
+                RenderFps = 0,       // OBS FPS not exposed via ObsKit.NET
+                EncodeFps = 0,
+                DroppedFrames = 0,   // OBS dropped frames not exposed
+                TotalFrames = 0,
+                CpuUsage = cpuPercent,
                 MemoryUsageMb = _currentProcess.WorkingSet64 / (1024 * 1024),
                 Timestamp = DateTimeOffset.UtcNow,
             };
