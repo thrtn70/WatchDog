@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
+using TikrClipr.Core.Runtime;
 
 namespace TikrClipr.Core.ClipEditor;
 
@@ -11,7 +12,7 @@ public sealed partial class FFmpegClipEditor : IClipEditor
     public FFmpegClipEditor(ILogger<FFmpegClipEditor> logger, string? ffmpegPath = null)
     {
         _logger = logger;
-        _ffmpegPath = ffmpegPath ?? FindFFmpeg();
+        _ffmpegPath = ffmpegPath ?? FFmpegRuntime.FfmpegPath;
     }
 
     /// <summary>
@@ -64,12 +65,7 @@ public sealed partial class FFmpegClipEditor : IClipEditor
     /// </summary>
     public async Task<TimeSpan> GetDurationAsync(string inputPath, CancellationToken ct = default)
     {
-        var ffprobeDir = Path.GetDirectoryName(_ffmpegPath);
-        var ffprobePath = ffprobeDir is not null
-            ? Path.Combine(ffprobeDir, "ffprobe.exe")
-            : null;
-        if (ffprobePath is null || !File.Exists(ffprobePath))
-            ffprobePath = "ffprobe";
+        var ffprobePath = FFmpegRuntime.FfprobePath;
 
         var result = await RunProcessAsync(ffprobePath,
             ["-v", "error", "-show_entries", "format=duration",
@@ -174,15 +170,4 @@ public sealed partial class FFmpegClipEditor : IClipEditor
     private static string FormatTime(TimeSpan ts)
         => ts.ToString(@"hh\:mm\:ss\.fff");
 
-    private static string FindFFmpeg()
-    {
-        // Check alongside the application first
-        var appDir = AppContext.BaseDirectory;
-        var local = Path.Combine(appDir, "ffmpeg.exe");
-        if (File.Exists(local))
-            return local;
-
-        // Fall back to PATH
-        return "ffmpeg";
-    }
 }

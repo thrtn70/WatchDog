@@ -31,6 +31,14 @@
              Link="%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
+  <!-- Copy FFmpeg binaries to output/ffmpeg/ subdirectory -->
+  <ItemGroup>
+    <Content Include="$(MSBuildThisFileDirectory)..\..\ffmpeg-runtime\*"
+             CopyToOutputDirectory="PreserveNewest"
+             Link="ffmpeg\%(Filename)%(Extension)"
+             Condition="Exists('$(MSBuildThisFileDirectory)..\..\ffmpeg-runtime')" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
     <PackageReference Include="H.NotifyIcon.Wpf" Version="2.*">
