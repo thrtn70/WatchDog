@@ -236,6 +236,11 @@
             </Border>
         </Grid>
 
+        <!-- Audio mixer (bottom-right floating panel) -->
+        <controls:AudioMixerPanel Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                   Margin="0,0,8,8" Width="260"
+                                   DataContext="{Binding AudioMixer}"/>
+
         <!-- Status bar -->
         <Border Grid.Row="2" Background="{StaticResource CrustBrush}" Padding="12,6">
             <Grid>

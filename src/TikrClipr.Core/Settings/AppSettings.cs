@@ -1,3 +1,4 @@
+using TikrClipr.Core.Audio;
 using TikrClipr.Core.Buffer;
 using TikrClipr.Core.Capture;
 using TikrClipr.Core.Recording;
@@ -9,6 +10,7 @@ public sealed record AppSettings
     public CaptureConfig Capture { get; init; } = new();
     public BufferConfig Buffer { get; init; } = new();
     public SessionRecordingConfig Recording { get; init; } = new();
+    public AudioMixConfig Audio { get; init; } = new();
     public HotkeySettings Hotkey { get; init; } = new();
     public StorageSettings Storage { get; init; } = new();
     public List<CustomGameEntry> CustomGames { get; init; } = [];

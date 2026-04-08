@@ -1,6 +1,7 @@
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using TikrClipr.Core.Audio;
 using TikrClipr.Core.Capture;
 using TikrClipr.Core.Hotkeys;
 using TikrClipr.Core.Recording;
@@ -30,6 +31,13 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _savePath = string.Empty;
     [ObservableProperty] private int _maxStorageGb;
     [ObservableProperty] private int _autoDeleteDays;
+
+    // Audio settings
+    [ObservableProperty] private float _desktopAudioVolume;
+    [ObservableProperty] private float _micAudioVolume;
+    [ObservableProperty] private bool _desktopAudioEnabled;
+    [ObservableProperty] private bool _micAudioEnabled;
+    [ObservableProperty] private bool _separateAudioTracks;
 
     // Desktop capture
     [ObservableProperty] private bool _desktopCaptureEnabled;
@@ -97,6 +105,14 @@ public partial class SettingsViewModel : ObservableObject
                 SegmentDurationMinutes = SegmentDurationMinutes,
                 MaxDurationMinutes = MaxDurationMinutes,
             },
+            Audio = _settings.Audio with
+            {
+                DesktopAudioEnabled = DesktopAudioEnabled,
+                DesktopVolume = DesktopAudioVolume,
+                MicEnabled = MicAudioEnabled,
+                MicVolume = MicAudioVolume,
+                SeparateAudioTracks = SeparateAudioTracks,
+            },
             Hotkey = _settings.Hotkey with
             {
                 SaveClipKey = SaveClipKey,
@@ -156,6 +172,12 @@ public partial class SettingsViewModel : ObservableObject
         RecordingMode = settings.Recording.Mode;
         SegmentDurationMinutes = settings.Recording.SegmentDurationMinutes;
         MaxDurationMinutes = settings.Recording.MaxDurationMinutes;
+
+        DesktopAudioVolume = settings.Audio.DesktopVolume;
+        MicAudioVolume = settings.Audio.MicVolume;
+        DesktopAudioEnabled = settings.Audio.DesktopAudioEnabled;
+        MicAudioEnabled = settings.Audio.MicEnabled;
+        SeparateAudioTracks = settings.Audio.SeparateAudioTracks;
 
         SaveClipKey = settings.Hotkey.SaveClipKey;
         SaveClipModifiers = settings.Hotkey.Modifiers;

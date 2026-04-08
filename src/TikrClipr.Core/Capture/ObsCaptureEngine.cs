@@ -4,6 +4,7 @@ using ObsKit.NET.Core;
 using ObsKit.NET.Encoders;
 using ObsKit.NET.Scenes;
 using ObsKit.NET.Sources;
+using TikrClipr.Core.Audio;
 using TikrClipr.Core.Buffer;
 using TikrClipr.Core.Events;
 using TikrClipr.Core.GameDetection;
@@ -17,6 +18,7 @@ public sealed class ObsCaptureEngine : ICaptureEngine
     private readonly ILoggerFactory _loggerFactory;
     private readonly IEventBus _eventBus;
     private readonly BufferConfig _bufferConfig;
+    private readonly AudioMixConfig _audioConfig;
 
     private ObsContext? _obsContext;
     private Scene? _scene;
@@ -39,6 +41,10 @@ public sealed class ObsCaptureEngine : ICaptureEngine
     public bool IsDesktopCapture { get; private set; }
     public GameInfo? CurrentGame { get; private set; }
 
+    // Expose audio sources for the mixer to control volume/mute
+    public AudioOutputCapture? DesktopAudioSource => _desktopAudio;
+    public AudioInputCapture? MicAudioSource => _micAudio;
+
     public event Action<CaptureState>? StateChanged;
     public event Action<string>? ClipSaved;
     public event Action<string>? Error;
@@ -46,11 +52,13 @@ public sealed class ObsCaptureEngine : ICaptureEngine
     public ObsCaptureEngine(
         CaptureConfig captureConfig,
         BufferConfig bufferConfig,
+        AudioMixConfig audioConfig,
         IEventBus eventBus,
         ILoggerFactory loggerFactory)
     {
         Config = captureConfig;
         _bufferConfig = bufferConfig;
+        _audioConfig = audioConfig;
         _eventBus = eventBus;
         _loggerFactory = loggerFactory;
         _logger = loggerFactory.CreateLogger<ObsCaptureEngine>();
@@ -281,18 +289,35 @@ public sealed class ObsCaptureEngine : ICaptureEngine
 
     private void CreateAudioSources()
     {
-        _desktopAudio = AudioOutputCapture.FromDefault();
-        Obs.SetOutputSource(1, _desktopAudio);
-
-        try
+        if (_audioConfig.DesktopAudioEnabled)
         {
-            _micAudio = AudioInputCapture.FromDefault();
-            Obs.SetOutputSource(2, _micAudio);
-            _logger.LogInformation("Microphone audio capture enabled");
+            _desktopAudio = AudioOutputCapture.FromDefault();
+            _desktopAudio.SetVolume(_audioConfig.DesktopVolume);
+            Obs.SetOutputSource(1, _desktopAudio);
+            _logger.LogInformation("Desktop audio enabled (volume: {Vol:P0})", _audioConfig.DesktopVolume);
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogWarning(ex, "No microphone found, continuing without mic audio");
+            _logger.LogInformation("Desktop audio disabled by config");
+        }
+
+        if (_audioConfig.MicEnabled)
+        {
+            try
+            {
+                _micAudio = AudioInputCapture.FromDefault();
+                _micAudio.SetVolume(_audioConfig.MicVolume);
+                Obs.SetOutputSource(2, _micAudio);
+                _logger.LogInformation("Microphone enabled (volume: {Vol:P0})", _audioConfig.MicVolume);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "No microphone found, continuing without mic audio");
+            }
+        }
+        else
+        {
+            _logger.LogInformation("Microphone disabled by config");
         }
     }
 

@@ -27,6 +27,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     // Clip editor (owns playback, trim, timeline state)
     [ObservableProperty] private ClipEditorViewModel? _clipEditor;
 
+    // Audio mixer panel
+    public AudioMixerViewModel? AudioMixer { get; }
+
     // Status
     [ObservableProperty] private string _statusText = string.Empty;
     [ObservableProperty] private string _captureStatusText = "Idle";
@@ -35,8 +38,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IClipStorage clipStorage,
         IClipEditor clipEditor,
         ICaptureEngine captureEngine,
-        IEventBus eventBus)
+        IEventBus eventBus,
+        AudioMixerViewModel? audioMixer = null)
     {
+        AudioMixer = audioMixer;
         _clipStorage = clipStorage;
         _clipEditorService = clipEditor;
         _captureEngine = captureEngine;

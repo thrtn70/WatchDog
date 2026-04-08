@@ -160,6 +160,21 @@ public partial class App : Application
                 loggerFactory.CreateLogger<ObsSessionRecorder>());
         });
 
+        // Audio mixer — wraps OBS audio sources from capture engine
+        services.AddSingleton(sp => sp.GetRequiredService<AppSettings>().Audio);
+        services.AddSingleton<Core.Audio.IAudioMixer>(sp =>
+        {
+            var engine = sp.GetRequiredService<ICaptureEngine>() as ObsCaptureEngine;
+            var audioConfig = sp.GetRequiredService<Core.Audio.AudioMixConfig>();
+            var mixer = new Core.Audio.ObsAudioMixer(
+                engine?.DesktopAudioSource,
+                engine?.MicAudioSource,
+                sp.GetRequiredService<ILoggerFactory>().CreateLogger<Core.Audio.ObsAudioMixer>());
+            mixer.ApplyConfig(audioConfig);
+            return mixer;
+        });
+        services.AddSingleton<AudioMixerViewModel>();
+
         // Clip editor and storage
         services.AddSingleton<Core.ClipEditor.IClipEditor, Core.ClipEditor.FFmpegClipEditor>();
         services.AddSingleton(sp =>
