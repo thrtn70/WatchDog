@@ -295,9 +295,7 @@ public sealed class ObsCaptureEngine : ICaptureEngine
         if (_audioConfig.DesktopAudioEnabled)
         {
             var desktopId = _audioConfig.DesktopDeviceId;
-            _desktopAudio = string.IsNullOrEmpty(desktopId) || desktopId == "default"
-                ? AudioOutputCapture.FromDefault()
-                : new AudioOutputCapture("Desktop Audio", desktopId);
+            _desktopAudio = CreateAudioOutput(desktopId);
             _desktopAudio.Volume = _audioConfig.DesktopVolume;
             Obs.SetOutputSource(1, _desktopAudio);
             _logger.LogInformation("Desktop audio enabled (device: {Device}, volume: {Vol:P0})",
@@ -313,9 +311,7 @@ public sealed class ObsCaptureEngine : ICaptureEngine
             try
             {
                 var micId = _audioConfig.MicDeviceId;
-                _micAudio = string.IsNullOrEmpty(micId) || micId == "default"
-                    ? AudioInputCapture.FromDefault()
-                    : new AudioInputCapture("Microphone", micId);
+                _micAudio = CreateAudioInput(micId);
                 _micAudio.Volume = _audioConfig.MicVolume;
                 Obs.SetOutputSource(2, _micAudio);
                 _logger.LogInformation("Microphone enabled (device: {Device}, volume: {Vol:P0})",
@@ -395,26 +391,64 @@ public sealed class ObsCaptureEngine : ICaptureEngine
         _logger.LogInformation("Game capture sources created for {Game}", game.DisplayName);
     }
 
+    private AudioOutputCapture CreateAudioOutput(string deviceId)
+    {
+        // ObsKit.NET may not support device-specific constructors.
+        // Try the parameterized path; fall back to FromDefault() on API limitation.
+        if (!string.IsNullOrEmpty(deviceId) && deviceId != "default")
+        {
+            try
+            {
+                return new AudioOutputCapture("Desktop Audio", deviceId);
+            }
+            catch (MissingMethodException)
+            {
+                _logger.LogInformation("Audio device selection not supported by ObsKit.NET, using default");
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                _logger.LogWarning("Audio device {Device} not available, falling back to default: {Msg}", deviceId, ex.Message);
+            }
+        }
+        return AudioOutputCapture.FromDefault();
+    }
+
+    private AudioInputCapture CreateAudioInput(string deviceId)
+    {
+        if (!string.IsNullOrEmpty(deviceId) && deviceId != "default")
+        {
+            try
+            {
+                return new AudioInputCapture("Microphone", deviceId);
+            }
+            catch (MissingMethodException)
+            {
+                _logger.LogInformation("Audio device selection not supported by ObsKit.NET, using default");
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                _logger.LogWarning("Audio device {Device} not available, falling back to default: {Msg}", deviceId, ex.Message);
+            }
+        }
+        return AudioInputCapture.FromDefault();
+    }
+
+    private MonitorCapture CreateMonitorCapture(int monitorIndex)
+    {
+        // ObsKit.NET currently only exposes FromPrimary().
+        // MonitorIndex is stored in settings for future API support.
+        // For now, always use primary monitor and log if a non-primary was requested.
+        if (monitorIndex > 0)
+            _logger.LogInformation("Monitor index {Index} requested but ObsKit.NET only supports primary — using primary", monitorIndex);
+
+        return MonitorCapture.FromPrimary();
+    }
+
     /// <summary>
     /// Stretch the source to fill the entire OBS canvas, ignoring aspect ratio.
     /// This ensures clips are always at the configured output resolution
     /// regardless of the game's native resolution (e.g., 4:3 games on a 16:9 output).
     /// </summary>
-    private MonitorCapture CreateMonitorCapture(int monitorIndex)
-    {
-        // Validate index against available screens, fall back to primary
-        try
-        {
-            if (monitorIndex > 0)
-                return MonitorCapture.FromIndex(monitorIndex);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Monitor index {Index} invalid, falling back to primary", monitorIndex);
-        }
-        return MonitorCapture.FromPrimary();
-    }
-
     private void StretchToCanvas(SceneItem? item)
     {
         if (item is null) return;
