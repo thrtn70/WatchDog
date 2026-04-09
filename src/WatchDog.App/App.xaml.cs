@@ -192,8 +192,9 @@ public partial class App : Application
         });
         services.AddSingleton<AudioMixerViewModel>();
 
-        // Clip editor and storage
+        // Clip editor, thumbnail cache, and storage
         services.AddSingleton<Core.ClipEditor.IClipEditor, Core.ClipEditor.FFmpegClipEditor>();
+        services.AddSingleton<ThumbnailStripCache>();
         services.AddSingleton(sp =>
         {
             var settings = sp.GetRequiredService<AppSettings>();

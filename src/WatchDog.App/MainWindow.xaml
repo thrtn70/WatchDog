@@ -205,11 +205,12 @@
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
-                                <!-- Thumbnail -->
+                                <!-- Thumbnail (hover-to-scrub) -->
                                 <Grid Grid.Row="0" ClipToBounds="True">
                                     <Border Background="{StaticResource Surface1Brush}" CornerRadius="5,5,0,0">
-                                        <Image Source="{Binding Thumbnail}" Stretch="UniformToFill"
-                                               RenderOptions.BitmapScalingMode="HighQuality"/>
+                                        <controls:ScrubbableThumbnail
+                                            StaticThumbnail="{Binding Thumbnail}"
+                                            ClipFilePath="{Binding FilePath}"/>
                                     </Border>
                                     <!-- Duration badge -->
                                     <Border Background="#CC0A1114" CornerRadius="3" Padding="4,1"
