@@ -171,23 +171,39 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void ShareToDiscord(ClipItemViewModel? clip)
     {
-        var target = clip ?? SelectedClip;
-        if (target is null) return;
+        try
+        {
+            var target = clip ?? SelectedClip;
+            if (target is null)
+            {
+                System.Windows.MessageBox.Show("No clip selected.", "Discord Share");
+                return;
+            }
 
-        var settings = App.Services.GetRequiredService<ISettingsService>().Load();
-        if (string.IsNullOrWhiteSpace(settings.Discord.WebhookUrl))
+            var settingsService = App.Services.GetRequiredService<ISettingsService>();
+            var settings = settingsService.Load();
+            if (string.IsNullOrWhiteSpace(settings.Discord.WebhookUrl))
+            {
+                System.Windows.MessageBox.Show(
+                    "No Discord webhook URL configured.\n\nGo to Settings > Discord to set one up.",
+                    "Discord Share",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Information);
+                return;
+            }
+
+            var dialog = new Views.DiscordUploadWindow(target.Metadata);
+            dialog.Owner = System.Windows.Application.Current.MainWindow;
+            dialog.ShowDialog();
+        }
+        catch (Exception ex)
         {
             System.Windows.MessageBox.Show(
-                "No Discord webhook URL configured.\n\nGo to Settings > Discord to set one up.",
-                "Discord Share",
+                $"Failed to open Discord share dialog:\n\n{ex.Message}\n\n{ex.GetType().Name}",
+                "Discord Share Error",
                 System.Windows.MessageBoxButton.OK,
-                System.Windows.MessageBoxImage.Information);
-            return;
+                System.Windows.MessageBoxImage.Error);
         }
-
-        var dialog = new Views.DiscordUploadWindow(target.Metadata);
-        dialog.Owner = System.Windows.Application.Current.MainWindow;
-        dialog.ShowDialog();
     }
 
     private void UpdateCaptureStatus(CaptureState state)
