@@ -21,7 +21,7 @@
         <Style x:Key="ClipCard" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
             <Setter Property="CornerRadius" Value="5"/>
-            <Setter Property="Margin" Value="3"/>
+            <Setter Property="Margin" Value="4"/>
             <Setter Property="Width" Value="210"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
@@ -48,7 +48,7 @@
         <!-- Clip row style for list view -->
         <Style x:Key="ClipRow" TargetType="Border">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="Padding" Value="8,4"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0,0,0,1"/>
@@ -62,7 +62,7 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="38"/>
+            <RowDefinition Height="40"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="24"/>
         </Grid.RowDefinitions>
@@ -90,7 +90,7 @@
                 <!-- Brand mark + title -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <Image Source="pack://application:,,,/Resources/WatchDog.png"
-                           Width="18" Height="18" Margin="0,0,6,0"
+                           Width="18" Height="18" Margin="0,0,8,0"
                            RenderOptions.BitmapScalingMode="HighQuality"/>
                     <TextBlock Text="WatchDog" Style="{StaticResource BrandTitle}"/>
                 </StackPanel>
@@ -126,7 +126,7 @@
                 <StackPanel Grid.Column="9" Orientation="Horizontal"
                             HorizontalAlignment="Center" VerticalAlignment="Center">
                     <!-- Recording dot (visible when recording) -->
-                    <Ellipse x:Name="RecordingDot" Width="7" Height="7" Margin="0,0,6,0"
+                    <Ellipse x:Name="RecordingDot" Width="8" Height="8" Margin="0,0,8,0"
                              Fill="{StaticResource RecordingBrush}" Visibility="Collapsed"/>
                     <TextBlock Text="{Binding CaptureStatusText}"
                                FontSize="12" FontWeight="Medium"
@@ -169,7 +169,7 @@
                      SelectedItem="{Binding SelectedClip}"
                      Background="{StaticResource BaseBrush}" BorderThickness="0"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                     Padding="6">
+                     Padding="4">
                 <ListBox.ItemsPanel>
                     <ItemsPanelTemplate>
                         <WrapPanel/>
@@ -226,7 +226,7 @@
                                 </Grid>
 
                                 <!-- Info -->
-                                <StackPanel Grid.Row="1" Margin="8,6,8,8">
+                                <StackPanel Grid.Row="1" Margin="8,4,8,8">
                                     <TextBlock Text="{Binding GameName}" FontWeight="SemiBold" FontSize="11"
                                                Foreground="{StaticResource AccentBrush}"
                                                TextTrimming="CharacterEllipsis"/>

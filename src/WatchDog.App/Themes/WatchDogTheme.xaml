@@ -140,7 +140,7 @@
         <Setter Property="BorderBrush" Value="{StaticResource Surface1Brush}"/>
         <Setter Property="CaretBrush" Value="{StaticResource TextBrush}"/>
         <Setter Property="SelectionBrush" Value="{StaticResource AccentBrush}"/>
-        <Setter Property="Padding" Value="8,5"/>
+        <Setter Property="Padding" Value="8,4"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="Template">
@@ -229,7 +229,7 @@
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{StaticResource SubtextBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Padding" Value="8,5"/>
+        <Setter Property="Padding" Value="8,4"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="Template">
@@ -262,7 +262,7 @@
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{StaticResource SubtextBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Padding" Value="6"/>
+        <Setter Property="Padding" Value="8"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="Width" Value="32"/>
@@ -298,11 +298,11 @@
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{StaticResource OverlayBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Padding" Value="6"/>
+        <Setter Property="Padding" Value="8"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="FontSize" Value="13"/>
-        <Setter Property="Width" Value="30"/>
-        <Setter Property="Height" Value="28"/>
+        <Setter Property="Width" Value="32"/>
+        <Setter Property="Height" Value="32"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
@@ -367,7 +367,7 @@
         <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
         <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
         <Setter Property="BorderBrush" Value="{StaticResource Surface1Brush}"/>
-        <Setter Property="Padding" Value="6,4"/>
+        <Setter Property="Padding" Value="8,4"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -403,7 +403,7 @@
         <Setter Property="FontFamily" Value="{StaticResource UIFont}"/>
         <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Padding" Value="8,5"/>
+        <Setter Property="Padding" Value="8,4"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBoxItem">
@@ -477,7 +477,7 @@
                         <TextBlock Grid.Row="0" Text="{TemplateBinding Header}"
                                    FontFamily="{StaticResource DisplayFont}"
                                    FontSize="13" FontWeight="SemiBold"
-                                   Foreground="{StaticResource SubtextBrush}" Margin="0,0,0,6"/>
+                                   Foreground="{StaticResource SubtextBrush}" Margin="0,0,0,8"/>
                         <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}"
                                 BorderBrush="{StaticResource Surface1Brush}" BorderThickness="1"
                                 CornerRadius="6" Padding="12">
@@ -586,7 +586,7 @@
         <Setter Property="FontFamily" Value="{StaticResource UIFont}"/>
         <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Padding" Value="10,6"/>
+        <Setter Property="Padding" Value="12,8"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -625,7 +625,7 @@
         <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
         <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
         <Setter Property="BorderBrush" Value="{StaticResource Surface1Brush}"/>
-        <Setter Property="Padding" Value="8,5"/>
+        <Setter Property="Padding" Value="8,4"/>
         <Setter Property="FontSize" Value="12"/>
     </Style>
 
