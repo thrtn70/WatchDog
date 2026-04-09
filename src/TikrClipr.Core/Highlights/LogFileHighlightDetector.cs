@@ -136,11 +136,16 @@ public abstract class LogFileHighlightDetector : IHighlightDetector
 
     private void OnNewLogFileCreated(object sender, FileSystemEventArgs e)
     {
+        // Validate new file is still within the watched directory
+        var resolvedBase = Path.GetFullPath(LogDirectoryPath);
+        var resolvedNew = Path.GetFullPath(e.FullPath);
+        if (!resolvedNew.StartsWith(resolvedBase, StringComparison.OrdinalIgnoreCase)) return;
+
         // Synchronize with ReadNewLinesAsync to prevent torn reads
         if (!_readLock.Wait(0)) return;
         try
         {
-            _currentLogFile = e.FullPath;
+            _currentLogFile = resolvedNew;
             _lastReadPosition = 0;
             _logger.LogInformation("Switched to new log file: {File}", e.FullPath);
         }
@@ -192,9 +197,9 @@ public abstract class LogFileHighlightDetector : IHighlightDetector
 
             fs.Seek(_lastReadPosition, SeekOrigin.Begin);
 
-            // Read raw bytes then split into lines to avoid StreamReader buffering
-            // issues that could skip partial lines at EOF
-            var bytesToRead = (int)(fs.Length - _lastReadPosition);
+            // Read in capped chunks to avoid oversized allocations on large log files
+            const int MaxReadPerPoll = 1 * 1024 * 1024; // 1 MB cap
+            var bytesToRead = (int)Math.Min(fs.Length - _lastReadPosition, MaxReadPerPoll);
             var buffer = new byte[bytesToRead];
             var bytesRead = await fs.ReadAsync(buffer.AsMemory(0, bytesToRead));
             _lastReadPosition += bytesRead;

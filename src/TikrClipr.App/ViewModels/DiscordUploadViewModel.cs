@@ -61,6 +61,8 @@ public partial class DiscordUploadViewModel : ObservableObject
         catch (OperationCanceledException)
         {
             StatusText = "Upload cancelled.";
+            RequestClose?.Invoke();
+            return;
         }
         catch (Exception ex)
         {
@@ -80,4 +82,7 @@ public partial class DiscordUploadViewModel : ObservableObject
     {
         _cts?.Cancel();
     }
+
+    /// <summary>Raised when the dialog should close (upload finished or cancelled).</summary>
+    public event Action? RequestClose;
 }

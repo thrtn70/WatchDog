@@ -14,6 +14,7 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
 {
     private readonly ILogger _logger;
     private readonly HttpClient _httpClient;
+    private readonly bool _ownsHttpClient;
     private ClientWebSocket? _webSocket;
     private CancellationTokenSource? _cts;
     private Task? _listenTask;
@@ -23,21 +24,29 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
     public event Action<string>? MessageReceived;
     public bool IsConnected => _webSocket?.State == WebSocketState.Open;
 
-    public ValorantLocalApiClient(ILogger logger)
+    public ValorantLocalApiClient(ILogger logger, HttpClient? httpClient = null)
     {
         _logger = logger;
 
-        var handler = new HttpClientHandler
+        if (httpClient is not null)
         {
-            ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+            _httpClient = httpClient;
+            _ownsHttpClient = false;
+        }
+        else
+        {
+            var handler = new HttpClientHandler
             {
-                // Only bypass SSL for localhost connections to the Riot Client
-                if (message.RequestUri?.Host is "127.0.0.1" or "localhost")
-                    return true;
-                return errors == SslPolicyErrors.None;
-            }
-        };
-        _httpClient = new HttpClient(handler);
+                ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+                {
+                    if (message.RequestUri?.Host is "127.0.0.1" or "localhost")
+                        return true;
+                    return errors == SslPolicyErrors.None;
+                }
+            };
+            _httpClient = new HttpClient(handler);
+            _ownsHttpClient = true;
+        }
     }
 
     public async Task<bool> ConnectAsync(CancellationToken ct = default)
@@ -101,7 +110,7 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await DisconnectAsync();
-        _httpClient.Dispose();
+        if (_ownsHttpClient) _httpClient.Dispose();
     }
 
     /// <summary>

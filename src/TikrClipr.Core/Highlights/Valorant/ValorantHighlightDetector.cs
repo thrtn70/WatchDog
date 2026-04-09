@@ -1,3 +1,5 @@
+using System.Net.Http;
+using System.Net.Security;
 using Microsoft.Extensions.Logging;
 
 namespace TikrClipr.Core.Highlights.Valorant;
@@ -5,6 +7,7 @@ namespace TikrClipr.Core.Highlights.Valorant;
 public sealed class ValorantHighlightDetector : IHighlightDetector
 {
     private readonly ILogger<ValorantHighlightDetector> _logger;
+    private readonly HttpClient _sharedHttpClient;
     private ValorantLocalApiClient? _client;
     private ValorantGameState? _previousState;
 
@@ -18,6 +21,14 @@ public sealed class ValorantHighlightDetector : IHighlightDetector
     public ValorantHighlightDetector(ILogger<ValorantHighlightDetector> logger)
     {
         _logger = logger;
+
+        // Shared HttpClient with SSL bypass scoped to localhost only — reused across game sessions
+        var handler = new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = (message, _, _, errors) =>
+                message.RequestUri?.Host is "127.0.0.1" or "localhost" || errors == SslPolicyErrors.None
+        };
+        _sharedHttpClient = new HttpClient(handler);
     }
 
     public async Task StartAsync(CancellationToken ct = default)
@@ -25,7 +36,7 @@ public sealed class ValorantHighlightDetector : IHighlightDetector
         if (_client is not null) return;
 
         _previousState = null;
-        _client = new ValorantLocalApiClient(_logger);
+        _client = new ValorantLocalApiClient(_logger, _sharedHttpClient);
         _client.MessageReceived += OnMessageReceived;
 
         var connected = await _client.ConnectAsync(ct);
