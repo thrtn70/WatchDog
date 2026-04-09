@@ -1,4 +1,5 @@
 using WatchDog.Core.ClipEditor;
+using WatchDog.Core.Highlights;
 using WatchDog.Core.Storage;
 
 namespace WatchDog.Core.Tests.Storage;
@@ -68,6 +69,8 @@ public sealed class StorageAnalyticsTests
         public IReadOnlyList<ClipMetadata> GetClipsByGame(string gameName) =>
             clips.Where(c => c.GameName == gameName).ToList();
         public Task<ClipMetadata> IndexClipAsync(string fp, string? gn, CancellationToken ct) =>
+            throw new NotImplementedException();
+        public Task<ClipMetadata> IndexClipAsync(string fp, string? gn, HighlightType? ht, CancellationToken ct) =>
             throw new NotImplementedException();
         public Task<int> ScanAndIndexAsync(CancellationToken ct) => Task.FromResult(0);
         public void DeleteClip(string fp) { }
