@@ -78,6 +78,13 @@ public sealed class ValorantHighlightDetector : IHighlightDetector
     {
         if (previous is null) return;
 
+        // Match start detection: transition to in_progress means a new match began
+        if (current.MatchPhase == "in_progress" && previous.MatchPhase != "in_progress")
+        {
+            HighlightDetected?.Invoke(new HighlightDetectedEventArgs(
+                HighlightType.MatchStarted, "Match started"));
+        }
+
         // Kill detection
         if (current.Kills > previous.Kills)
         {

@@ -125,6 +125,13 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
     {
         if (previous is null) return; // First payload — no diff possible
 
+        // Match start detection: warmup/intermission → live means a new match began
+        if (current.MapPhase == "live" && previous.MapPhase is "warmup" or "intermission")
+        {
+            HighlightDetected?.Invoke(new HighlightDetectedEventArgs(
+                HighlightType.MatchStarted, "Match started"));
+        }
+
         // Kill detection
         if (current.Kills > previous.Kills)
         {
