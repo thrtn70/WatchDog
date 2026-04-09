@@ -28,7 +28,7 @@
     <Color x:Key="AccentMutedColor">#1A7A70</Color>
     <Color x:Key="RecordingColor">#E0964C</Color>
     <Color x:Key="DangerColor">#D95555</Color>
-    <Color x:Key="SuccessColor">#2EC4B6</Color>
+    <Color x:Key="SuccessColor">#38BF7F</Color>
     <Color x:Key="WarningColor">#D9B84C</Color>
     <Color x:Key="InfoColor">#4C96D9</Color>
 

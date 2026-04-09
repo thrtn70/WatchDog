@@ -5,7 +5,7 @@
         ShowInTaskbar="False" Topmost="True"
         SizeToContent="WidthAndHeight" ResizeMode="NoResize">
     <Border Background="{StaticResource SurfaceBrush}" CornerRadius="8"
-            BorderBrush="{StaticResource AccentBrush}" BorderThickness="1"
+            BorderBrush="{StaticResource SuccessBrush}" BorderThickness="1"
             Padding="12,10" Margin="8" MaxWidth="320">
         <Border.Effect>
             <DropShadowEffect BlurRadius="16" ShadowDepth="4" Opacity="0.5"

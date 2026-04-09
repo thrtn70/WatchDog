@@ -126,7 +126,7 @@
             <GroupBox Header="Highlight Detection">
                 <StackPanel Margin="8">
                     <TextBlock Text="Set Recording Mode to 'Highlights' to enable auto-clipping on game events (kills, deaths, wins)."
-                               TextWrapping="Wrap" Foreground="{StaticResource Surface2Brush}" Margin="0,0,0,8" FontSize="11"/>
+                               TextWrapping="Wrap" Foreground="{StaticResource SubtextBrush}" Margin="0,0,0,8" FontSize="11"/>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                         <TextBlock Text="Post-event delay (seconds):" VerticalAlignment="Center" Margin="0,0,6,0"/>
                         <TextBox Text="{Binding HighlightDelaySeconds}" Width="50"/>
@@ -136,7 +136,7 @@
                         <TextBox Text="{Binding HighlightCooldownSeconds}" Width="50"/>
                     </StackPanel>
                     <TextBlock Text="CS2: requires gamestate_integration_tikrclpr.cfg in your CS2 cfg folder."
-                               TextWrapping="Wrap" Foreground="{StaticResource Surface2Brush}" Margin="0,8,0,0" FontSize="11"/>
+                               TextWrapping="Wrap" Foreground="{StaticResource SubtextBrush}" Margin="0,8,0,0" FontSize="11"/>
                 </StackPanel>
             </GroupBox>
 
@@ -149,7 +149,7 @@
                                   SelectedItem="{Binding RecordingMode}" Width="180"/>
                     </StackPanel>
                     <TextBlock Text="ReplayBufferOnly: instant clips via hotkey. SessionRecording: full match files. Both: runs both."
-                               TextWrapping="Wrap" Foreground="{StaticResource Surface2Brush}" Margin="0,0,0,8" FontSize="11"/>
+                               TextWrapping="Wrap" Foreground="{StaticResource SubtextBrush}" Margin="0,0,0,8" FontSize="11"/>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                         <TextBlock Text="Segment Duration (min):" VerticalAlignment="Center" Margin="0,0,6,0"/>
                         <TextBox Text="{Binding SegmentDurationMinutes}" Width="50"/>
