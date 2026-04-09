@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="src/TikrClipr.App/Resources/TikrClipr.ico" width="80" alt="TikrClipr icon"/>
+  <img src="src/TikrClipr.App/Resources/TikrClipr.png" width="80" alt="TikrClipr icon"/>
 </p>
 
 <h1 align="center">TikrClipr</h1>

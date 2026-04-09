@@ -25,6 +25,9 @@
   <!-- Application icon -->
   <ItemGroup>
     <Resource Include="Resources\TikrClipr.ico" />
+    <Resource Include="Resources\TikrClipr.png" />
+    <Resource Include="Resources\Icons\tray-idle.ico" />
+    <Resource Include="Resources\Icons\tray-recording.ico" />
   </ItemGroup>
 
   <!-- Copy OBS runtime binaries to output directory -->
