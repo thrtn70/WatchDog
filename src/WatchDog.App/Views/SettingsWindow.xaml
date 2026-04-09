@@ -163,7 +163,8 @@
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                         <TextBlock Text="Desktop Volume:" VerticalAlignment="Center" Margin="0,0,8,0"/>
                         <Slider Minimum="0" Maximum="1" Value="{Binding DesktopAudioVolume}" Width="148"
-                                VerticalAlignment="Center" TickFrequency="0.1" IsSnapToTickEnabled="False"/>
+                                VerticalAlignment="Center" TickFrequency="0.1" IsSnapToTickEnabled="False"
+                                AutomationProperties.Name="Desktop audio volume"/>
                     </StackPanel>
 
                     <CheckBox Content="Microphone" IsChecked="{Binding MicAudioEnabled}" Margin="0,0,0,4"/>
@@ -176,7 +177,8 @@
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                         <TextBlock Text="Mic Volume:" VerticalAlignment="Center" Margin="0,0,8,0" Width="96"/>
                         <Slider Minimum="0" Maximum="1" Value="{Binding MicAudioVolume}" Width="148"
-                                VerticalAlignment="Center" TickFrequency="0.1" IsSnapToTickEnabled="False"/>
+                                VerticalAlignment="Center" TickFrequency="0.1" IsSnapToTickEnabled="False"
+                                AutomationProperties.Name="Microphone volume"/>
                     </StackPanel>
 
                     <CheckBox Content="Separate audio tracks (mic on track 2)" IsChecked="{Binding SeparateAudioTracks}"/>

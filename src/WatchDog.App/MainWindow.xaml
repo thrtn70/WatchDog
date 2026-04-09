@@ -100,10 +100,12 @@
                     <ToggleButton x:Name="GridViewToggle" Content="&#xF0E2;"
                                   Style="{StaticResource ToggleIconButton}"
                                   IsChecked="True" ToolTip="Grid view"
+                                  AutomationProperties.Name="Grid view"
                                   Checked="OnGridViewChecked"/>
                     <ToggleButton x:Name="ListViewToggle" Content="&#xE8FD;"
                                   Style="{StaticResource ToggleIconButton}"
                                   ToolTip="List view"
+                                  AutomationProperties.Name="List view"
                                   Checked="OnListViewChecked"/>
                 </StackPanel>
 
@@ -136,18 +138,21 @@
                 <!-- Settings gear -->
                 <Button Grid.Column="10" Content="&#xE713;" FontSize="15"
                         Click="OnSettingsClick" ToolTip="Settings"
+                        AutomationProperties.Name="Settings"
                         Style="{StaticResource IconButton}"
                         VerticalAlignment="Center"/>
 
                 <!-- Storage -->
                 <Button Grid.Column="11" Content="&#xE7F1;" FontSize="14"
                         Click="OnStorageDashboardClick" ToolTip="Storage dashboard"
+                        AutomationProperties.Name="Storage dashboard"
                         Style="{StaticResource IconButton}"
                         VerticalAlignment="Center"/>
 
                 <!-- Refresh -->
                 <Button Grid.Column="12" Content="&#xE72C;" FontSize="13"
                         Command="{Binding RefreshClipsCommand}" ToolTip="Refresh clips"
+                        AutomationProperties.Name="Refresh clips"
                         Style="{StaticResource IconButton}"
                         VerticalAlignment="Center"/>
             </Grid>
