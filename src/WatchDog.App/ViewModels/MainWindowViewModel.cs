@@ -65,7 +65,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                     await _clipStorage.IndexClipAsync(e.FilePath, e.Game?.DisplayName);
                 }
                 catch { /* already indexed or missing file */ }
-                Application.Current?.Dispatcher.Invoke(RefreshClips);
+
+                try
+                {
+                    await Application.Current!.Dispatcher.InvokeAsync(RefreshClips);
+                }
+                catch { /* refresh failure is non-fatal */ }
             });
         });
 
