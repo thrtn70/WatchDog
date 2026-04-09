@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:converters="clr-namespace:WatchDog.App.Converters"
         Title="Storage Dashboard" Height="450" Width="550"
+        MinWidth="400" MinHeight="350"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResizeWithGrip"
         Background="{StaticResource BaseBrush}"

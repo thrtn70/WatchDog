@@ -28,16 +28,35 @@ public partial class MainWindow : Window
     }
 
     private void FloatingPanelCanvas_Loaded(object sender, RoutedEventArgs e)
+        => RepositionFloatingPanels();
+
+    private void FloatingPanelCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
+        => ClampFloatingPanels();
+
+    private void RepositionFloatingPanels()
     {
-        var canvasWidth = FloatingPanelCanvas.ActualWidth;
-        var canvasHeight = FloatingPanelCanvas.ActualHeight;
+        var w = FloatingPanelCanvas.ActualWidth;
+        var h = FloatingPanelCanvas.ActualHeight;
+        if (w == 0 || h == 0) return;
 
-        if (canvasWidth == 0 || canvasHeight == 0) return;
+        PerformancePanel.PanelLeft = Math.Max(0, w - PerformancePanel.PanelWidth - 8);
 
-        PerformancePanel.PanelLeft = Math.Max(0, canvasWidth - PerformancePanel.PanelWidth - 8);
+        AudioPanel.PanelLeft = Math.Max(0, w - AudioPanel.PanelWidth - 8);
+        AudioPanel.PanelTop = Math.Max(0, h - AudioPanel.PanelHeight - 8);
+    }
 
-        AudioPanel.PanelLeft = Math.Max(0, canvasWidth - AudioPanel.PanelWidth - 8);
-        AudioPanel.PanelTop = Math.Max(0, canvasHeight - AudioPanel.PanelHeight - 8);
+    private void ClampFloatingPanels()
+    {
+        var w = FloatingPanelCanvas.ActualWidth;
+        var h = FloatingPanelCanvas.ActualHeight;
+        if (w == 0 || h == 0) return;
+
+        // Keep panels within canvas bounds after resize
+        PerformancePanel.PanelLeft = Math.Clamp(PerformancePanel.PanelLeft, 0, Math.Max(0, w - PerformancePanel.PanelWidth));
+        PerformancePanel.PanelTop = Math.Clamp(PerformancePanel.PanelTop, 0, Math.Max(0, h - PerformancePanel.PanelHeight));
+
+        AudioPanel.PanelLeft = Math.Clamp(AudioPanel.PanelLeft, 0, Math.Max(0, w - AudioPanel.PanelWidth));
+        AudioPanel.PanelTop = Math.Clamp(AudioPanel.PanelTop, 0, Math.Max(0, h - AudioPanel.PanelHeight));
     }
 
     private void OnSettingsClick(object sender, RoutedEventArgs e)

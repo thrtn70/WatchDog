@@ -131,19 +131,19 @@
                     <Ellipse x:Name="RecordingDot" Width="8" Height="8" Margin="0,0,8,0"
                              Fill="{StaticResource RecordingBrush}" Visibility="Collapsed"/>
                     <TextBlock Text="{Binding CaptureStatusText}"
-                               FontSize="12" FontWeight="Medium"
+                               FontSize="11" FontWeight="Medium"
                                Foreground="{StaticResource SubtextBrush}"/>
                 </StackPanel>
 
                 <!-- Settings gear -->
-                <Button Grid.Column="10" Content="&#xE713;" FontSize="15"
+                <Button Grid.Column="10" Content="&#xE713;"
                         Click="OnSettingsClick" ToolTip="Settings"
                         AutomationProperties.Name="Settings"
                         Style="{StaticResource IconButton}"
                         VerticalAlignment="Center"/>
 
                 <!-- Storage -->
-                <Button Grid.Column="11" Content="&#xE7F1;" FontSize="14"
+                <Button Grid.Column="11" Content="&#xE7F1;"
                         Click="OnStorageDashboardClick" ToolTip="Storage dashboard"
                         AutomationProperties.Name="Storage dashboard"
                         Style="{StaticResource IconButton}"
@@ -223,7 +223,7 @@
                                     <!-- Duration badge -->
                                     <Border Background="#CC0A1114" CornerRadius="3" Padding="4,1"
                                             HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="5">
-                                        <TextBlock Text="{Binding DurationDisplay}" FontSize="10"
+                                        <TextBlock Text="{Binding DurationDisplay}" FontSize="11"
                                                    FontWeight="Medium" Foreground="{StaticResource TextBrush}"/>
                                     </Border>
                                     <!-- Favorite star -->
@@ -306,7 +306,7 @@
 
                                 <!-- Name + game -->
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding FileName}" FontSize="12" FontWeight="Medium"
+                                    <TextBlock Text="{Binding FileName}" FontSize="11" FontWeight="Medium"
                                                TextTrimming="CharacterEllipsis"/>
                                     <TextBlock Text="{Binding GameName}" FontSize="11"
                                                Foreground="{StaticResource AccentBrush}"
@@ -355,7 +355,7 @@
                            Foreground="{StaticResource SubtextBrush}"
                            HorizontalAlignment="Center" Margin="0,0,0,6"/>
                 <TextBlock Text="Start a game and press F9 to save highlights"
-                           FontSize="12" Foreground="{StaticResource MutedTextBrush}"
+                           FontSize="11" Foreground="{StaticResource MutedTextBrush}"
                            HorizontalAlignment="Center"/>
             </StackPanel>
 
@@ -392,12 +392,12 @@
                                 </Style.Triggers>
                             </Style>
                         </StackPanel.Style>
-                        <TextBlock Text="&#xE714;" FontFamily="Segoe MDL2 Assets" FontSize="28"
+                        <TextBlock Text="&#xE714;" FontFamily="Segoe MDL2 Assets" FontSize="25"
                                    Foreground="{StaticResource Surface2Brush}"
                                    HorizontalAlignment="Center" Margin="0,0,0,10"/>
                         <TextBlock Text="Select a clip to preview"
                                    FontFamily="{StaticResource DisplayFont}"
-                                   FontSize="14" FontWeight="SemiBold"
+                                   FontSize="13" FontWeight="SemiBold"
                                    Foreground="{StaticResource SubtextBrush}"
                                    HorizontalAlignment="Center" Margin="0,0,0,4"/>
                         <TextBlock Text="Click any clip from the library"
@@ -449,7 +449,7 @@
                                     CornerRadius="4"
                                     Visibility="{Binding IsTrimming, Converter={StaticResource BoolToVis}}">
                                 <StackPanel>
-                                    <TextBlock Text="TRIM" FontSize="10" FontWeight="SemiBold"
+                                    <TextBlock Text="TRIM" FontSize="11" FontWeight="SemiBold"
                                                Foreground="{StaticResource SubtextBrush}"
                                                Margin="0,0,0,4"/>
                                     <TextBlock FontSize="11" Foreground="{StaticResource MutedTextBrush}"
@@ -473,7 +473,8 @@
 
         <!-- Floating panels canvas (draggable, resizable overlays) -->
         <Canvas Grid.Row="1" ClipToBounds="True" x:Name="FloatingPanelCanvas"
-                Loaded="FloatingPanelCanvas_Loaded">
+                Loaded="FloatingPanelCanvas_Loaded"
+                SizeChanged="FloatingPanelCanvas_SizeChanged">
 
             <controls:FloatingPanel x:Name="PerformancePanel"
                                      Title="Performance"

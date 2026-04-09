@@ -18,7 +18,7 @@
                 HorizontalAlignment="Left" Width="0"
                 Visibility="Collapsed" IsHitTestVisible="False">
             <Border.Background>
-                <SolidColorBrush Color="#2EC4B6"/>
+                <StaticResource ResourceKey="AccentBrush"/>
             </Border.Background>
         </Border>
 
