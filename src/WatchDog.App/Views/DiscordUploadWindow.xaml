@@ -51,6 +51,13 @@
                         <DataTrigger Binding="{Binding Succeeded}" Value="True">
                             <Setter Property="Foreground" Value="{StaticResource GreenBrush}"/>
                         </DataTrigger>
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding IsComplete}" Value="True"/>
+                                <Condition Binding="{Binding Succeeded}" Value="False"/>
+                            </MultiDataTrigger.Conditions>
+                            <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                        </MultiDataTrigger>
                     </Style.Triggers>
                 </Style>
             </TextBlock.Style>

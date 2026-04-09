@@ -39,6 +39,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     // Status
     [ObservableProperty] private string _statusText = string.Empty;
     [ObservableProperty] private string _captureStatusText = "Idle";
+    [ObservableProperty] private bool _isScanning;
 
     public MainWindowViewModel(
         IClipStorage clipStorage,
@@ -80,11 +81,23 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         if (!_initialScanDone)
         {
             _initialScanDone = true;
-            // Scan disk for un-indexed clips (runs once on first open)
+            IsScanning = true;
+            // Show already-indexed clips immediately, then scan for new ones in background
             Task.Run(async () =>
             {
-                await _clipStorage.ScanAndIndexAsync();
-                Application.Current?.Dispatcher.Invoke(RefreshClips);
+                try
+                {
+                    await _clipStorage.ScanAndIndexAsync();
+                }
+                catch { /* scan failure is non-fatal — existing index is still usable */ }
+                finally
+                {
+                    Application.Current?.Dispatcher.Invoke(() =>
+                    {
+                        IsScanning = false;
+                        RefreshClips();
+                    });
+                }
             });
         }
 
@@ -148,9 +161,30 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void DeleteClip(ClipItemViewModel clip)
+    private void DeleteClip(ClipItemViewModel? clip)
     {
-        _clipStorage.DeleteClip(clip.FilePath);
+        if (clip is null) return;
+
+        var result = MessageBox.Show(
+            $"Delete \"{clip.FileName}\"?\n\nThis cannot be undone.",
+            "Delete Clip",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (result != MessageBoxResult.Yes)
+            return;
+
+        try
+        {
+            _clipStorage.DeleteClip(clip.FilePath);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not delete clip: {ex.Message}", "Delete Failed",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
         if (SelectedClip == clip)
         {
             SelectedClip = null;
