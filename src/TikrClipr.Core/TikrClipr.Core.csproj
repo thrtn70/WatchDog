@@ -1,5 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/thrtn70/TikrClpr</RepositoryUrl>
+    <Authors>thrtn70</Authors>
+  </PropertyGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="TikrClipr.Core.Tests" />
   </ItemGroup>

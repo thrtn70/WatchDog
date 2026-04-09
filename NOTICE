@@ -1,0 +1,45 @@
+TikrClipr Third-Party Notices
+==============================
+
+This software includes components from the following third-party projects:
+
+OBS Studio
+  License: GNU General Public License v2.0
+  Source:  https://github.com/obsproject/obs-studio
+  Note:    OBS Studio binaries are bundled in the build output of this project.
+           The GPL-2.0 license of OBS Studio applies to the combined distribution.
+
+FFmpeg
+  License: GNU Lesser General Public License v2.1+
+  Source:  https://ffmpeg.org/
+  Note:    FFmpeg binaries are distributed in the ffmpeg/ subdirectory.
+           Per the LGPL, users may replace the FFmpeg binaries with a compatible
+           version of their own choosing.
+
+ObsKit.NET
+  Source:  https://github.com/niceguy135/ObsKit.NET
+  Note:    .NET wrapper for OBS Studio's libobs recording engine.
+
+CommunityToolkit.Mvvm
+  License: MIT
+  Source:  https://github.com/CommunityToolkit/dotnet
+
+H.NotifyIcon.Wpf
+  License: MIT
+  Source:  https://github.com/HavenDV/H.NotifyIcon
+
+Microsoft.Extensions (Hosting, Logging, DependencyInjection)
+  License: MIT
+  Source:  https://github.com/dotnet/runtime
+
+System.Management
+  License: MIT
+  Source:  https://github.com/dotnet/runtime
+
+xUnit (test-only, not distributed)
+  License: Apache-2.0
+  Source:  https://github.com/xunit/xunit
+
+Catppuccin Mocha (color palette)
+  License: MIT
+  Source:  https://github.com/catppuccin/catppuccin

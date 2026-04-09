@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/.NET-9.0-blue?logo=dotnet" alt=".NET 9"/>
   <img src="https://img.shields.io/badge/WPF-Windows-blue?logo=windows" alt="WPF"/>
   <img src="https://img.shields.io/badge/OBS-31.0-purple?logo=obsstudio" alt="OBS"/>
-  <img src="https://img.shields.io/badge/license-private-lightgrey" alt="License"/>
+  <img src="https://img.shields.io/badge/license-GPL--2.0-green" alt="License"/>
   <img src="https://img.shields.io/github/v/release/thrtn70/TikrClpr?label=latest" alt="Release"/>
 </p>
 
@@ -263,4 +263,6 @@ Warnings about AJA, DeckLink, or NVIDIA Video FX are harmless. These are optiona
 
 ## License
 
-This project is currently private. License TBD.
+TikrClipr is released under the [GNU General Public License v2.0](LICENSE).
+
+TikrClipr bundles OBS Studio (GPL-2.0) and FFmpeg (LGPL-2.1+) runtimes as part of its build output. This requires the combined distribution to comply with GPL-2.0. See [NOTICE](NOTICE) for full third-party attribution.

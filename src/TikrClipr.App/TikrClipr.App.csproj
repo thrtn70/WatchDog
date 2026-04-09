@@ -2,6 +2,9 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
+    <PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/thrtn70/TikrClpr</RepositoryUrl>
+    <Authors>thrtn70</Authors>
     <UseWPF>true</UseWPF>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Resources\TikrClipr.ico</ApplicationIcon>
