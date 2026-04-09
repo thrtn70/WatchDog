@@ -25,6 +25,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty] private ClipItemViewModel? _selectedClip;
     [ObservableProperty] private string _filterGame = "All Games";
     [ObservableProperty] private ObservableCollection<string> _gameNames = ["All Games"];
+    [ObservableProperty] private ClipSortMode _sortMode = ClipSortMode.Newest;
 
     // Clip editor (owns playback, trim, timeline state)
     [ObservableProperty] private ClipEditorViewModel? _clipEditor;
@@ -87,12 +88,25 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             });
         }
 
-        var allClips = FilterGame == "All Games"
-            ? _clipStorage.GetAllClips()
-            : _clipStorage.GetClipsByGame(FilterGame);
+        var allClips = FilterGame switch
+        {
+            "All Games" => _clipStorage.GetAllClips(),
+            "\u2605 Favorites" => _clipStorage.GetAllClips().Where(c => c.IsFavorite).ToList(),
+            _ => _clipStorage.GetClipsByGame(FilterGame),
+        };
+
+        var sorted = SortMode switch
+        {
+            ClipSortMode.Newest => allClips.OrderByDescending(c => c.CreatedAt),
+            ClipSortMode.Oldest => allClips.OrderBy(c => c.CreatedAt),
+            ClipSortMode.Largest => allClips.OrderByDescending(c => c.FileSizeBytes),
+            ClipSortMode.Longest => allClips.OrderByDescending(c => c.Duration),
+            ClipSortMode.Name => allClips.OrderBy(c => c.FileName, StringComparer.OrdinalIgnoreCase),
+            _ => allClips.OrderByDescending(c => c.CreatedAt),
+        };
 
         Clips = new ObservableCollection<ClipItemViewModel>(
-            allClips.Select(c => new ClipItemViewModel(c)));
+            sorted.Select(c => new ClipItemViewModel(c)));
 
         // Update game filter list
         var games = _clipStorage.GetAllClips()
@@ -101,7 +115,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             .OrderBy(g => g)
             .ToList();
 
-        GameNames = new ObservableCollection<string>(["All Games", .. games]);
+        GameNames = new ObservableCollection<string>(["All Games", "\u2605 Favorites", .. games]);
 
         var totalSize = allClips.Sum(c => c.FileSizeBytes);
         var sizeMb = totalSize / (1024.0 * 1024.0);
@@ -109,6 +123,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     }
 
     partial void OnFilterGameChanged(string value) => RefreshClips();
+    partial void OnSortModeChanged(ClipSortMode value) => RefreshClips();
 
     partial void OnSelectedClipChanged(ClipItemViewModel? value)
     {

@@ -212,6 +212,9 @@ public partial class App : Application
         services.AddSingleton(_ => new HttpClient { Timeout = TimeSpan.FromMinutes(10) });
         services.AddSingleton<Core.Discord.IDiscordWebhookService, Core.Discord.DiscordWebhookService>();
 
+        // Audio device enumeration
+        services.AddSingleton<Core.Audio.IAudioDeviceEnumerator, Core.Audio.WindowsAudioDeviceEnumerator>();
+
         // Hotkey service (singleton, initialized on UI thread before host starts)
         services.AddSingleton<Win32HotkeyService>();
         services.AddSingleton<IGlobalHotkeyService>(sp => sp.GetRequiredService<Win32HotkeyService>());

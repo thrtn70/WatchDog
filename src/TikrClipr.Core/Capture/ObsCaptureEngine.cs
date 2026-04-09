@@ -294,10 +294,14 @@ public sealed class ObsCaptureEngine : ICaptureEngine
     {
         if (_audioConfig.DesktopAudioEnabled)
         {
-            _desktopAudio = AudioOutputCapture.FromDefault();
+            var desktopId = _audioConfig.DesktopDeviceId;
+            _desktopAudio = string.IsNullOrEmpty(desktopId) || desktopId == "default"
+                ? AudioOutputCapture.FromDefault()
+                : new AudioOutputCapture("Desktop Audio", desktopId);
             _desktopAudio.Volume = _audioConfig.DesktopVolume;
             Obs.SetOutputSource(1, _desktopAudio);
-            _logger.LogInformation("Desktop audio enabled (volume: {Vol:P0})", _audioConfig.DesktopVolume);
+            _logger.LogInformation("Desktop audio enabled (device: {Device}, volume: {Vol:P0})",
+                string.IsNullOrEmpty(desktopId) ? "default" : desktopId, _audioConfig.DesktopVolume);
         }
         else
         {
@@ -308,10 +312,14 @@ public sealed class ObsCaptureEngine : ICaptureEngine
         {
             try
             {
-                _micAudio = AudioInputCapture.FromDefault();
+                var micId = _audioConfig.MicDeviceId;
+                _micAudio = string.IsNullOrEmpty(micId) || micId == "default"
+                    ? AudioInputCapture.FromDefault()
+                    : new AudioInputCapture("Microphone", micId);
                 _micAudio.Volume = _audioConfig.MicVolume;
                 Obs.SetOutputSource(2, _micAudio);
-                _logger.LogInformation("Microphone enabled (volume: {Vol:P0})", _audioConfig.MicVolume);
+                _logger.LogInformation("Microphone enabled (device: {Device}, volume: {Vol:P0})",
+                    string.IsNullOrEmpty(micId) ? "default" : micId, _audioConfig.MicVolume);
             }
             catch (Exception ex)
             {
@@ -338,7 +346,9 @@ public sealed class ObsCaptureEngine : ICaptureEngine
         DisposeSceneSources();
 
         _scene = Obs.Scenes.Create("TikrClipr Scene");
-        _displayCapture = MonitorCapture.FromPrimary();
+        _displayCapture = Config.MonitorIndex == 0
+            ? MonitorCapture.FromPrimary()
+            : MonitorCapture.FromIndex(Config.MonitorIndex);
         _displayCapture.SetCaptureMethod(MonitorCaptureMethod.WindowsGraphicsCapture);
         _displaySceneItem = _scene.AddSource(_displayCapture);
         StretchToCanvas(_displaySceneItem);
@@ -378,7 +388,9 @@ public sealed class ObsCaptureEngine : ICaptureEngine
 
         // Fallback monitor capture — visible until game capture hooks.
         // Prevents black frames in the replay buffer while the hook is retrying.
-        _displayCapture = MonitorCapture.FromPrimary();
+        _displayCapture = Config.MonitorIndex == 0
+            ? MonitorCapture.FromPrimary()
+            : MonitorCapture.FromIndex(Config.MonitorIndex);
         _displayCapture.SetCaptureMethod(MonitorCaptureMethod.WindowsGraphicsCapture);
         _displaySceneItem = _scene.AddSource(_displayCapture);
         StretchToCanvas(_displaySceneItem);

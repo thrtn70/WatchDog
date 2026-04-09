@@ -19,6 +19,13 @@
                     <CheckBox Content="Always-on desktop capture (record even without a game)"
                               IsChecked="{Binding DesktopCaptureEnabled}" Margin="0,0,0,8"/>
 
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="Monitor:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <ComboBox ItemsSource="{Binding Monitors}"
+                                  SelectedItem="{Binding SelectedMonitor}"
+                                  DisplayMemberPath="DisplayName" Width="280"/>
+                    </StackPanel>
+
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -55,12 +62,26 @@
             <GroupBox Header="Audio">
                 <StackPanel Margin="8">
                     <CheckBox Content="Desktop audio" IsChecked="{Binding DesktopAudioEnabled}" Margin="0,0,0,4"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <TextBlock Text="Output Device:" VerticalAlignment="Center" Margin="0,0,6,0" Width="95"/>
+                        <ComboBox ItemsSource="{Binding DesktopDevices}"
+                                  SelectedItem="{Binding SelectedDesktopDevice}"
+                                  DisplayMemberPath="DisplayName" Width="250"/>
+                        <Button Content="&#x21BB;" Command="{Binding RefreshAudioDevicesCommand}"
+                                Margin="4,0,0,0" ToolTip="Refresh devices" Padding="6,2" FontSize="14"/>
+                    </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                         <TextBlock Text="Desktop Volume:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                         <Slider Minimum="0" Maximum="1" Value="{Binding DesktopAudioVolume}" Width="150"
                                 VerticalAlignment="Center" TickFrequency="0.1" IsSnapToTickEnabled="False"/>
                     </StackPanel>
                     <CheckBox Content="Microphone" IsChecked="{Binding MicAudioEnabled}" Margin="0,0,0,4"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <TextBlock Text="Input Device:" VerticalAlignment="Center" Margin="0,0,6,0" Width="95"/>
+                        <ComboBox ItemsSource="{Binding MicDevices}"
+                                  SelectedItem="{Binding SelectedMicDevice}"
+                                  DisplayMemberPath="DisplayName" Width="250"/>
+                    </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                         <TextBlock Text="Mic Volume:" VerticalAlignment="Center" Margin="0,0,6,0" Width="95"/>
                         <Slider Minimum="0" Maximum="1" Value="{Binding MicAudioVolume}" Width="150"

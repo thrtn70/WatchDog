@@ -13,6 +13,7 @@ public sealed record CaptureConfig
     public int AudioBitrate { get; init; } = 192;    // kbps
     public string Preset { get; init; } = "p5";       // NVENC preset (p1=fastest, p7=slowest)
     public string Profile { get; init; } = "high";
+    public int MonitorIndex { get; init; } = 0;       // 0 = primary monitor
 }
 
 public enum EncoderType

@@ -115,10 +115,20 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
     private void OnClipSaved(ClipSavedEvent e)
     {
         var fileName = Path.GetFileName(e.FilePath);
-        var gameName = e.Game?.DisplayName ?? "Unknown";
+        var gameName = e.Game?.DisplayName;
         Application.Current?.Dispatcher.Invoke(() =>
         {
             StatusText = $"TikrClipr - Clip saved: {fileName}";
+
+            try
+            {
+                var toast = new Controls.ClipSavedToast(fileName, gameName);
+                toast.Show();
+            }
+            catch
+            {
+                // Toast is non-critical — swallow errors
+            }
         });
     }
 
