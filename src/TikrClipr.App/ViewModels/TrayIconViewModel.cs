@@ -14,6 +14,7 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
 {
     private readonly ICaptureEngine _captureEngine;
     private readonly IEventBus _eventBus;
+    private Controls.ClipSavedToast? _activeToast;
     private readonly IDisposable _clipSavedSub;
     private readonly IDisposable _stateChangedSub;
     private readonly IDisposable _sessionStartedSub;
@@ -122,7 +123,10 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
 
             try
             {
+                _activeToast?.Close();
                 var toast = new Controls.ClipSavedToast(fileName, gameName);
+                _activeToast = toast;
+                toast.Closed += (_, _) => { if (_activeToast == toast) _activeToast = null; };
                 toast.Show();
             }
             catch

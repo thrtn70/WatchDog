@@ -346,9 +346,7 @@ public sealed class ObsCaptureEngine : ICaptureEngine
         DisposeSceneSources();
 
         _scene = Obs.Scenes.Create("TikrClipr Scene");
-        _displayCapture = Config.MonitorIndex == 0
-            ? MonitorCapture.FromPrimary()
-            : MonitorCapture.FromIndex(Config.MonitorIndex);
+        _displayCapture = CreateMonitorCapture(Config.MonitorIndex);
         _displayCapture.SetCaptureMethod(MonitorCaptureMethod.WindowsGraphicsCapture);
         _displaySceneItem = _scene.AddSource(_displayCapture);
         StretchToCanvas(_displaySceneItem);
@@ -388,9 +386,7 @@ public sealed class ObsCaptureEngine : ICaptureEngine
 
         // Fallback monitor capture — visible until game capture hooks.
         // Prevents black frames in the replay buffer while the hook is retrying.
-        _displayCapture = Config.MonitorIndex == 0
-            ? MonitorCapture.FromPrimary()
-            : MonitorCapture.FromIndex(Config.MonitorIndex);
+        _displayCapture = CreateMonitorCapture(Config.MonitorIndex);
         _displayCapture.SetCaptureMethod(MonitorCaptureMethod.WindowsGraphicsCapture);
         _displaySceneItem = _scene.AddSource(_displayCapture);
         StretchToCanvas(_displaySceneItem);
@@ -404,6 +400,21 @@ public sealed class ObsCaptureEngine : ICaptureEngine
     /// This ensures clips are always at the configured output resolution
     /// regardless of the game's native resolution (e.g., 4:3 games on a 16:9 output).
     /// </summary>
+    private MonitorCapture CreateMonitorCapture(int monitorIndex)
+    {
+        // Validate index against available screens, fall back to primary
+        try
+        {
+            if (monitorIndex > 0)
+                return MonitorCapture.FromIndex(monitorIndex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Monitor index {Index} invalid, falling back to primary", monitorIndex);
+        }
+        return MonitorCapture.FromPrimary();
+    }
+
     private void StretchToCanvas(SceneItem? item)
     {
         if (item is null) return;
@@ -429,7 +440,19 @@ public sealed class ObsCaptureEngine : ICaptureEngine
 
     private void StartReplayBuffer(string folderName)
     {
-        var outputDir = Path.Combine(_bufferConfig.OutputDirectory, folderName);
+        // Sanitize folder name to prevent path traversal (e.g., custom game entries)
+        var safeName = string.Concat(folderName.Split(Path.GetInvalidFileNameChars()));
+        var outputDir = Path.Combine(_bufferConfig.OutputDirectory, safeName);
+
+        // Verify resolved path is still under the configured output directory
+        var resolvedBase = Path.GetFullPath(_bufferConfig.OutputDirectory);
+        var resolvedOutput = Path.GetFullPath(outputDir);
+        if (!resolvedOutput.StartsWith(resolvedBase, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning("Refusing unsafe output path: {Path}, using base dir", resolvedOutput);
+            outputDir = resolvedBase;
+        }
+
         Directory.CreateDirectory(outputDir);
 
         var config = _bufferConfig with { OutputDirectory = outputDir };

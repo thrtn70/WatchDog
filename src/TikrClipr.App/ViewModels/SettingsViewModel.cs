@@ -168,7 +168,10 @@ public partial class SettingsViewModel : ObservableObject
 
         // Apply startup registration when setting changes
         if (updated.StartWithWindows != _settings.StartWithWindows)
-            Services.StartupRegistration.SetStartWithWindows(updated.StartWithWindows);
+        {
+            try { Services.StartupRegistration.SetStartWithWindows(updated.StartWithWindows); }
+            catch { StatusMessage = "Settings saved, but startup registration failed."; }
+        }
 
         _settings = updated;
         StatusMessage = "Settings saved. Restart to apply capture changes.";
