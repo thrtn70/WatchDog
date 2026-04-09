@@ -1,11 +1,16 @@
 <Window x:Class="TikrClipr.App.Views.DiscordUploadWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:converters="clr-namespace:TikrClipr.App.Converters"
         Title="Share to Discord" Height="240" Width="420"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
         Background="{StaticResource BaseBrush}"
         Foreground="{StaticResource TextBrush}"
         FontFamily="Segoe UI" FontSize="13">
+
+    <Window.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
 
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -69,9 +74,9 @@
         <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Cancel" Width="80" Margin="0,0,8,0"
                     Command="{Binding CancelCommand}"
-                    Visibility="{Binding IsUploading, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    Visibility="{Binding IsUploading, Converter={StaticResource BoolToVis}}"/>
             <Button Content="Close" Width="80" Click="CloseButton_Click"
-                    Visibility="{Binding IsComplete, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    Visibility="{Binding IsComplete, Converter={StaticResource BoolToVis}}"/>
         </StackPanel>
     </Grid>
 </Window>
