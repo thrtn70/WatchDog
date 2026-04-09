@@ -68,8 +68,12 @@ $RECYCLE.BIN/
 **/secrets.json
 **/*.pfx
 
-# Claude Code artifacts
+# Claude Code / AI artifacts
 .claude/
+CLAUDE.md
+.impeccable.md
+.impeccable-brief.md
+conversation-*.txt
 
 # Publish output
 publish/
