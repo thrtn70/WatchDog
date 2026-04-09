@@ -3,7 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:helpers="clr-namespace:WatchDog.App.Helpers"
         xmlns:controls="clr-namespace:WatchDog.App.Controls"
-        Title="WatchDog Settings" Height="600" Width="500"
+        Title="WatchDog Settings" Height="600" Width="620"
+        MinWidth="500" MinHeight="400"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResizeWithGrip"
         Background="{StaticResource BaseBrush}"
@@ -11,22 +12,90 @@
         FontFamily="{StaticResource UIFont}" FontSize="13"
         Icon="pack://application:,,,/Resources/WatchDog.ico">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
-        <StackPanel Margin="16">
-            <!-- Capture Settings -->
-            <GroupBox Header="Capture">
-                <StackPanel Margin="8">
+    <Window.Resources>
+        <!-- Sidebar tab item style -->
+        <Style x:Key="SettingsTab" TargetType="TabItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource SubtextBrush}"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="border" Background="Transparent"
+                                Padding="{TemplateBinding Padding}" CornerRadius="4"
+                                Margin="0,0,0,2">
+                            <TextBlock Text="{TemplateBinding Header}"
+                                       FontSize="12" FontWeight="Medium"
+                                       Foreground="{TemplateBinding Foreground}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#0AFFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource SurfaceBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TabControl Grid.Row="0" TabStripPlacement="Left" Background="Transparent"
+                    BorderThickness="0" Padding="0">
+            <TabControl.Template>
+                <ControlTemplate TargetType="TabControl">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <!-- Sidebar -->
+                        <Border Grid.Column="0" Background="{StaticResource MantleBrush}"
+                                BorderBrush="{StaticResource Surface1Brush}" BorderThickness="0,0,1,0">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled"
+                                          Padding="8,12">
+                                <TabPanel IsItemsHost="True"/>
+                            </ScrollViewer>
+                        </Border>
+                        <!-- Content -->
+                        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"
+                                      Padding="20,16">
+                            <ContentPresenter
+                                Content="{TemplateBinding SelectedContent}"
+                                ContentTemplate="{TemplateBinding SelectedContentTemplate}"
+                                ContentStringFormat="{TemplateBinding SelectedContentStringFormat}"/>
+                        </ScrollViewer>
+                    </Grid>
+                </ControlTemplate>
+            </TabControl.Template>
+
+            <!-- ═══ Capture ═══════════════════════════════════════════════ -->
+            <TabItem Header="Capture" Style="{StaticResource SettingsTab}">
+                <StackPanel>
+                    <TextBlock Text="Capture" Style="{StaticResource Heading2}" Margin="0,0,0,12"/>
+
                     <CheckBox Content="Always-on desktop capture (record even without a game)"
                               IsChecked="{Binding DesktopCaptureEnabled}" Margin="0,0,0,8"/>
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBlock Text="Monitor:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="Monitor:" VerticalAlignment="Center" Margin="0,0,8,0"/>
                         <ComboBox ItemsSource="{Binding Monitors}"
                                   SelectedItem="{Binding SelectedMonitor}"
                                   DisplayMemberPath="DisplayName" Width="280"/>
                     </StackPanel>
 
-                    <Grid>
+                    <Grid Margin="0,0,0,8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="60"/>
@@ -35,135 +104,144 @@
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="60"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="Width:" VerticalAlignment="Center" Grid.Column="0" Margin="0,0,6,0"/>
+                        <TextBlock Text="Width:" VerticalAlignment="Center" Grid.Column="0" Margin="0,0,8,0"/>
                         <TextBox Text="{Binding OutputWidth}" Grid.Column="1"/>
-                        <TextBlock Text="Height:" VerticalAlignment="Center" Grid.Column="2" Margin="12,0,6,0"/>
+                        <TextBlock Text="Height:" VerticalAlignment="Center" Grid.Column="2" Margin="12,0,8,0"/>
                         <TextBox Text="{Binding OutputHeight}" Grid.Column="3"/>
-                        <TextBlock Text="FPS:" VerticalAlignment="Center" Grid.Column="4" Margin="12,0,6,0"/>
+                        <TextBlock Text="FPS:" VerticalAlignment="Center" Grid.Column="4" Margin="12,0,8,0"/>
                         <TextBox Text="{Binding Fps}" Grid.Column="5"/>
                     </Grid>
 
-                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                        <TextBlock Text="Encoder:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="Encoder:" VerticalAlignment="Center" Margin="0,0,8,0"/>
                         <ComboBox ItemsSource="{Binding Source={x:Static helpers:EnumHelper.EncoderTypes}}"
                                   SelectedItem="{Binding Encoder}" Width="140"/>
                     </StackPanel>
 
-                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                        <TextBlock Text="Quality (CQP):" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBox Text="{Binding Quality}" Width="50"/>
-                        <TextBlock Text="Bitrate (kbps):" VerticalAlignment="Center" Margin="16,0,6,0"/>
-                        <TextBox Text="{Binding Bitrate}" Width="70"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                        <TextBlock Text="Quality (CQP):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBox Text="{Binding Quality}" Width="48"/>
+                        <TextBlock Text="Bitrate (kbps):" VerticalAlignment="Center" Margin="16,0,8,0"/>
+                        <TextBox Text="{Binding Bitrate}" Width="64"/>
                     </StackPanel>
-                </StackPanel>
-            </GroupBox>
 
-            <!-- Audio Settings -->
-            <GroupBox Header="Audio">
-                <StackPanel Margin="8">
-                    <CheckBox Content="Desktop audio" IsChecked="{Binding DesktopAudioEnabled}" Margin="0,0,0,4"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <TextBlock Text="Output Device:" VerticalAlignment="Center" Margin="0,0,6,0" Width="95"/>
-                        <ComboBox ItemsSource="{Binding DesktopDevices}"
-                                  SelectedItem="{Binding SelectedDesktopDevice}"
-                                  DisplayMemberPath="DisplayName" Width="250"/>
-                        <Button Content="&#x21BB;" Command="{Binding RefreshAudioDevicesCommand}"
-                                Margin="4,0,0,0" ToolTip="Refresh devices" Padding="6,2" FontSize="14"/>
-                    </StackPanel>
+                    <!-- Recording Mode -->
+                    <TextBlock Text="Recording Mode" FontWeight="SemiBold" Margin="0,8,0,8"/>
+
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBlock Text="Desktop Volume:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <Slider Minimum="0" Maximum="1" Value="{Binding DesktopAudioVolume}" Width="150"
-                                VerticalAlignment="Center" TickFrequency="0.1" IsSnapToTickEnabled="False"/>
-                    </StackPanel>
-                    <CheckBox Content="Microphone" IsChecked="{Binding MicAudioEnabled}" Margin="0,0,0,4"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <TextBlock Text="Input Device:" VerticalAlignment="Center" Margin="0,0,6,0" Width="95"/>
-                        <ComboBox ItemsSource="{Binding MicDevices}"
-                                  SelectedItem="{Binding SelectedMicDevice}"
-                                  DisplayMemberPath="DisplayName" Width="250"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBlock Text="Mic Volume:" VerticalAlignment="Center" Margin="0,0,6,0" Width="95"/>
-                        <Slider Minimum="0" Maximum="1" Value="{Binding MicAudioVolume}" Width="150"
-                                VerticalAlignment="Center" TickFrequency="0.1" IsSnapToTickEnabled="False"/>
-                    </StackPanel>
-                    <CheckBox Content="Separate audio tracks (mic on track 2)" IsChecked="{Binding SeparateAudioTracks}"/>
-                </StackPanel>
-            </GroupBox>
-
-            <!-- Buffer Settings -->
-            <GroupBox Header="Replay Buffer">
-                <StackPanel Margin="8">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Buffer Duration (seconds):" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBox Text="{Binding BufferSeconds}" Width="60"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                        <TextBlock Text="Max Buffer Size (MB):" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBox Text="{Binding BufferMaxSizeMb}" Width="60"/>
-                    </StackPanel>
-                </StackPanel>
-            </GroupBox>
-
-            <!-- Storage Settings -->
-            <GroupBox Header="Storage">
-                <StackPanel Margin="8">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Save Path:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBox Text="{Binding SavePath}" Width="250"/>
-                        <Button Content="Browse" Command="{Binding BrowseSavePathCommand}" Margin="6,0,0,0"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                        <TextBlock Text="Max Storage (GB):" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBox Text="{Binding MaxStorageGb}" Width="50"/>
-                        <TextBlock Text="Auto-delete after (days):" VerticalAlignment="Center" Margin="16,0,6,0"/>
-                        <TextBox Text="{Binding AutoDeleteDays}" Width="50"/>
-                    </StackPanel>
-                </StackPanel>
-            </GroupBox>
-
-            <!-- Highlight Detection -->
-            <GroupBox Header="Highlight Detection">
-                <StackPanel Margin="8">
-                    <TextBlock Text="Set Recording Mode to 'Highlights' to enable auto-clipping on game events (kills, deaths, wins)."
-                               TextWrapping="Wrap" Foreground="{StaticResource SubtextBrush}" Margin="0,0,0,8" FontSize="11"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <TextBlock Text="Post-event delay (seconds):" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBox Text="{Binding HighlightDelaySeconds}" Width="50"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Cooldown between clips (seconds):" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBox Text="{Binding HighlightCooldownSeconds}" Width="50"/>
-                    </StackPanel>
-                    <TextBlock Text="CS2: requires gamestate_integration_tikrclpr.cfg in your CS2 cfg folder."
-                               TextWrapping="Wrap" Foreground="{StaticResource SubtextBrush}" Margin="0,8,0,0" FontSize="11"/>
-                </StackPanel>
-            </GroupBox>
-
-            <!-- Recording Mode -->
-            <GroupBox Header="Recording Mode">
-                <StackPanel Margin="8">
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBlock Text="Mode:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="Mode:" VerticalAlignment="Center" Margin="0,0,8,0"/>
                         <ComboBox ItemsSource="{Binding Source={x:Static helpers:EnumHelper.RecordingModes}}"
                                   SelectedItem="{Binding RecordingMode}" Width="180"/>
                     </StackPanel>
                     <TextBlock Text="ReplayBufferOnly: instant clips via hotkey. SessionRecording: full match files. Both: runs both."
                                TextWrapping="Wrap" Foreground="{StaticResource SubtextBrush}" Margin="0,0,0,8" FontSize="11"/>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <TextBlock Text="Segment Duration (min):" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBox Text="{Binding SegmentDurationMinutes}" Width="50"/>
+                        <TextBlock Text="Segment Duration (min):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBox Text="{Binding SegmentDurationMinutes}" Width="48"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Max Duration (min, 0=unlimited):" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBox Text="{Binding MaxDurationMinutes}" Width="50"/>
+                        <TextBlock Text="Max Duration (min, 0=unlimited):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBox Text="{Binding MaxDurationMinutes}" Width="48"/>
                     </StackPanel>
                 </StackPanel>
-            </GroupBox>
+            </TabItem>
 
-            <!-- Hotkey Settings -->
-            <GroupBox Header="Hotkeys">
-                <StackPanel Margin="8">
+            <!-- ═══ Audio ═════════════════════════════════════════════════ -->
+            <TabItem Header="Audio" Style="{StaticResource SettingsTab}">
+                <StackPanel>
+                    <TextBlock Text="Audio" Style="{StaticResource Heading2}" Margin="0,0,0,12"/>
+
+                    <CheckBox Content="Desktop audio" IsChecked="{Binding DesktopAudioEnabled}" Margin="0,0,0,4"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <TextBlock Text="Output Device:" VerticalAlignment="Center" Margin="0,0,8,0" Width="96"/>
+                        <ComboBox ItemsSource="{Binding DesktopDevices}"
+                                  SelectedItem="{Binding SelectedDesktopDevice}"
+                                  DisplayMemberPath="DisplayName" Width="248"/>
+                        <Button Content="&#x21BB;" Command="{Binding RefreshAudioDevicesCommand}"
+                                Margin="4,0,0,0" ToolTip="Refresh devices" Padding="8,4" FontSize="14"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <TextBlock Text="Desktop Volume:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <Slider Minimum="0" Maximum="1" Value="{Binding DesktopAudioVolume}" Width="148"
+                                VerticalAlignment="Center" TickFrequency="0.1" IsSnapToTickEnabled="False"/>
+                    </StackPanel>
+
+                    <CheckBox Content="Microphone" IsChecked="{Binding MicAudioEnabled}" Margin="0,0,0,4"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <TextBlock Text="Input Device:" VerticalAlignment="Center" Margin="0,0,8,0" Width="96"/>
+                        <ComboBox ItemsSource="{Binding MicDevices}"
+                                  SelectedItem="{Binding SelectedMicDevice}"
+                                  DisplayMemberPath="DisplayName" Width="248"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <TextBlock Text="Mic Volume:" VerticalAlignment="Center" Margin="0,0,8,0" Width="96"/>
+                        <Slider Minimum="0" Maximum="1" Value="{Binding MicAudioVolume}" Width="148"
+                                VerticalAlignment="Center" TickFrequency="0.1" IsSnapToTickEnabled="False"/>
+                    </StackPanel>
+
+                    <CheckBox Content="Separate audio tracks (mic on track 2)" IsChecked="{Binding SeparateAudioTracks}"/>
+                </StackPanel>
+            </TabItem>
+
+            <!-- ═══ Storage ═══════════════════════════════════════════════ -->
+            <TabItem Header="Storage" Style="{StaticResource SettingsTab}">
+                <StackPanel>
+                    <TextBlock Text="Storage" Style="{StaticResource Heading2}" Margin="0,0,0,12"/>
+
+                    <!-- Replay Buffer -->
+                    <TextBlock Text="Replay Buffer" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <TextBlock Text="Buffer Duration (seconds):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBox Text="{Binding BufferSeconds}" Width="56"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                        <TextBlock Text="Max Buffer Size (MB):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBox Text="{Binding BufferMaxSizeMb}" Width="56"/>
+                    </StackPanel>
+
+                    <!-- File Storage -->
+                    <TextBlock Text="File Storage" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="Save Path:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBox Text="{Binding SavePath}" Width="248"/>
+                        <Button Content="Browse" Command="{Binding BrowseSavePathCommand}" Margin="8,0,0,0"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Max Storage (GB):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBox Text="{Binding MaxStorageGb}" Width="48"/>
+                        <TextBlock Text="Auto-delete after (days):" VerticalAlignment="Center" Margin="16,0,8,0"/>
+                        <TextBox Text="{Binding AutoDeleteDays}" Width="48"/>
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
+
+            <!-- ═══ Highlights ════════════════════════════════════════════ -->
+            <TabItem Header="Highlights" Style="{StaticResource SettingsTab}">
+                <StackPanel>
+                    <TextBlock Text="Highlight Detection" Style="{StaticResource Heading2}" Margin="0,0,0,12"/>
+
+                    <TextBlock Text="Set Recording Mode to 'Highlights' to enable auto-clipping on game events (kills, deaths, wins)."
+                               TextWrapping="Wrap" Foreground="{StaticResource SubtextBrush}" Margin="0,0,0,12" FontSize="11"/>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <TextBlock Text="Post-event delay (seconds):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBox Text="{Binding HighlightDelaySeconds}" Width="48"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <TextBlock Text="Cooldown between clips (seconds):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBox Text="{Binding HighlightCooldownSeconds}" Width="48"/>
+                    </StackPanel>
+
+                    <TextBlock Text="CS2: requires gamestate_integration_watchdog.cfg in your CS2 cfg folder."
+                               TextWrapping="Wrap" Foreground="{StaticResource SubtextBrush}" FontSize="11"/>
+                </StackPanel>
+            </TabItem>
+
+            <!-- ═══ Hotkeys ═══════════════════════════════════════════════ -->
+            <TabItem Header="Hotkeys" Style="{StaticResource SettingsTab}">
+                <StackPanel>
+                    <TextBlock Text="Hotkeys" Style="{StaticResource Heading2}" Margin="0,0,0,12"/>
+
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                         <TextBlock Text="Save Clip:" VerticalAlignment="Center" Width="120"/>
                         <controls:HotkeyRecorderControl VirtualKey="{Binding SaveClipKey, Mode=TwoWay}"
@@ -177,55 +255,66 @@
                                                          MinWidth="120"/>
                     </StackPanel>
                 </StackPanel>
-            </GroupBox>
+            </TabItem>
 
-            <!-- General Settings -->
-            <GroupBox Header="General">
-                <StackPanel Margin="8">
-                    <CheckBox Content="Start with Windows" IsChecked="{Binding StartWithWindows}" Margin="0,0,0,6"/>
-                    <CheckBox Content="Start minimized to tray" IsChecked="{Binding StartMinimized}"/>
-                </StackPanel>
-            </GroupBox>
+            <!-- ═══ Discord ═══════════════════════════════════════════════ -->
+            <TabItem Header="Discord" Style="{StaticResource SettingsTab}">
+                <StackPanel>
+                    <TextBlock Text="Discord" Style="{StaticResource Heading2}" Margin="0,0,0,12"/>
 
-            <GroupBox Header="Discord">
-                <StackPanel Margin="8">
                     <TextBlock Text="Share clips to a Discord channel via webhook. No bot or OAuth needed."
                                TextWrapping="Wrap" Foreground="{StaticResource SubtextBrush}" FontSize="11"
-                               Margin="0,0,0,8"/>
-                    <TextBlock Text="Webhook URL:" FontSize="11" Margin="0,0,0,2"/>
-                    <TextBox Text="{Binding DiscordWebhookUrl}" Margin="0,0,0,8"/>
+                               Margin="0,0,0,12"/>
+
+                    <TextBlock Text="Webhook URL:" FontSize="11" Margin="0,0,0,4"/>
+                    <TextBox Text="{Binding DiscordWebhookUrl}" Margin="0,0,0,12"/>
+
                     <Grid Margin="0,0,0,8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" Margin="0,0,4,0">
-                            <TextBlock Text="Bot Username:" FontSize="11" Margin="0,0,0,2"/>
+                            <TextBlock Text="Bot Username:" FontSize="11" Margin="0,0,0,4"/>
                             <TextBox Text="{Binding DiscordUsername}"/>
                         </StackPanel>
                         <StackPanel Grid.Column="1" Margin="4,0,0,0">
-                            <TextBlock Text="Message Template:" FontSize="11" Margin="0,0,0,2"/>
+                            <TextBlock Text="Message Template:" FontSize="11" Margin="0,0,0,4"/>
                             <TextBox Text="{Binding DiscordMessageTemplate}"/>
                         </StackPanel>
                     </Grid>
                     <TextBlock Text="Tokens: {GameName}, {HighlightType}, {Duration}, {FileName}"
-                               Foreground="{StaticResource SubtextBrush}" FontSize="10" Margin="0,0,0,6"/>
+                               Foreground="{StaticResource SubtextBrush}" FontSize="10" Margin="0,0,0,8"/>
                     <CheckBox Content="Include metadata embed in message"
                               IsChecked="{Binding DiscordIncludeEmbed}"/>
                 </StackPanel>
-            </GroupBox>
+            </TabItem>
 
-            <!-- Actions -->
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-                <Button Content="Reset Defaults" Command="{Binding ResetCommand}"
-                        Margin="0,0,8,0"/>
-                <Button Content="Save" Command="{Binding SaveCommand}"
-                        Style="{StaticResource ActionButton}"/>
-            </StackPanel>
+            <!-- ═══ General ═══════════════════════════════════════════════ -->
+            <TabItem Header="General" Style="{StaticResource SettingsTab}">
+                <StackPanel>
+                    <TextBlock Text="General" Style="{StaticResource Heading2}" Margin="0,0,0,12"/>
 
-            <!-- Status -->
-            <TextBlock Text="{Binding StatusMessage}" Margin="0,8,0,0"
-                       Foreground="{StaticResource GreenBrush}" FontStyle="Italic"/>
-        </StackPanel>
-    </ScrollViewer>
+                    <CheckBox Content="Start with Windows" IsChecked="{Binding StartWithWindows}" Margin="0,0,0,8"/>
+                    <CheckBox Content="Start minimized to tray" IsChecked="{Binding StartMinimized}"/>
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+
+        <!-- Bottom bar: Save / Reset / Status -->
+        <Border Grid.Row="1" Background="{StaticResource MantleBrush}"
+                BorderBrush="{StaticResource Surface1Brush}" BorderThickness="0,1,0,0"
+                Padding="16,8">
+            <Grid>
+                <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center"
+                           Foreground="{StaticResource GreenBrush}" FontStyle="Italic"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="Reset Defaults" Command="{Binding ResetCommand}"
+                            Margin="0,0,8,0"/>
+                    <Button Content="Save" Command="{Binding SaveCommand}"
+                            Style="{StaticResource ActionButton}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
 </Window>
