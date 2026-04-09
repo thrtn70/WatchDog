@@ -1,0 +1,53 @@
+<UserControl x:Class="WatchDog.App.Controls.VideoTimeline"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Height="60">
+    <Grid Background="{StaticResource Surface1Brush}">
+        <!-- Thumbnail strip background -->
+        <ItemsControl x:Name="ThumbnailStrip">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <UniformGrid Rows="1"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Image Source="{Binding}" Stretch="UniformToFill" Height="60"/>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Overlay canvas for trim handles, playhead, exclusion zones -->
+        <Canvas x:Name="OverlayCanvas" ClipToBounds="True"
+                MouseLeftButtonDown="OnCanvasMouseDown"
+                MouseMove="OnCanvasMouseMove"
+                MouseLeftButtonUp="OnCanvasMouseUp">
+            <!-- Left exclusion zone -->
+            <Border x:Name="LeftExclusion" Background="#AA000000" Height="60" Canvas.Left="0"/>
+            <!-- Right exclusion zone -->
+            <Border x:Name="RightExclusion" Background="#AA000000" Height="60"/>
+
+            <!-- Start trim handle -->
+            <Border x:Name="StartHandle" Background="{StaticResource AccentBrush}"
+                    Width="6" Height="60" Cursor="SizeWE" CornerRadius="3,0,0,3"
+                    MouseLeftButtonDown="OnStartHandleMouseDown"/>
+
+            <!-- End trim handle -->
+            <Border x:Name="EndHandle" Background="{StaticResource AccentBrush}"
+                    Width="6" Height="60" Cursor="SizeWE" CornerRadius="0,3,3,0"
+                    MouseLeftButtonDown="OnEndHandleMouseDown"/>
+
+            <!-- Playhead -->
+            <Border x:Name="Playhead" Background="{StaticResource GreenBrush}"
+                    Width="2" Height="60" IsHitTestVisible="False"/>
+        </Canvas>
+
+        <!-- Time labels -->
+        <TextBlock x:Name="StartTimeLabel" FontSize="10" Foreground="White"
+                   VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="8,0,0,2"
+                   IsHitTestVisible="False"/>
+        <TextBlock x:Name="EndTimeLabel" FontSize="10" Foreground="White"
+                   VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,8,2"
+                   IsHitTestVisible="False"/>
+    </Grid>
+</UserControl>

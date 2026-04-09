@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/thrtn70/WatchDog</RepositoryUrl>
+    <Authors>thrtn70</Authors>
+    <UseWPF>true</UseWPF>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Resources\WatchDog.ico</ApplicationIcon>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WatchDog.Core\WatchDog.Core.csproj" />
+    <ProjectReference Include="..\WatchDog.Native\WatchDog.Native.csproj" />
+  </ItemGroup>
+
+  <!-- WinForms framework reference for FolderBrowserDialog only —
+       UseWindowsForms is NOT set to avoid global using conflicts with WPF types -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
+  </ItemGroup>
+
+  <!-- Application icon -->
+  <ItemGroup>
+    <Resource Include="Resources\WatchDog.ico" />
+    <Resource Include="Resources\WatchDog.png" />
+    <Resource Include="Resources\Icons\tray-idle.ico" />
+    <Resource Include="Resources\Icons\tray-recording.ico" />
+  </ItemGroup>
+
+  <!-- Copy OBS runtime binaries to output directory -->
+  <ItemGroup>
+    <Content Include="$(MSBuildThisFileDirectory)..\..\obs-runtime\**\*"
+             CopyToOutputDirectory="PreserveNewest"
+             Link="%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <!-- Copy FFmpeg binaries to output/ffmpeg/ subdirectory -->
+  <ItemGroup>
+    <Content Include="$(MSBuildThisFileDirectory)..\..\ffmpeg-runtime\*"
+             CopyToOutputDirectory="PreserveNewest"
+             Link="ffmpeg\%(Filename)%(Extension)"
+             Condition="Exists('$(MSBuildThisFileDirectory)..\..\ffmpeg-runtime')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
+    <PackageReference Include="H.NotifyIcon.Wpf" Version="2.*">
+      <NoWarn>NU1701</NoWarn>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.*" />
+  </ItemGroup>
+
+</Project>

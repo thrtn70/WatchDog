@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/WatchDog.App/WatchDog.App.csproj" />
+    <Project Path="src/WatchDog.Core/WatchDog.Core.csproj" />
+    <Project Path="src/WatchDog.Native/WatchDog.Native.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/WatchDog.Core.Tests/WatchDog.Core.Tests.csproj" />
+    <Project Path="tests/WatchDog.Integration.Tests/WatchDog.Integration.Tests.csproj" />
+  </Folder>
+</Solution>

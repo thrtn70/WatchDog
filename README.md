@@ -1,10 +1,11 @@
 <p align="center">
-  <img src="src/TikrClipr.App/Resources/TikrClipr.png" width="80" alt="TikrClipr icon"/>
+  <img src="src/WatchDog.App/Resources/WatchDog.png" width="80" alt="WatchDog icon"/>
 </p>
 
-<h1 align="center">TikrClipr</h1>
+<h1 align="center">WatchDog</h1>
 
 <p align="center">
+  <em>(formerly known as TikrClpr)</em><br/><br/>
   <strong>Lightweight, open-source game clipping software for Windows.</strong><br/>
   Capture highlights, trim clips, and share to Discord — all from the system tray.
 </p>
@@ -14,14 +15,14 @@
   <img src="https://img.shields.io/badge/WPF-Windows-blue?logo=windows" alt="WPF"/>
   <img src="https://img.shields.io/badge/OBS-31.0-purple?logo=obsstudio" alt="OBS"/>
   <img src="https://img.shields.io/badge/license-GPL--2.0-green" alt="License"/>
-  <img src="https://img.shields.io/github/v/release/thrtn70/TikrClpr?label=latest" alt="Release"/>
+  <img src="https://img.shields.io/github/v/release/thrtn70/WatchDog?label=latest" alt="Release"/>
 </p>
 
 ---
 
-## What is TikrClipr?
+## What is WatchDog?
 
-TikrClipr embeds OBS Studio's recording engine into a native WPF app. It runs in the background, detects when you launch a game, and keeps a rolling replay buffer so you can save the last 2 minutes of gameplay with a single hotkey. It also auto-clips highlight moments (kills, aces, round wins) for supported games.
+WatchDog embeds OBS Studio's recording engine into a native WPF app. It runs in the background, detects when you launch a game, and keeps a rolling replay buffer so you can save the last 2 minutes of gameplay with a single hotkey. It also auto-clips highlight moments (kills, aces, round wins) for supported games.
 
 Think of it as **Outplayed / Medal without the bloat** — no Overwolf, no Electron, no account required.
 
@@ -58,8 +59,8 @@ Think of it as **Outplayed / Medal without the bloat** — no Overwolf, no Elect
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/thrtn70/TikrClpr.git
-cd TikrClpr
+git clone https://github.com/thrtn70/WatchDog.git
+cd WatchDog
 ```
 
 ### 2. Download OBS and FFmpeg runtimes
@@ -80,7 +81,7 @@ dotnet build
 ### 4. Run
 
 ```bash
-dotnet run --project src/TikrClipr.App
+dotnet run --project src/WatchDog.App
 ```
 
 The app starts minimized to the system tray. Right-click the tray icon to open the main window.
@@ -91,15 +92,15 @@ The app starts minimized to the system tray. Right-click the tray icon to open t
 
 ### CS2 (Counter-Strike 2)
 
-CS2 requires a Game State Integration config file to send events to TikrClipr.
+CS2 requires a Game State Integration config file to send events to WatchDog.
 
 ```powershell
 # Copy the template to your CS2 cfg directory:
-Copy-Item cfg\gamestate_integration_tikrclpr.cfg `
+Copy-Item cfg\gamestate_integration_watchdog.cfg `
   "C:\Program Files (x86)\Steam\steamapps\common\Counter-Strike Global Offensive\game\csgo\cfg\"
 ```
 
-Restart CS2 after placing the file. TikrClipr will auto-detect the game and start capturing highlights.
+Restart CS2 after placing the file. WatchDog will auto-detect the game and start capturing highlights.
 
 ### Valorant
 
@@ -117,7 +118,7 @@ No setup needed. The app tails game log files for event detection.
 ## Discord Sharing Setup
 
 1. In Discord: **Server Settings > Integrations > Webhooks > New Webhook > Copy URL**
-2. In TikrClipr: **Settings > Discord > paste webhook URL > Save**
+2. In WatchDog: **Settings > Discord > paste webhook URL > Save**
 3. Right-click any clip > **"Share to Discord"**
 
 Clips are uploaded with a rich embed showing game name, highlight type, duration, and file size.
@@ -153,21 +154,21 @@ Change hotkeys in **Settings > Hotkeys** using the interactive key recorder.
 ## Project Structure
 
 ```
-TikrClpr/
+WatchDog/
 ├── src/
-│   ├── TikrClipr.App/           # WPF application (Views, ViewModels, Controls, Themes)
-│   ├── TikrClipr.Core/          # Business logic (Capture, Highlights, Discord, Storage, Audio)
-│   └── TikrClipr.Native/        # Win32 interop (Hotkeys, OBS runtime loading)
+│   ├── WatchDog.App/              # WPF application (Views, ViewModels, Controls, Themes)
+│   ├── WatchDog.Core/             # Business logic (Capture, Highlights, Discord, Storage, Audio)
+│   └── WatchDog.Native/           # Win32 interop (Hotkeys, OBS runtime loading)
 ├── tests/
-│   └── TikrClipr.Core.Tests/    # xUnit unit tests
+│   └── WatchDog.Core.Tests/       # xUnit unit tests
 ├── cfg/
-│   └── gamestate_integration_tikrclpr.cfg   # CS2 GSI config template
+│   └── gamestate_integration_watchdog.cfg   # CS2 GSI config template
 ├── tools/
-│   ├── setup-obs-runtime.ps1    # Downloads OBS binaries
-│   ├── setup-ffmpeg.ps1         # Downloads FFmpeg binaries
-│   └── package.ps1              # Build + package script
-├── obs-runtime/                 # OBS binaries (gitignored)
-└── ffmpeg-runtime/              # FFmpeg binaries (gitignored)
+│   ├── setup-obs-runtime.ps1      # Downloads OBS binaries
+│   ├── setup-ffmpeg.ps1           # Downloads FFmpeg binaries
+│   └── package.ps1                # Build + package script
+├── obs-runtime/                   # OBS binaries (gitignored)
+└── ffmpeg-runtime/                # FFmpeg binaries (gitignored)
 ```
 
 ---
@@ -228,13 +229,13 @@ Game capture failed to hook the process. Wait 30-60 seconds for the hook to atta
 <details>
 <summary><strong>Game not detected</strong></summary>
 
-TikrClipr recognizes 100+ games by process name. If yours isn't detected, use **desktop capture mode** (always-on). Custom game entries are planned for a future release.
+WatchDog recognizes 100+ games by process name. If yours isn't detected, use **desktop capture mode** (always-on). Custom game entries are planned for a future release.
 </details>
 
 <details>
 <summary><strong>CS2 highlights not working</strong></summary>
 
-1. Verify `gamestate_integration_tikrclpr.cfg` is in `...\Counter-Strike Global Offensive\game\csgo\cfg\`
+1. Verify `gamestate_integration_watchdog.cfg` is in `...\Counter-Strike Global Offensive\game\csgo\cfg\`
 2. Restart CS2 after placing the file
 3. Check that recording mode is set to **Highlights** in Settings
 </details>
@@ -263,6 +264,6 @@ Warnings about AJA, DeckLink, or NVIDIA Video FX are harmless. These are optiona
 
 ## License
 
-TikrClipr is released under the [GNU General Public License v2.0](LICENSE).
+WatchDog is released under the [GNU General Public License v2.0](LICENSE).
 
-TikrClipr bundles OBS Studio (GPL-2.0) and FFmpeg (LGPL-2.1+) runtimes as part of its build output. This requires the combined distribution to comply with GPL-2.0. See [NOTICE](NOTICE) for full third-party attribution.
+WatchDog bundles OBS Studio (GPL-2.0) and FFmpeg (LGPL-2.1+) runtimes as part of its build output. This requires the combined distribution to comply with GPL-2.0. See [NOTICE](NOTICE) for full third-party attribution.

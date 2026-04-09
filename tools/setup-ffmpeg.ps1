@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Downloads and extracts FFmpeg + FFprobe binaries for TikrClipr.
+    Downloads and extracts FFmpeg + FFprobe binaries for WatchDog.
 
 .DESCRIPTION
     Downloads the latest FFmpeg release essentials build from gyan.dev,
@@ -14,7 +14,7 @@
 $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-if (-not (Test-Path (Join-Path $ProjectRoot "TikrClipr.sln"))) {
+if (-not (Test-Path (Join-Path $ProjectRoot "WatchDog.sln"))) {
     $ProjectRoot = Split-Path -Parent $PSScriptRoot
 }
 
@@ -23,7 +23,7 @@ $TempDir = Join-Path $ProjectRoot ".ffmpeg-temp"
 $ZipUrl = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
 $ZipPath = Join-Path $TempDir "ffmpeg.zip"
 
-Write-Host "TikrClipr FFmpeg Setup" -ForegroundColor Cyan
+Write-Host "WatchDog FFmpeg Setup" -ForegroundColor Cyan
 Write-Host "=====================" -ForegroundColor Cyan
 Write-Host "Source: $ZipUrl"
 Write-Host "Target: $FfmpegDir"

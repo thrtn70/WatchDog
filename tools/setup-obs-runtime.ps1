@@ -22,7 +22,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-if (-not (Test-Path (Join-Path $ProjectRoot "TikrClipr.sln"))) {
+if (-not (Test-Path (Join-Path $ProjectRoot "WatchDog.sln"))) {
     $ProjectRoot = Split-Path -Parent $PSScriptRoot
 }
 
@@ -31,7 +31,7 @@ $TempDir = Join-Path $ProjectRoot ".obs-temp"
 $ZipUrl = "https://github.com/obsproject/obs-studio/releases/download/$ObsVersion/OBS-Studio-$ObsVersion-Windows.zip"
 $ZipPath = Join-Path $TempDir "obs-studio.zip"
 
-Write-Host "TikrClipr OBS Runtime Setup" -ForegroundColor Cyan
+Write-Host "WatchDog OBS Runtime Setup" -ForegroundColor Cyan
 Write-Host "==========================" -ForegroundColor Cyan
 Write-Host "OBS Version: $ObsVersion"
 Write-Host "Target: $ObsRuntimeDir"

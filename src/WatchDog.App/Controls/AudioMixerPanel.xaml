@@ -1,0 +1,43 @@
+<UserControl x:Class="WatchDog.App.Controls.AudioMixerPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Margin="8">
+        <!-- Desktop Audio -->
+            <Grid Margin="0,0,0,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Content="{Binding DesktopMuteIcon}" Width="28" Height="28"
+                        Command="{Binding ToggleDesktopMuteCommand}" Padding="0"
+                        ToolTip="Mute/unmute desktop audio"/>
+                <Slider Grid.Column="1" Minimum="0" Maximum="1"
+                        Value="{Binding DesktopVolume, Mode=TwoWay}"
+                        VerticalAlignment="Center" Margin="6,0"
+                        IsEnabled="{Binding IsDesktopUnmuted}"/>
+                <TextBlock Grid.Column="2" Text="{Binding DesktopVolumePercent}"
+                           Width="36" TextAlignment="Right" VerticalAlignment="Center"
+                           FontSize="11" Foreground="{StaticResource SubtextBrush}"/>
+            </Grid>
+
+            <!-- Microphone -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Content="{Binding MicMuteIcon}" Width="28" Height="28"
+                        Command="{Binding ToggleMicMuteCommand}" Padding="0"
+                        ToolTip="Mute/unmute microphone"/>
+                <Slider Grid.Column="1" Minimum="0" Maximum="1"
+                        Value="{Binding MicVolume, Mode=TwoWay}"
+                        VerticalAlignment="Center" Margin="6,0"
+                        IsEnabled="{Binding IsMicUnmuted}"/>
+                <TextBlock Grid.Column="2" Text="{Binding MicVolumePercent}"
+                           Width="36" TextAlignment="Right" VerticalAlignment="Center"
+                           FontSize="11" Foreground="{StaticResource SubtextBrush}"/>
+            </Grid>
+    </StackPanel>
+</UserControl>

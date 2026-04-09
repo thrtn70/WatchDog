@@ -1,0 +1,270 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Microsoft.Extensions.Logging;
+using WatchDog.Core.ClipEditor;
+
+namespace WatchDog.Core.Storage;
+
+public sealed class ClipStorageManager : IClipStorage
+{
+    private readonly StorageConfig _config;
+    private readonly IClipEditor _clipEditor;
+    private readonly ILogger<ClipStorageManager> _logger;
+    private readonly List<ClipMetadata> _clips = [];
+    private readonly object _lock = new();
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new JsonStringEnumConverter() }
+    };
+
+    public ClipStorageManager(StorageConfig config, IClipEditor clipEditor, ILogger<ClipStorageManager> logger)
+    {
+        _config = config;
+        _clipEditor = clipEditor;
+        _logger = logger;
+
+        Directory.CreateDirectory(config.BasePath);
+        LoadIndex();
+    }
+
+    public IReadOnlyList<ClipMetadata> GetAllClips()
+    {
+        lock (_lock)
+            return [.. _clips.OrderByDescending(c => c.CreatedAt)];
+    }
+
+    public IReadOnlyList<ClipMetadata> GetClipsByGame(string gameName)
+    {
+        lock (_lock)
+            return [.. _clips
+                .Where(c => string.Equals(c.GameName, gameName, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(c => c.CreatedAt)];
+    }
+
+    public Task<ClipMetadata> IndexClipAsync(string filePath, string? gameName, CancellationToken ct = default)
+        => IndexClipAsync(filePath, gameName, highlightType: null, ct);
+
+    public async Task<ClipMetadata> IndexClipAsync(string filePath, string? gameName, Highlights.HighlightType? highlightType, CancellationToken ct = default)
+    {
+        // Deduplicate: if this file is already indexed, return existing metadata
+        lock (_lock)
+        {
+            var existing = _clips.FirstOrDefault(c =>
+                string.Equals(c.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+            if (existing is not null)
+                return existing;
+        }
+
+        var fileInfo = new FileInfo(filePath);
+        if (!fileInfo.Exists)
+            throw new FileNotFoundException("Clip file not found", filePath);
+
+        var duration = await _clipEditor.GetDurationAsync(filePath, ct);
+
+        // Generate thumbnail at 1 second in (or start if shorter)
+        var thumbTs = duration.TotalSeconds > 1 ? TimeSpan.FromSeconds(1) : TimeSpan.Zero;
+        string? thumbPath = null;
+        try
+        {
+            thumbPath = await _clipEditor.GenerateThumbnailAsync(filePath, thumbTs, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to generate thumbnail for {File}", filePath);
+        }
+
+        var metadata = new ClipMetadata
+        {
+            FilePath = filePath,
+            FileName = fileInfo.Name,
+            GameName = gameName,
+            CreatedAt = fileInfo.CreationTimeUtc,
+            Duration = duration,
+            FileSizeBytes = fileInfo.Length,
+            ThumbnailPath = thumbPath,
+            HighlightType = highlightType,
+        };
+
+        lock (_lock)
+            _clips.Add(metadata);
+
+        SaveIndex();
+        var highlightTag = highlightType is not null ? $" [{highlightType}]" : "";
+        _logger.LogInformation("Indexed clip: {File} ({Duration:mm\\:ss}, {Size:F1}MB){Tag}",
+            metadata.FileName, duration, fileInfo.Length / (1024.0 * 1024.0), highlightTag);
+
+        return metadata;
+    }
+
+    public async Task<int> ScanAndIndexAsync(CancellationToken ct = default)
+    {
+        if (!Directory.Exists(_config.BasePath))
+            return 0;
+
+        HashSet<string> indexed;
+        lock (_lock)
+            indexed = _clips.Select(c => c.FilePath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var newFiles = Directory.EnumerateFiles(_config.BasePath, "*.mp4", SearchOption.AllDirectories)
+            .Where(f => !indexed.Contains(f))
+            .ToList();
+
+        var count = 0;
+        foreach (var file in newFiles)
+        {
+            if (ct.IsCancellationRequested) break;
+
+            try
+            {
+                // Infer game name from parent folder
+                var parentDir = Path.GetFileName(Path.GetDirectoryName(file));
+                var gameName = string.Equals(parentDir, "WatchDog", StringComparison.OrdinalIgnoreCase)
+                    ? null : parentDir;
+
+                await IndexClipAsync(file, gameName, ct);
+                count++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to index {File}, skipping", file);
+            }
+        }
+
+        if (count > 0)
+            _logger.LogInformation("Scanned and indexed {Count} new clips from disk", count);
+
+        return count;
+    }
+
+    public void DeleteClip(string filePath)
+    {
+        lock (_lock)
+        {
+            var clip = _clips.FirstOrDefault(c => c.FilePath == filePath);
+            if (clip is null) return;
+
+            _clips.Remove(clip);
+
+            // Delete video file
+            if (File.Exists(filePath))
+                File.Delete(filePath);
+
+            // Delete thumbnail
+            if (clip.ThumbnailPath is not null && File.Exists(clip.ThumbnailPath))
+                File.Delete(clip.ThumbnailPath);
+        }
+
+        SaveIndex();
+        _logger.LogInformation("Deleted clip: {File}", filePath);
+    }
+
+    public void ToggleFavorite(string filePath)
+    {
+        lock (_lock)
+        {
+            var idx = _clips.FindIndex(c => c.FilePath == filePath);
+            if (idx < 0) return;
+
+            _clips[idx] = _clips[idx] with { IsFavorite = !_clips[idx].IsFavorite };
+        }
+
+        SaveIndex();
+    }
+
+    public async Task RunCleanupAsync(CancellationToken ct = default)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var maxAge = TimeSpan.FromDays(_config.AutoDeleteDays);
+        var minAge = TimeSpan.FromHours(24); // Never delete clips less than 24 hours old
+        var maxBytes = (long)_config.MaxStorageGb * 1024 * 1024 * 1024;
+
+        List<ClipMetadata> toDelete;
+        lock (_lock)
+        {
+            // Delete clips older than max age (unless favorited or too new)
+            toDelete = _clips
+                .Where(c => !c.IsFavorite
+                    && now - c.CreatedAt > maxAge
+                    && now - c.CreatedAt > minAge)
+                .ToList();
+        }
+
+        foreach (var clip in toDelete)
+            DeleteClip(clip.FilePath);
+
+        if (toDelete.Count > 0)
+            _logger.LogInformation("Cleanup: deleted {Count} clips older than {Days} days", toDelete.Count, _config.AutoDeleteDays);
+
+        // Check total size and delete oldest non-favorite clips if over limit
+        lock (_lock)
+        {
+            var totalSize = _clips.Sum(c => c.FileSizeBytes);
+            if (totalSize > maxBytes)
+            {
+                var deletable = _clips
+                    .Where(c => !c.IsFavorite && now - c.CreatedAt > minAge)
+                    .OrderBy(c => c.CreatedAt)
+                    .ToList();
+
+                foreach (var clip in deletable)
+                {
+                    if (totalSize <= maxBytes) break;
+                    totalSize -= clip.FileSizeBytes;
+                    DeleteClip(clip.FilePath);
+                }
+            }
+        }
+
+        await Task.CompletedTask;
+    }
+
+    private string IndexPath => Path.Combine(_config.BasePath, "clips-index.json");
+
+    private void LoadIndex()
+    {
+        try
+        {
+            if (!File.Exists(IndexPath))
+                return;
+
+            var json = File.ReadAllText(IndexPath);
+            var clips = JsonSerializer.Deserialize<List<ClipMetadata>>(json, JsonOptions);
+
+            if (clips is not null)
+            {
+                // Only include clips whose files still exist
+                lock (_lock)
+                {
+                    _clips.AddRange(clips.Where(c => File.Exists(c.FilePath)));
+                }
+            }
+
+            _logger.LogInformation("Loaded {Count} clips from index", _clips.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load clip index, starting fresh");
+        }
+    }
+
+    private void SaveIndex()
+    {
+        try
+        {
+            List<ClipMetadata> snapshot;
+            lock (_lock)
+                snapshot = [.. _clips];
+
+            var json = JsonSerializer.Serialize(snapshot, JsonOptions);
+            Directory.CreateDirectory(Path.GetDirectoryName(IndexPath)!);
+            File.WriteAllText(IndexPath, json);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save clip index");
+        }
+    }
+}

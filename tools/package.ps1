@@ -1,9 +1,9 @@
 <#
 .SYNOPSIS
-    Builds and packages TikrClipr for distribution.
+    Builds and packages WatchDog for distribution.
 
 .DESCRIPTION
-    Publishes TikrClipr as a self-contained Windows x64 app with OBS runtime
+    Publishes WatchDog as a self-contained Windows x64 app with OBS runtime
     and creates a ZIP for distribution.
 
 .EXAMPLE
@@ -17,11 +17,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
-$AppProject = Join-Path $ProjectRoot "src" "TikrClipr.App" "TikrClipr.App.csproj"
+$AppProject = Join-Path $ProjectRoot "src" "WatchDog.App" "WatchDog.App.csproj"
 $PublishDir = Join-Path $ProjectRoot "publish"
-$OutputZip = Join-Path $ProjectRoot "TikrClipr-win-x64.zip"
+$OutputZip = Join-Path $ProjectRoot "WatchDog-win-x64.zip"
 
-Write-Host "TikrClipr Packager" -ForegroundColor Cyan
+Write-Host "WatchDog Packager" -ForegroundColor Cyan
 Write-Host "==================" -ForegroundColor Cyan
 Write-Host "Configuration: $Configuration"
 Write-Host ""
@@ -54,7 +54,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # Verify key files
-$requiredFiles = @("TikrClipr.App.exe", "obs.dll", "data", "obs-plugins")
+$requiredFiles = @("WatchDog.App.exe", "obs.dll", "data", "obs-plugins")
 foreach ($file in $requiredFiles) {
     $path = Join-Path $PublishDir $file
     if (-not (Test-Path $path)) {
@@ -71,6 +71,6 @@ $zipSize = [math]::Round((Get-Item $OutputZip).Length / 1MB, 1)
 Write-Host ""
 Write-Host "Package created: $OutputZip ($zipSize MB)" -ForegroundColor Green
 Write-Host "Contents:" -ForegroundColor Green
-Write-Host "  - TikrClipr application" -ForegroundColor DarkGray
+Write-Host "  - WatchDog application" -ForegroundColor DarkGray
 Write-Host "  - OBS runtime (obs.dll, plugins, data)" -ForegroundColor DarkGray
 Write-Host "  - All dependencies" -ForegroundColor DarkGray
