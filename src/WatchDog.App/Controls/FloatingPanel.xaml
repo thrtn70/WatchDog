@@ -39,7 +39,7 @@
                             ToolTip="Collapse / Expand">
                         <TextBlock x:Name="CollapseIcon"
                                    Text="&#x25BC;"
-                                   Foreground="{StaticResource OverlayBrush}"
+                                   Foreground="{StaticResource MutedTextBrush}"
                                    FontSize="9" VerticalAlignment="Center"/>
                     </Button>
                 </Grid>

@@ -242,7 +242,7 @@
                                         <TextBlock Text="{Binding CreatedAtDisplay}" FontSize="11"
                                                    Foreground="{StaticResource SubtextBrush}"/>
                                         <TextBlock Text=" · " FontSize="11"
-                                                   Foreground="{StaticResource OverlayBrush}"/>
+                                                   Foreground="{StaticResource MutedTextBrush}"/>
                                         <TextBlock Text="{Binding FileSizeDisplay}" FontSize="11"
                                                    Foreground="{StaticResource SubtextBrush}"/>
                                     </StackPanel>
@@ -325,7 +325,7 @@
 
                                 <!-- Size -->
                                 <TextBlock Grid.Column="4" Text="{Binding FileSizeDisplay}"
-                                           FontSize="11" Foreground="{StaticResource OverlayBrush}"
+                                           FontSize="11" Foreground="{StaticResource MutedTextBrush}"
                                            VerticalAlignment="Center" HorizontalAlignment="Right"/>
                             </Grid>
                         </Border>
@@ -355,7 +355,7 @@
                            Foreground="{StaticResource SubtextBrush}"
                            HorizontalAlignment="Center" Margin="0,0,0,6"/>
                 <TextBlock Text="Start a game and press F9 to save highlights"
-                           FontSize="12" Foreground="{StaticResource OverlayBrush}"
+                           FontSize="12" Foreground="{StaticResource MutedTextBrush}"
                            HorizontalAlignment="Center"/>
             </StackPanel>
 
@@ -401,7 +401,7 @@
                                    Foreground="{StaticResource SubtextBrush}"
                                    HorizontalAlignment="Center" Margin="0,0,0,4"/>
                         <TextBlock Text="Click any clip from the library"
-                                   FontSize="11" Foreground="{StaticResource OverlayBrush}"
+                                   FontSize="11" Foreground="{StaticResource MutedTextBrush}"
                                    HorizontalAlignment="Center"/>
                     </StackPanel>
 
@@ -423,10 +423,10 @@
                             <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
                                 <TextBlock Text="{Binding DataContext.SelectedClip.GameName, RelativeSource={RelativeSource AncestorType=Window}}"
                                            FontSize="11" Foreground="{StaticResource AccentBrush}"/>
-                                <TextBlock Text=" · " Foreground="{StaticResource OverlayBrush}" FontSize="11"/>
+                                <TextBlock Text=" · " Foreground="{StaticResource MutedTextBrush}" FontSize="11"/>
                                 <TextBlock Text="{Binding DataContext.SelectedClip.DurationDisplay, RelativeSource={RelativeSource AncestorType=Window}}"
                                            FontSize="11" Foreground="{StaticResource SubtextBrush}"/>
-                                <TextBlock Text=" · " Foreground="{StaticResource OverlayBrush}" FontSize="11"/>
+                                <TextBlock Text=" · " Foreground="{StaticResource MutedTextBrush}" FontSize="11"/>
                                 <TextBlock Text="{Binding DataContext.SelectedClip.FileSizeDisplay, RelativeSource={RelativeSource AncestorType=Window}}"
                                            FontSize="11" Foreground="{StaticResource SubtextBrush}"/>
                             </StackPanel>
@@ -452,7 +452,7 @@
                                     <TextBlock Text="TRIM" FontSize="10" FontWeight="SemiBold"
                                                Foreground="{StaticResource SubtextBrush}"
                                                Margin="0,0,0,4"/>
-                                    <TextBlock FontSize="11" Foreground="{StaticResource OverlayBrush}"
+                                    <TextBlock FontSize="11" Foreground="{StaticResource MutedTextBrush}"
                                                Text="Drag handles on the timeline, then export."/>
                                     <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                                         <Button Content="Export" Command="{Binding ExecuteTrimCommand}"

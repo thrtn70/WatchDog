@@ -22,6 +22,7 @@
     <Color x:Key="Surface1Color">#25353E</Color>
     <Color x:Key="Surface2Color">#31434E</Color>
     <Color x:Key="OverlayColor">#4A5F6B</Color>
+    <Color x:Key="MutedTextColor">#8A9EAA</Color>
     <Color x:Key="TextColor">#D1DCE2</Color>
     <Color x:Key="SubtextColor">#7E939E</Color>
     <Color x:Key="AccentColor">#2EC4B6</Color>
@@ -40,6 +41,7 @@
     <SolidColorBrush x:Key="Surface1Brush" Color="{StaticResource Surface1Color}"/>
     <SolidColorBrush x:Key="Surface2Brush" Color="{StaticResource Surface2Color}"/>
     <SolidColorBrush x:Key="OverlayBrush" Color="{StaticResource OverlayColor}"/>
+    <SolidColorBrush x:Key="MutedTextBrush" Color="{StaticResource MutedTextColor}"/>
     <SolidColorBrush x:Key="TextBrush" Color="{StaticResource TextColor}"/>
     <SolidColorBrush x:Key="SubtextBrush" Color="{StaticResource SubtextColor}"/>
     <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
@@ -303,7 +305,7 @@
     <Style x:Key="ToggleIconButton" TargetType="ToggleButton">
         <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="{StaticResource OverlayBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Padding" Value="8"/>
         <Setter Property="Cursor" Value="Hand"/>
