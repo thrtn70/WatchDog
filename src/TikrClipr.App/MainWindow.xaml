@@ -53,10 +53,11 @@
         </Grid.RowDefinitions>
 
         <!-- Toolbar -->
-        <Border Grid.Row="0" Background="{StaticResource MantleBrush}" Padding="16,10"
+        <Border Grid.Row="0" Background="{StaticResource MantleBrush}" Padding="16,8"
                 BorderBrush="{StaticResource Surface1Brush}" BorderThickness="0,0,0,1">
             <Grid>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
@@ -65,26 +66,40 @@
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Grid.Column="0" Text="TikrClipr" FontSize="18" FontWeight="Bold"
-                           Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                           Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"
+                           Margin="0,0,20,0"/>
 
+                <!-- Filter + Sort group -->
                 <ComboBox Grid.Column="1" ItemsSource="{Binding GameNames}"
                           SelectedItem="{Binding FilterGame}" Width="180"
-                          HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                          VerticalAlignment="Center" ToolTip="Filter by game"/>
 
                 <ComboBox Grid.Column="2"
                           ItemsSource="{Binding Source={x:Static helpers:EnumHelper.ClipSortModes}}"
                           SelectedItem="{Binding SortMode}" Width="110"
-                          HorizontalAlignment="Left" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                          VerticalAlignment="Center" Margin="6,0,0,0"
+                          ToolTip="Sort clips"/>
 
+                <!-- Recording status (centered in remaining space) -->
                 <TextBlock Grid.Column="3" Text="{Binding CaptureStatusText}"
-                           VerticalAlignment="Center" Margin="12,0"
-                           Foreground="{StaticResource GreenBrush}" FontWeight="SemiBold" FontSize="14"/>
+                           VerticalAlignment="Center" HorizontalAlignment="Center"
+                           Foreground="{StaticResource GreenBrush}" FontWeight="SemiBold" FontSize="13"/>
 
-                <StackPanel Grid.Column="4" Orientation="Horizontal">
+                <!-- Settings gear -->
+                <Button Grid.Column="4" Content="&#x2699;" FontSize="16"
+                        Click="OnSettingsClick" ToolTip="Settings"
+                        Style="{StaticResource GhostButton}"
+                        VerticalAlignment="Center" Margin="0,0,4,0"/>
+
+                <!-- Action buttons -->
+                <StackPanel Grid.Column="5" Orientation="Horizontal">
                     <Button Content="Storage" Click="OnStorageDashboardClick"
-                            VerticalAlignment="Center" Margin="0,0,6,0"/>
-                    <Button Content="Refresh" Command="{Binding RefreshClipsCommand}"
-                            VerticalAlignment="Center"/>
+                            VerticalAlignment="Center" Margin="0,0,4,0"
+                            ToolTip="Storage dashboard"/>
+                    <Button Content="&#x21BB;" FontSize="15"
+                            Command="{Binding RefreshClipsCommand}"
+                            VerticalAlignment="Center" Padding="8,6"
+                            ToolTip="Refresh clip library"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -156,15 +171,15 @@
                                 </Grid>
 
                                 <!-- Info -->
-                                <StackPanel Grid.Row="1" Margin="8,6,8,8">
+                                <StackPanel Grid.Row="1" Margin="10,8,10,10">
                                     <TextBlock Text="{Binding GameName}" FontWeight="SemiBold" FontSize="12"
                                                Foreground="{StaticResource AccentBrush}"
                                                TextTrimming="CharacterEllipsis"/>
-                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                    <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
                                         <TextBlock Text="{Binding CreatedAtDisplay}" FontSize="11"
                                                    Foreground="{StaticResource SubtextBrush}"/>
                                         <TextBlock Text=" · " FontSize="11"
-                                                   Foreground="{StaticResource SubtextBrush}"/>
+                                                   Foreground="{StaticResource OverlayBrush}"/>
                                         <TextBlock Text="{Binding FileSizeDisplay}" FontSize="11"
                                                    Foreground="{StaticResource SubtextBrush}"/>
                                     </StackPanel>
@@ -176,7 +191,7 @@
             </ListBox>
 
             <!-- Splitter -->
-            <GridSplitter Grid.Column="1" Width="2" Background="{StaticResource Surface1Brush}"
+            <GridSplitter Grid.Column="1" Width="6"
                           VerticalAlignment="Stretch" HorizontalAlignment="Center"/>
 
             <!-- Preview / Editor panel -->

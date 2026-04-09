@@ -41,9 +41,17 @@ public partial class MainWindow : Window
         AudioPanel.PanelTop = Math.Max(0, canvasHeight - AudioPanel.PanelHeight - 8);
     }
 
+    private void OnSettingsClick(object sender, RoutedEventArgs e)
+    {
+        var settings = new Views.SettingsWindow();
+        settings.Owner = this;
+        settings.ShowDialog();
+    }
+
     private void OnStorageDashboardClick(object sender, RoutedEventArgs e)
     {
         var dashboard = new Views.StorageDashboardWindow();
+        dashboard.Owner = this;
         dashboard.ShowDialog();
     }
 }
