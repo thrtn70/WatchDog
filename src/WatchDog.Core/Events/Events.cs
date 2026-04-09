@@ -8,7 +8,9 @@ public sealed record GameDetectedEvent(GameInfo Game);
 
 public sealed record GameExitedEvent(GameInfo Game);
 
-public sealed record ClipSavedEvent(string FilePath, GameInfo? Game, DateTimeOffset Timestamp);
+public sealed record ClipSavedEvent(
+    string FilePath, GameInfo? Game, DateTimeOffset Timestamp,
+    Guid? SessionId = null, int? MatchNumber = null);
 
 public sealed record BufferStateChangedEvent(CaptureState NewState);
 
@@ -25,6 +27,12 @@ public sealed record HighlightDetectedEvent(
     GameInfo Game,
     DateTimeOffset Timestamp,
     string? Description = null);
+
+// Session lifecycle events
+public sealed record SessionStartedEvent(Guid SessionId, GameInfo Game);
+public sealed record SessionEndedEvent(Guid SessionId, GameInfo Game, TimeSpan Duration);
+public sealed record MatchStartedEvent(Guid SessionId, int MatchNumber, GameInfo Game);
+public sealed record MatchEndedEvent(Guid SessionId, int MatchNumber, Sessions.MatchResult Result, string? Score);
 
 public sealed record DiscordUploadStartedEvent(string FilePath, string? GameName);
 

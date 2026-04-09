@@ -13,4 +13,6 @@ public sealed record ClipMetadata
     public string? ThumbnailPath { get; init; }
     public bool IsFavorite { get; init; }
     public HighlightType? HighlightType { get; init; }
+    public Guid? SessionId { get; init; }
+    public int? MatchNumber { get; init; }
 }

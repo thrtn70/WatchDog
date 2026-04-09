@@ -17,6 +17,7 @@ public sealed record AppSettings
     public StorageSettings Storage { get; init; } = new();
     public DiscordSettings Discord { get; init; } = new();
     public List<CustomGameEntry> CustomGames { get; init; } = [];
+    public IReadOnlyList<GameRecordingProfile> GameProfiles { get; init; } = [];
     public bool DesktopCaptureEnabled { get; init; } = true;
     public bool StartWithWindows { get; init; } = false;
     public bool StartMinimized { get; init; } = true;

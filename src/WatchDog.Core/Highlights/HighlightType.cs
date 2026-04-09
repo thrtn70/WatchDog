@@ -14,4 +14,5 @@ public enum HighlightType
     Assist,
     Multikill,
     UltimateUsed,
+    MatchStarted,
 }
