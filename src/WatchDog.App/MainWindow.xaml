@@ -9,7 +9,7 @@
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource BaseBrush}"
         Foreground="{StaticResource TextBrush}"
-        FontFamily="Segoe UI" FontSize="13"
+        FontFamily="{StaticResource UIFont}" FontSize="13"
         Icon="pack://application:,,,/Resources/WatchDog.ico">
 
     <Window.Resources>
@@ -17,14 +17,15 @@
         <converters:NullToVisibilityConverter x:Key="NullToVisConverter"/>
         <helpers:BindingProxy x:Key="Proxy" Data="{Binding}"/>
 
+        <!-- Clip card style for grid view -->
         <Style x:Key="ClipCard" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
-            <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Margin" Value="4"/>
-            <Setter Property="Width" Value="220"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="Margin" Value="3"/>
+            <Setter Property="Width" Value="210"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
             <Setter Property="RenderTransform">
                 <Setter.Value>
@@ -34,12 +35,26 @@
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Effect" Value="{StaticResource CardHoverShadow}"/>
-                    <Setter Property="BorderBrush" Value="{StaticResource Surface2Brush}"/>
+                    <Setter Property="BorderBrush" Value="{StaticResource Surface1Brush}"/>
                     <Setter Property="RenderTransform">
                         <Setter.Value>
-                            <TranslateTransform Y="-2"/>
+                            <TranslateTransform Y="-1"/>
                         </Setter.Value>
                     </Setter>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Clip row style for list view -->
+        <Style x:Key="ClipRow" TargetType="Border">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#08FFFFFF"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -47,76 +62,114 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="38"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="24"/>
         </Grid.RowDefinitions>
 
-        <!-- Toolbar -->
-        <Border Grid.Row="0" Background="{StaticResource MantleBrush}" Padding="16,8"
+        <!-- ═══ Command Bar (38px) ═══════════════════════════════════════ -->
+        <Border Grid.Row="0" Background="{StaticResource MantleBrush}"
                 BorderBrush="{StaticResource Surface1Brush}" BorderThickness="0,0,0,1">
-            <Grid>
+            <Grid Margin="10,0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>       <!-- Brand -->
+                    <ColumnDefinition Width="12"/>         <!-- Spacer -->
+                    <ColumnDefinition Width="Auto"/>       <!-- View toggles -->
+                    <ColumnDefinition Width="8"/>           <!-- Spacer -->
+                    <ColumnDefinition Width="Auto"/>       <!-- Separator -->
+                    <ColumnDefinition Width="8"/>           <!-- Spacer -->
+                    <ColumnDefinition Width="Auto"/>       <!-- Game filter -->
+                    <ColumnDefinition Width="6"/>           <!-- Spacer -->
+                    <ColumnDefinition Width="Auto"/>       <!-- Sort -->
+                    <ColumnDefinition Width="*"/>           <!-- Center: status -->
+                    <ColumnDefinition Width="Auto"/>       <!-- Settings -->
+                    <ColumnDefinition Width="Auto"/>       <!-- Storage -->
+                    <ColumnDefinition Width="Auto"/>       <!-- Refresh -->
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Grid.Column="0" Text="WatchDog" FontSize="18" FontWeight="Bold"
-                           Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"
-                           Margin="0,0,20,0"/>
+                <!-- Brand mark + title -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Image Source="pack://application:,,,/Resources/WatchDog.png"
+                           Width="18" Height="18" Margin="0,0,6,0"
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <TextBlock Text="WatchDog" Style="{StaticResource BrandTitle}"/>
+                </StackPanel>
 
-                <!-- Filter + Sort group -->
-                <ComboBox Grid.Column="1" ItemsSource="{Binding GameNames}"
-                          SelectedItem="{Binding FilterGame}" Width="180"
+                <!-- View mode toggles -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ToggleButton x:Name="GridViewToggle" Content="&#xF0E2;"
+                                  Style="{StaticResource ToggleIconButton}"
+                                  IsChecked="True" ToolTip="Grid view"
+                                  Checked="OnGridViewChecked"/>
+                    <ToggleButton x:Name="ListViewToggle" Content="&#xE8FD;"
+                                  Style="{StaticResource ToggleIconButton}"
+                                  ToolTip="List view"
+                                  Checked="OnListViewChecked"/>
+                </StackPanel>
+
+                <!-- Vertical separator -->
+                <Border Grid.Column="4" Width="1" Height="18" Background="{StaticResource Surface1Brush}"
+                        VerticalAlignment="Center"/>
+
+                <!-- Game filter -->
+                <ComboBox Grid.Column="6" ItemsSource="{Binding GameNames}"
+                          SelectedItem="{Binding FilterGame}" Width="160"
                           VerticalAlignment="Center" ToolTip="Filter by game"/>
 
-                <ComboBox Grid.Column="2"
+                <!-- Sort mode -->
+                <ComboBox Grid.Column="8"
                           ItemsSource="{Binding Source={x:Static helpers:EnumHelper.ClipSortModes}}"
-                          SelectedItem="{Binding SortMode}" Width="110"
-                          VerticalAlignment="Center" Margin="6,0,0,0"
-                          ToolTip="Sort clips"/>
+                          SelectedItem="{Binding SortMode}" Width="100"
+                          VerticalAlignment="Center" ToolTip="Sort clips"/>
 
-                <!-- Recording status (centered in remaining space) -->
-                <TextBlock Grid.Column="3" Text="{Binding CaptureStatusText}"
-                           VerticalAlignment="Center" HorizontalAlignment="Center"
-                           Foreground="{StaticResource GreenBrush}" FontWeight="SemiBold" FontSize="13"/>
+                <!-- Center: capture status -->
+                <StackPanel Grid.Column="9" Orientation="Horizontal"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <!-- Recording dot (visible when recording) -->
+                    <Ellipse x:Name="RecordingDot" Width="7" Height="7" Margin="0,0,6,0"
+                             Fill="{StaticResource RecordingBrush}" Visibility="Collapsed"/>
+                    <TextBlock Text="{Binding CaptureStatusText}"
+                               FontSize="12" FontWeight="Medium"
+                               Foreground="{StaticResource SubtextBrush}"/>
+                </StackPanel>
 
                 <!-- Settings gear -->
-                <Button Grid.Column="4" Content="&#x2699;" FontSize="16"
+                <Button Grid.Column="10" Content="&#xE713;" FontSize="15"
                         Click="OnSettingsClick" ToolTip="Settings"
-                        Style="{StaticResource GhostButton}"
-                        VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        Style="{StaticResource IconButton}"
+                        VerticalAlignment="Center"/>
 
-                <!-- Action buttons -->
-                <StackPanel Grid.Column="5" Orientation="Horizontal">
-                    <Button Content="Storage" Click="OnStorageDashboardClick"
-                            VerticalAlignment="Center" Margin="0,0,4,0"
-                            ToolTip="Storage dashboard"/>
-                    <Button Content="&#x21BB;" FontSize="15"
-                            Command="{Binding RefreshClipsCommand}"
-                            VerticalAlignment="Center" Padding="8,6"
-                            ToolTip="Refresh clip library"/>
-                </StackPanel>
+                <!-- Storage -->
+                <Button Grid.Column="11" Content="&#xE7F1;" FontSize="14"
+                        Click="OnStorageDashboardClick" ToolTip="Storage dashboard"
+                        Style="{StaticResource IconButton}"
+                        VerticalAlignment="Center"/>
+
+                <!-- Refresh -->
+                <Button Grid.Column="12" Content="&#xE72C;" FontSize="13"
+                        Command="{Binding RefreshClipsCommand}" ToolTip="Refresh clips"
+                        Style="{StaticResource IconButton}"
+                        VerticalAlignment="Center"/>
             </Grid>
         </Border>
 
-        <!-- Main content -->
+        <!-- ═══ Content Area ═════════════════════════════════════════════ -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*" MinWidth="300"/>
+                <ColumnDefinition Width="*" MinWidth="400"/>
+                <ColumnDefinition x:Name="SplitterColumn" Width="Auto"/>
+                <ColumnDefinition x:Name="EditorColumn" Width="340" MinWidth="280"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Clip grid -->
-            <ListBox Grid.Column="0" ItemsSource="{Binding Clips}"
+            <!-- ── Clip Library ──────────────────────────────────────────── -->
+
+            <!-- Grid View -->
+            <ListBox x:Name="ClipGridView" Grid.Column="0"
+                     ItemsSource="{Binding Clips}"
                      SelectedItem="{Binding SelectedClip}"
                      Background="{StaticResource BaseBrush}" BorderThickness="0"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     Padding="6">
                 <ListBox.ItemsPanel>
                     <ItemsPanelTemplate>
                         <WrapPanel/>
@@ -141,46 +194,47 @@
                                               Command="{Binding Data.ShareToDiscordCommand, Source={StaticResource Proxy}}"
                                               CommandParameter="{Binding}"/>
                                     <Separator/>
-                                    <MenuItem Header="Delete" Foreground="{StaticResource RedBrush}"
+                                    <MenuItem Header="Delete" Foreground="{StaticResource DangerBrush}"
                                               Command="{Binding Data.DeleteClipCommand, Source={StaticResource Proxy}}"
                                               CommandParameter="{Binding}"/>
                                 </ContextMenu>
                             </Border.ContextMenu>
                             <Grid>
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="124"/>
+                                    <RowDefinition Height="118"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
                                 <!-- Thumbnail -->
                                 <Grid Grid.Row="0" ClipToBounds="True">
-                                    <Border Background="{StaticResource Surface1Brush}" CornerRadius="8,8,0,0">
+                                    <Border Background="{StaticResource Surface1Brush}" CornerRadius="5,5,0,0">
                                         <Image Source="{Binding Thumbnail}" Stretch="UniformToFill"
                                                RenderOptions.BitmapScalingMode="HighQuality"/>
                                     </Border>
                                     <!-- Duration badge -->
-                                    <Border Background="#CC000000" CornerRadius="4" Padding="4,2"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="6">
-                                        <TextBlock Text="{Binding DurationDisplay}" FontSize="11"
-                                                   Foreground="White"/>
+                                    <Border Background="#CC0A1114" CornerRadius="3" Padding="4,1"
+                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="5">
+                                        <TextBlock Text="{Binding DurationDisplay}" FontSize="10"
+                                                   FontWeight="Medium" Foreground="{StaticResource TextBrush}"/>
                                     </Border>
                                     <!-- Favorite star -->
-                                    <TextBlock Text="★" FontSize="16" Foreground="{StaticResource YellowBrush}"
-                                               HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6,4"
+                                    <TextBlock Text="&#xE735;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                               Foreground="{StaticResource WarningBrush}"
+                                               HorizontalAlignment="Left" VerticalAlignment="Top" Margin="5,3"
                                                Visibility="{Binding IsFavorite, Converter={StaticResource BoolToVis}}"/>
                                 </Grid>
 
                                 <!-- Info -->
-                                <StackPanel Grid.Row="1" Margin="10,8,10,10">
-                                    <TextBlock Text="{Binding GameName}" FontWeight="SemiBold" FontSize="12"
+                                <StackPanel Grid.Row="1" Margin="8,6,8,8">
+                                    <TextBlock Text="{Binding GameName}" FontWeight="SemiBold" FontSize="11"
                                                Foreground="{StaticResource AccentBrush}"
                                                TextTrimming="CharacterEllipsis"/>
-                                    <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-                                        <TextBlock Text="{Binding CreatedAtDisplay}" FontSize="11"
+                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                        <TextBlock Text="{Binding CreatedAtDisplay}" FontSize="10.5"
                                                    Foreground="{StaticResource SubtextBrush}"/>
-                                        <TextBlock Text=" · " FontSize="11"
+                                        <TextBlock Text=" · " FontSize="10.5"
                                                    Foreground="{StaticResource OverlayBrush}"/>
-                                        <TextBlock Text="{Binding FileSizeDisplay}" FontSize="11"
+                                        <TextBlock Text="{Binding FileSizeDisplay}" FontSize="10.5"
                                                    Foreground="{StaticResource SubtextBrush}"/>
                                     </StackPanel>
                                 </StackPanel>
@@ -190,11 +244,114 @@
                 </ListBox.ItemTemplate>
             </ListBox>
 
+            <!-- List View (hidden by default) -->
+            <ListBox x:Name="ClipListView" Grid.Column="0"
+                     ItemsSource="{Binding Clips}"
+                     SelectedItem="{Binding SelectedClip}"
+                     Background="{StaticResource BaseBrush}" BorderThickness="0"
+                     Visibility="Collapsed"
+                     Padding="4">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource ClipRow}">
+                            <Border.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Play"
+                                              Command="{Binding Data.PlayClipCommand, Source={StaticResource Proxy}}"
+                                              CommandParameter="{Binding}"/>
+                                    <MenuItem Header="Favorite"
+                                              Command="{Binding Data.ToggleFavoriteCommand, Source={StaticResource Proxy}}"
+                                              CommandParameter="{Binding}"/>
+                                    <Separator/>
+                                    <MenuItem Header="Open in Explorer"
+                                              Command="{Binding Data.OpenInExplorerCommand, Source={StaticResource Proxy}}"
+                                              CommandParameter="{Binding}"/>
+                                    <MenuItem Header="Share to Discord"
+                                              Command="{Binding Data.ShareToDiscordCommand, Source={StaticResource Proxy}}"
+                                              CommandParameter="{Binding}"/>
+                                    <Separator/>
+                                    <MenuItem Header="Delete" Foreground="{StaticResource DangerBrush}"
+                                              Command="{Binding Data.DeleteClipCommand, Source={StaticResource Proxy}}"
+                                              CommandParameter="{Binding}"/>
+                                </ContextMenu>
+                            </Border.ContextMenu>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="64"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="70"/>
+                                    <ColumnDefinition Width="60"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Small thumbnail -->
+                                <Border Grid.Column="0" CornerRadius="3" ClipToBounds="True"
+                                        Background="{StaticResource Surface1Brush}"
+                                        Width="60" Height="34" Margin="0,0,8,0">
+                                    <Image Source="{Binding Thumbnail}" Stretch="UniformToFill"
+                                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                                </Border>
+
+                                <!-- Name + game -->
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding FileName}" FontSize="12" FontWeight="Medium"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding GameName}" FontSize="10.5"
+                                               Foreground="{StaticResource AccentBrush}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+
+                                <!-- Date -->
+                                <TextBlock Grid.Column="2" Text="{Binding CreatedAtDisplay}"
+                                           FontSize="11" Foreground="{StaticResource SubtextBrush}"
+                                           VerticalAlignment="Center" Margin="12,0"/>
+
+                                <!-- Duration -->
+                                <TextBlock Grid.Column="3" Text="{Binding DurationDisplay}"
+                                           FontSize="11" Foreground="{StaticResource SubtextBrush}"
+                                           VerticalAlignment="Center" HorizontalAlignment="Right"/>
+
+                                <!-- Size -->
+                                <TextBlock Grid.Column="4" Text="{Binding FileSizeDisplay}"
+                                           FontSize="11" Foreground="{StaticResource OverlayBrush}"
+                                           VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- Empty state (shown when no clips) -->
+            <StackPanel Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        IsHitTestVisible="False">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Clips.Count}" Value="0">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+                <!-- Dog skull icon using the app logo -->
+                <Image Source="pack://application:,,,/Resources/WatchDog.png"
+                       Width="48" Height="48" Opacity="0.2" Margin="0,0,0,16"
+                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                <TextBlock Text="No clips yet" FontSize="16" FontWeight="SemiBold"
+                           FontFamily="{StaticResource DisplayFont}"
+                           Foreground="{StaticResource SubtextBrush}"
+                           HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                <TextBlock Text="Start a game and press F9 to save highlights"
+                           FontSize="12" Foreground="{StaticResource OverlayBrush}"
+                           HorizontalAlignment="Center"/>
+            </StackPanel>
+
             <!-- Splitter -->
-            <GridSplitter Grid.Column="1" Width="6"
+            <GridSplitter Grid.Column="1" Width="5"
                           VerticalAlignment="Stretch" HorizontalAlignment="Center"/>
 
-            <!-- Preview / Editor panel -->
+            <!-- ── Editor Panel ──────────────────────────────────────────── -->
             <Border Grid.Column="2" Background="{StaticResource MantleBrush}"
                     DataContext="{Binding ClipEditor}">
                 <Grid>
@@ -205,13 +362,13 @@
                     </Grid.RowDefinitions>
 
                     <!-- Video player -->
-                    <controls:VideoPlayerControl Grid.Row="0" Margin="8"
+                    <controls:VideoPlayerControl Grid.Row="0" Margin="6"
                         Source="{Binding Source}"
                         IsPlaying="{Binding IsPlaying, Mode=TwoWay}"
                         Position="{Binding Position, Mode=TwoWay}"/>
 
-                    <!-- Empty state (shown when no clip is selected) -->
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                    <!-- Empty editor state (overlays video player in Row 0 — player renders nothing when DataContext is null) -->
+                    <StackPanel Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center"
                                 IsHitTestVisible="False">
                         <StackPanel.Style>
                             <Style TargetType="StackPanel">
@@ -223,20 +380,21 @@
                                 </Style.Triggers>
                             </Style>
                         </StackPanel.Style>
-                        <!-- Segoe MDL2 Assets video glyph -->
-                        <TextBlock Text="&#xE714;" FontFamily="Segoe MDL2 Assets" FontSize="36"
+                        <TextBlock Text="&#xE714;" FontFamily="Segoe MDL2 Assets" FontSize="28"
                                    Foreground="{StaticResource Surface2Brush}"
-                                   HorizontalAlignment="Center" Margin="0,0,0,12"/>
-                        <TextBlock Text="No clip selected" FontSize="15" FontWeight="SemiBold"
+                                   HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                        <TextBlock Text="Select a clip to preview"
+                                   FontFamily="{StaticResource DisplayFont}"
+                                   FontSize="14" FontWeight="SemiBold"
                                    Foreground="{StaticResource SubtextBrush}"
-                                   HorizontalAlignment="Center" Margin="0,0,0,6"/>
-                        <TextBlock Text="Choose a clip from the grid to preview and edit"
-                                   FontSize="12" Foreground="{StaticResource OverlayBrush}"
-                                   HorizontalAlignment="Center" TextAlignment="Center"/>
+                                   HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                        <TextBlock Text="Click any clip from the library"
+                                   FontSize="11" Foreground="{StaticResource OverlayBrush}"
+                                   HorizontalAlignment="Center"/>
                     </StackPanel>
 
                     <!-- Timeline -->
-                    <controls:VideoTimeline Grid.Row="1" Margin="8,0"
+                    <controls:VideoTimeline Grid.Row="1" Margin="6,0"
                         Duration="{Binding Duration}"
                         Position="{Binding Position, Mode=TwoWay}"
                         TrimStart="{Binding TrimStart, Mode=TwoWay}"
@@ -245,50 +403,53 @@
                         Visibility="{Binding Source, Converter={StaticResource NullToVisConverter}}"/>
 
                     <!-- Details + controls -->
-                    <Border Grid.Row="2" Padding="12"
+                    <Border Grid.Row="2" Padding="10,8"
                             Visibility="{Binding DataContext.SelectedClip, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource NullToVisConverter}}">
                         <StackPanel>
                             <TextBlock Text="{Binding DataContext.SelectedClip.FileName, RelativeSource={RelativeSource AncestorType=Window}}"
-                                       FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                       FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
                                 <TextBlock Text="{Binding DataContext.SelectedClip.GameName, RelativeSource={RelativeSource AncestorType=Window}}"
-                                           FontSize="12" Foreground="{StaticResource AccentBrush}"/>
-                                <TextBlock Text=" · " Foreground="{StaticResource SubtextBrush}"/>
+                                           FontSize="11" Foreground="{StaticResource AccentBrush}"/>
+                                <TextBlock Text=" · " Foreground="{StaticResource OverlayBrush}" FontSize="11"/>
                                 <TextBlock Text="{Binding DataContext.SelectedClip.DurationDisplay, RelativeSource={RelativeSource AncestorType=Window}}"
-                                           FontSize="12" Foreground="{StaticResource SubtextBrush}"/>
-                                <TextBlock Text=" · " Foreground="{StaticResource SubtextBrush}"/>
+                                           FontSize="11" Foreground="{StaticResource SubtextBrush}"/>
+                                <TextBlock Text=" · " Foreground="{StaticResource OverlayBrush}" FontSize="11"/>
                                 <TextBlock Text="{Binding DataContext.SelectedClip.FileSizeDisplay, RelativeSource={RelativeSource AncestorType=Window}}"
-                                           FontSize="12" Foreground="{StaticResource SubtextBrush}"/>
+                                           FontSize="11" Foreground="{StaticResource SubtextBrush}"/>
                             </StackPanel>
 
                             <!-- Action buttons -->
                             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                                 <Button Content="Trim" Margin="0,0,4,0"
-                                        Command="{Binding StartTrimCommand}"/>
-                                <Button Content="Open Folder" Margin="0,0,4,0"
+                                        Command="{Binding StartTrimCommand}" Padding="10,5"/>
+                                <Button Content="Open Folder" Margin="0,0,4,0" Padding="10,5"
                                         Command="{Binding DataContext.OpenInExplorerCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         CommandParameter="{Binding DataContext.SelectedClip, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                                <Button Content="Share" Margin="0,0,4,0"
+                                <Button Content="Share" Padding="10,5"
                                         Command="{Binding DataContext.ShareToDiscordCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         CommandParameter="{Binding DataContext.SelectedClip, RelativeSource={RelativeSource AncestorType=Window}}"/>
                             </StackPanel>
 
                             <!-- Trim panel -->
                             <Border Margin="0,8,0,0" Padding="8" Background="{StaticResource SurfaceBrush}"
-                                    CornerRadius="6"
+                                    CornerRadius="4"
                                     Visibility="{Binding IsTrimming, Converter={StaticResource BoolToVis}}">
                                 <StackPanel>
-                                    <TextBlock Text="Trim Clip" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6"/>
-                                    <TextBlock FontSize="12" Foreground="{StaticResource SubtextBrush}">
-                                        <Run Text="Drag the handles on the timeline above, or trim will use current positions."/>
-                                    </TextBlock>
-                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                        <Button Content="Export Trim" Command="{Binding ExecuteTrimCommand}"
-                                                Style="{StaticResource ActionButton}" Margin="0,0,4,0"/>
-                                        <Button Content="Cancel" Command="{Binding CancelTrimCommand}"/>
+                                    <TextBlock Text="TRIM" FontSize="10" FontWeight="SemiBold"
+                                               Foreground="{StaticResource SubtextBrush}"
+                                               Margin="0,0,0,4"/>
+                                    <TextBlock FontSize="11" Foreground="{StaticResource OverlayBrush}"
+                                               Text="Drag handles on the timeline, then export."/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                        <Button Content="Export" Command="{Binding ExecuteTrimCommand}"
+                                                Style="{StaticResource ActionButton}" Padding="12,5"
+                                                Margin="0,0,4,0"/>
+                                        <Button Content="Cancel" Command="{Binding CancelTrimCommand}"
+                                                Padding="10,5"/>
                                     </StackPanel>
                                     <TextBlock Text="{Binding TrimStatus}" Margin="0,4,0,0"
-                                               Foreground="{StaticResource GreenBrush}" FontSize="11"/>
+                                               Foreground="{StaticResource AccentBrush}" FontSize="11"/>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
@@ -317,14 +478,16 @@
             </controls:FloatingPanel>
         </Canvas>
 
-        <!-- Status bar -->
-        <Border Grid.Row="2" Background="{StaticResource CrustBrush}" Padding="12,6"
+        <!-- ═══ Status Strip (24px) ══════════════════════════════════════ -->
+        <Border Grid.Row="2" Background="{StaticResource CrustBrush}"
                 BorderBrush="{StaticResource Surface1Brush}" BorderThickness="0,1,0,0">
-            <Grid>
-                <TextBlock Text="{Binding StatusText}" FontSize="11"
-                           Foreground="{StaticResource SubtextBrush}" HorizontalAlignment="Left"/>
-                <TextBlock Text="{Binding CaptureStatusText}" FontSize="11"
-                           Foreground="{StaticResource GreenBrush}" HorizontalAlignment="Right"/>
+            <Grid Margin="10,0">
+                <TextBlock Text="{Binding StatusText}" FontSize="10.5"
+                           Foreground="{StaticResource SubtextBrush}"
+                           HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding CaptureStatusText}" FontSize="10.5"
+                           Foreground="{StaticResource AccentBrush}"
+                           HorizontalAlignment="Right" VerticalAlignment="Center"/>
             </Grid>
         </Border>
     </Grid>

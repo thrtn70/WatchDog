@@ -30,6 +30,17 @@
     <Resource Include="Resources\Icons\tray-recording.ico" />
   </ItemGroup>
 
+  <!-- Bundled fonts (Archivo + Barlow) -->
+  <ItemGroup>
+    <Resource Include="Resources\Fonts\Archivo-SemiBold.ttf" />
+    <Resource Include="Resources\Fonts\Archivo-Bold.ttf" />
+    <Resource Include="Resources\Fonts\Archivo-Black.ttf" />
+    <Resource Include="Resources\Fonts\Barlow-Regular.ttf" />
+    <Resource Include="Resources\Fonts\Barlow-Medium.ttf" />
+    <Resource Include="Resources\Fonts\Barlow-SemiBold.ttf" />
+    <Resource Include="Resources\Fonts\Barlow-Bold.ttf" />
+  </ItemGroup>
+
   <!-- Copy OBS runtime binaries to output directory -->
   <ItemGroup>
     <Content Include="$(MSBuildThisFileDirectory)..\..\obs-runtime\**\*"

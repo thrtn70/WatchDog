@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls.Primitives;
 using Microsoft.Extensions.DependencyInjection;
 using WatchDog.App.ViewModels;
 
@@ -31,12 +32,10 @@ public partial class MainWindow : Window
         var canvasWidth = FloatingPanelCanvas.ActualWidth;
         var canvasHeight = FloatingPanelCanvas.ActualHeight;
 
-        if (canvasWidth == 0 || canvasHeight == 0) return; // window not yet laid out
+        if (canvasWidth == 0 || canvasHeight == 0) return;
 
-        // Performance: top-right (PanelTop set in XAML to 8)
         PerformancePanel.PanelLeft = Math.Max(0, canvasWidth - PerformancePanel.PanelWidth - 8);
 
-        // Audio: bottom-right
         AudioPanel.PanelLeft = Math.Max(0, canvasWidth - AudioPanel.PanelWidth - 8);
         AudioPanel.PanelTop = Math.Max(0, canvasHeight - AudioPanel.PanelHeight - 8);
     }
@@ -53,5 +52,22 @@ public partial class MainWindow : Window
         var dashboard = new Views.StorageDashboardWindow();
         dashboard.Owner = this;
         dashboard.ShowDialog();
+    }
+
+    // ── View Switching ─────────────────────────────────────────────────
+    private void OnGridViewChecked(object sender, RoutedEventArgs e)
+    {
+        if (ListViewToggle is null || ClipGridView is null || ClipListView is null) return;
+        ListViewToggle.IsChecked = false;
+        ClipGridView.Visibility = Visibility.Visible;
+        ClipListView.Visibility = Visibility.Collapsed;
+    }
+
+    private void OnListViewChecked(object sender, RoutedEventArgs e)
+    {
+        if (GridViewToggle is null) return;
+        GridViewToggle.IsChecked = false;
+        ClipGridView.Visibility = Visibility.Collapsed;
+        ClipListView.Visibility = Visibility.Visible;
     }
 }

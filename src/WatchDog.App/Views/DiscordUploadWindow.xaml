@@ -4,9 +4,10 @@
         xmlns:converters="clr-namespace:WatchDog.App.Converters"
         Title="Share to Discord" Height="240" Width="420"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        Icon="pack://application:,,,/Resources/WatchDog.ico"
         Background="{StaticResource BaseBrush}"
         Foreground="{StaticResource TextBrush}"
-        FontFamily="Segoe UI" FontSize="13">
+        FontFamily="{StaticResource UIFont}" FontSize="13">
 
     <Window.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVis"/>

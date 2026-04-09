@@ -7,7 +7,7 @@
         ResizeMode="CanResizeWithGrip"
         Background="{StaticResource BaseBrush}"
         Foreground="{StaticResource TextBrush}"
-        FontFamily="Segoe UI" FontSize="13"
+        FontFamily="{StaticResource UIFont}" FontSize="13"
         Icon="pack://application:,,,/Resources/WatchDog.ico">
 
     <Window.Resources>
