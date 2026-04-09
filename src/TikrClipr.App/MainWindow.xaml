@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:converters="clr-namespace:TikrClipr.App.Converters"
         xmlns:controls="clr-namespace:TikrClipr.App.Controls"
+        xmlns:helpers="clr-namespace:TikrClipr.App.Helpers"
         Title="TikrClipr" Height="700" Width="1100"
         MinHeight="500" MinWidth="800"
         WindowStartupLocation="CenterScreen"
@@ -14,6 +15,7 @@
     <Window.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVis"/>
         <converters:NullToVisibilityConverter x:Key="NullToVisConverter"/>
+        <helpers:BindingProxy x:Key="Proxy" Data="{Binding}"/>
 
         <Style x:Key="ClipCard" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
@@ -110,21 +112,21 @@
                             <Border.ContextMenu>
                                 <ContextMenu>
                                     <MenuItem Header="Play"
-                                              Command="{Binding DataContext.PlayClipCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                              Command="{Binding Data.PlayClipCommand, Source={StaticResource Proxy}}"
                                               CommandParameter="{Binding}"/>
                                     <MenuItem Header="Favorite"
-                                              Command="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                              Command="{Binding Data.ToggleFavoriteCommand, Source={StaticResource Proxy}}"
                                               CommandParameter="{Binding}"/>
                                     <Separator/>
                                     <MenuItem Header="Open in Explorer"
-                                              Command="{Binding DataContext.OpenInExplorerCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                              Command="{Binding Data.OpenInExplorerCommand, Source={StaticResource Proxy}}"
                                               CommandParameter="{Binding}"/>
                                     <MenuItem Header="Share to Discord"
-                                              Command="{Binding DataContext.ShareToDiscordCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                              Command="{Binding Data.ShareToDiscordCommand, Source={StaticResource Proxy}}"
                                               CommandParameter="{Binding}"/>
                                     <Separator/>
                                     <MenuItem Header="Delete" Foreground="{StaticResource RedBrush}"
-                                              Command="{Binding DataContext.DeleteClipCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                              Command="{Binding Data.DeleteClipCommand, Source={StaticResource Proxy}}"
                                               CommandParameter="{Binding}"/>
                                 </ContextMenu>
                             </Border.ContextMenu>
