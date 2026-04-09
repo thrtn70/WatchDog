@@ -231,11 +231,11 @@
                                                Foreground="{StaticResource AccentBrush}"
                                                TextTrimming="CharacterEllipsis"/>
                                     <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                        <TextBlock Text="{Binding CreatedAtDisplay}" FontSize="10.5"
+                                        <TextBlock Text="{Binding CreatedAtDisplay}" FontSize="11"
                                                    Foreground="{StaticResource SubtextBrush}"/>
-                                        <TextBlock Text=" · " FontSize="10.5"
+                                        <TextBlock Text=" · " FontSize="11"
                                                    Foreground="{StaticResource OverlayBrush}"/>
-                                        <TextBlock Text="{Binding FileSizeDisplay}" FontSize="10.5"
+                                        <TextBlock Text="{Binding FileSizeDisplay}" FontSize="11"
                                                    Foreground="{StaticResource SubtextBrush}"/>
                                     </StackPanel>
                                 </StackPanel>
@@ -297,7 +297,7 @@
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding FileName}" FontSize="12" FontWeight="Medium"
                                                TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Text="{Binding GameName}" FontSize="10.5"
+                                    <TextBlock Text="{Binding GameName}" FontSize="11"
                                                Foreground="{StaticResource AccentBrush}"
                                                TextTrimming="CharacterEllipsis"/>
                                 </StackPanel>
@@ -423,11 +423,12 @@
                             <!-- Action buttons -->
                             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                                 <Button Content="Trim" Margin="0,0,4,0"
-                                        Command="{Binding StartTrimCommand}" Padding="10,5"/>
-                                <Button Content="Open Folder" Margin="0,0,4,0" Padding="10,5"
+                                        Command="{Binding StartTrimCommand}" Padding="12,4"/>
+                                <Button Content="Open Folder" Margin="0,0,4,0" Padding="12,4"
                                         Command="{Binding DataContext.OpenInExplorerCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         CommandParameter="{Binding DataContext.SelectedClip, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                                <Button Content="Share" Padding="10,5"
+                                <Button Content="Share" Padding="12,4"
+                                        Style="{StaticResource ActionButton}"
                                         Command="{Binding DataContext.ShareToDiscordCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         CommandParameter="{Binding DataContext.SelectedClip, RelativeSource={RelativeSource AncestorType=Window}}"/>
                             </StackPanel>
@@ -483,12 +484,9 @@
         <Border Grid.Row="2" Background="{StaticResource CrustBrush}"
                 BorderBrush="{StaticResource Surface1Brush}" BorderThickness="0,1,0,0">
             <Grid Margin="10,0">
-                <TextBlock Text="{Binding StatusText}" FontSize="10.5"
+                <TextBlock Text="{Binding StatusText}" FontSize="11"
                            Foreground="{StaticResource SubtextBrush}"
                            HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding CaptureStatusText}" FontSize="10.5"
-                           Foreground="{StaticResource SubtextBrush}"
-                           HorizontalAlignment="Right" VerticalAlignment="Center"/>
             </Grid>
         </Border>
     </Grid>

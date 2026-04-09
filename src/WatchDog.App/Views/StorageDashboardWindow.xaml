@@ -36,15 +36,15 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="Total Clips" Style="{StaticResource Caption}"/>
-                        <TextBlock Text="{Binding TotalClips}" FontSize="20" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding TotalClips}" Style="{StaticResource StatNumber}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1">
                         <TextBlock Text="Used" Style="{StaticResource Caption}"/>
-                        <TextBlock Text="{Binding UsedDisplay}" FontSize="20" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding UsedDisplay}" Style="{StaticResource StatNumber}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2">
                         <TextBlock Text="Remaining" Style="{StaticResource Caption}"/>
-                        <TextBlock Text="{Binding RemainingDisplay}" FontSize="20" FontWeight="Bold"
+                        <TextBlock Text="{Binding RemainingDisplay}" Style="{StaticResource StatNumber}"
                                    Foreground="{StaticResource GreenBrush}"/>
                     </StackPanel>
                 </Grid>
