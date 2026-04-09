@@ -1,17 +1,5 @@
 # WatchDog
 
-## Mandatory Pre-Push Audit
-
-**NEVER push code without completing BOTH audits. No exceptions.**
-
-Before every `git push`, you MUST run:
-1. **code-reviewer agent** — review all changed files for bugs, logic errors, security issues, and quality
-2. **Codex CLI** — `codex exec review --uncommitted --full-auto` as a second independent auditor
-
-If either audit finds P0/CRITICAL issues, fix them before pushing. This applies to ALL code changes including frontend/XAML, backend, tests, and config files.
-
-If Codex CLI is unavailable, explicitly tell the user and do NOT push until the second audit is resolved.
-
 ## Design Context
 
 ### Users
