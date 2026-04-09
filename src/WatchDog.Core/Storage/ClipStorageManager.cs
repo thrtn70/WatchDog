@@ -44,10 +44,21 @@ public sealed class ClipStorageManager : IClipStorage
                 .OrderByDescending(c => c.CreatedAt)];
     }
 
-    public Task<ClipMetadata> IndexClipAsync(string filePath, string? gameName, CancellationToken ct = default)
-        => IndexClipAsync(filePath, gameName, highlightType: null, ct);
+    public IReadOnlyList<ClipMetadata> GetClipsBySession(Guid sessionId)
+    {
+        lock (_lock)
+            return [.. _clips
+                .Where(c => c.SessionId == sessionId)
+                .OrderByDescending(c => c.CreatedAt)];
+    }
 
-    public async Task<ClipMetadata> IndexClipAsync(string filePath, string? gameName, Highlights.HighlightType? highlightType, CancellationToken ct = default)
+    public Task<ClipMetadata> IndexClipAsync(string filePath, string? gameName, CancellationToken ct = default)
+        => IndexClipAsync(filePath, gameName, highlightType: null, sessionId: null, matchNumber: null, ct);
+
+    public Task<ClipMetadata> IndexClipAsync(string filePath, string? gameName, Highlights.HighlightType? highlightType, CancellationToken ct = default)
+        => IndexClipAsync(filePath, gameName, highlightType, sessionId: null, matchNumber: null, ct);
+
+    public async Task<ClipMetadata> IndexClipAsync(string filePath, string? gameName, Highlights.HighlightType? highlightType, Guid? sessionId, int? matchNumber, CancellationToken ct = default)
     {
         // Deduplicate: if this file is already indexed, return existing metadata
         lock (_lock)
@@ -86,6 +97,8 @@ public sealed class ClipStorageManager : IClipStorage
             FileSizeBytes = fileInfo.Length,
             ThumbnailPath = thumbPath,
             HighlightType = highlightType,
+            SessionId = sessionId,
+            MatchNumber = matchNumber,
         };
 
         lock (_lock)
@@ -199,24 +212,32 @@ public sealed class ClipStorageManager : IClipStorage
             _logger.LogInformation("Cleanup: deleted {Count} clips older than {Days} days", toDelete.Count, _config.AutoDeleteDays);
 
         // Check total size and delete oldest non-favorite clips if over limit
+        List<ClipMetadata> overBudget;
         lock (_lock)
         {
             var totalSize = _clips.Sum(c => c.FileSizeBytes);
-            if (totalSize > maxBytes)
+            if (totalSize <= maxBytes)
             {
-                var deletable = _clips
+                overBudget = [];
+            }
+            else
+            {
+                var running = totalSize;
+                overBudget = _clips
                     .Where(c => !c.IsFavorite && now - c.CreatedAt > minAge)
                     .OrderBy(c => c.CreatedAt)
+                    .TakeWhile(c =>
+                    {
+                        if (running <= maxBytes) return false;
+                        running -= c.FileSizeBytes;
+                        return true;
+                    })
                     .ToList();
-
-                foreach (var clip in deletable)
-                {
-                    if (totalSize <= maxBytes) break;
-                    totalSize -= clip.FileSizeBytes;
-                    DeleteClip(clip.FilePath);
-                }
             }
         }
+
+        foreach (var clip in overBudget)
+            DeleteClip(clip.FilePath);
 
         await Task.CompletedTask;
     }
@@ -252,6 +273,10 @@ public sealed class ClipStorageManager : IClipStorage
 
     private void SaveIndex()
     {
+        var dir = Path.GetDirectoryName(IndexPath)!;
+        Directory.CreateDirectory(dir);
+        var tmp = Path.Combine(dir, $"clips-index.{Guid.NewGuid():N}.tmp");
+
         try
         {
             List<ClipMetadata> snapshot;
@@ -259,12 +284,13 @@ public sealed class ClipStorageManager : IClipStorage
                 snapshot = [.. _clips];
 
             var json = JsonSerializer.Serialize(snapshot, JsonOptions);
-            Directory.CreateDirectory(Path.GetDirectoryName(IndexPath)!);
-            File.WriteAllText(IndexPath, json);
+            File.WriteAllText(tmp, json);
+            File.Move(tmp, IndexPath, overwrite: true);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save clip index");
+            try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* best-effort */ }
         }
     }
 }

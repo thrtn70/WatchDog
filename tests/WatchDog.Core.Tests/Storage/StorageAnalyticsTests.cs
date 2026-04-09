@@ -68,9 +68,13 @@ public sealed class StorageAnalyticsTests
         public IReadOnlyList<ClipMetadata> GetAllClips() => clips;
         public IReadOnlyList<ClipMetadata> GetClipsByGame(string gameName) =>
             clips.Where(c => c.GameName == gameName).ToList();
+        public IReadOnlyList<ClipMetadata> GetClipsBySession(Guid sessionId) =>
+            clips.Where(c => c.SessionId == sessionId).ToList();
         public Task<ClipMetadata> IndexClipAsync(string fp, string? gn, CancellationToken ct) =>
             throw new NotImplementedException();
         public Task<ClipMetadata> IndexClipAsync(string fp, string? gn, HighlightType? ht, CancellationToken ct) =>
+            throw new NotImplementedException();
+        public Task<ClipMetadata> IndexClipAsync(string fp, string? gn, HighlightType? ht, Guid? sessionId, int? matchNumber, CancellationToken ct) =>
             throw new NotImplementedException();
         public Task<int> ScanAndIndexAsync(CancellationToken ct) => Task.FromResult(0);
         public void DeleteClip(string fp) { }
