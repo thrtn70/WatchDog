@@ -37,7 +37,8 @@ Think of it as **Outplayed / Medal without the bloat** — no Overwolf, no Elect
 | **Highlight Detection** | Auto-clip kills, deaths, aces, round wins for **CS2**, **Valorant**, **Overwatch 2**, and **Rainbow Six Siege X**. |
 | **Discord Sharing** | Upload clips via webhook with rich embeds — no bot required. |
 | **Clip Editor** | Trim clips with a visual timeline, thumbnail strip, and lossless FFmpeg export. |
-| **Clip Library** | Grid view with thumbnails, favorites, game filter, and sort (newest/oldest/largest/longest/name). |
+| **Session Engine** | Clips organized by gaming session (like Outplayed). Drill into sessions to see clips, matches, and stats. Desktop capture clips grouped by day. |
+| **Clip Library** | Session-grouped library with grid/list views, favorites, game filter, sort, and hover-to-scrub thumbnails. |
 | **Game Detection** | Auto-detects 100+ games by process name. Auto-starts/stops capture. |
 | **GPU Encoding** | NVENC H.264/HEVC/AV1, AMD AMF H.264/HEVC, and x264 CPU fallback. |
 | **Audio Mixing** | Live volume sliders, mute toggles, device selection, and separate audio tracks. |
@@ -184,7 +185,7 @@ WatchDog/
 | MVVM | [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) |
 | System Tray | [H.NotifyIcon.Wpf](https://github.com/HavenDV/H.NotifyIcon) |
 | Testing | xUnit |
-| Theme | [Catppuccin Mocha](https://catppuccin.com/) |
+| Theme | Custom WatchDog dark theme (Archivo + Barlow typography, teal-tinted palette) |
 
 ---
 
@@ -194,7 +195,7 @@ WatchDog/
 dotnet test
 ```
 
-Tests cover highlight detection (CS2, Valorant, OW2, R6), event parsing, settings serialization, and storage analytics.
+Tests cover highlight detection (CS2, Valorant, OW2, R6), event parsing, settings serialization, storage analytics, session repository CRUD, session lifecycle, and match tracking.
 
 ---
 
@@ -244,6 +245,16 @@ WatchDog recognizes 100+ games by process name. If yours isn't detected, use **d
 <summary><strong>"Share to Discord" does nothing</strong></summary>
 
 Configure a webhook URL in **Settings > Discord** first. The dialog requires the URL to be set before sharing.
+</details>
+
+<details>
+<summary><strong>Sessions not appearing in the library</strong></summary>
+
+Sessions are created automatically when a game is detected. If the library shows "No clips yet":
+1. Make sure at least one game has been launched and detected by WatchDog
+2. Check that the replay buffer or session recording mode is enabled in Settings > Capture
+3. Desktop capture sessions are grouped by calendar day under "Desktop"
+4. Legacy clips saved before v1.2.0 appear in an "Unsorted" section at the bottom
 </details>
 
 <details>
