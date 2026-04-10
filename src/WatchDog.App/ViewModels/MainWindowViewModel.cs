@@ -22,6 +22,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly IClipEditor _clipEditorService;
     private readonly ICaptureEngine _captureEngine;
     private readonly ISessionRepository _sessionRepository;
+    private readonly SessionManager _sessionManager;
     private readonly IDisposable _clipSavedSub;
 
     // Session-grouped view
@@ -62,6 +63,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         ICaptureEngine captureEngine,
         IEventBus eventBus,
         ISessionRepository sessionRepository,
+        SessionManager sessionManager,
         AudioMixerViewModel? audioMixer = null,
         PerformanceViewModel? performance = null)
     {
@@ -71,6 +73,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _clipEditorService = clipEditor;
         _captureEngine = captureEngine;
         _sessionRepository = sessionRepository;
+        _sessionManager = sessionManager;
 
         _clipSavedSub = eventBus.Subscribe<ClipSavedEvent>(e =>
         {
@@ -78,8 +81,11 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             {
                 try
                 {
+                    // Use session context from the event if available, otherwise look up current session
+                    var sessionId = e.SessionId ?? _sessionManager.CurrentSessionId;
+                    var matchNumber = e.MatchNumber;
                     await _clipStorage.IndexClipAsync(e.FilePath, e.Game?.DisplayName,
-                        highlightType: null, e.SessionId, e.MatchNumber);
+                        highlightType: null, sessionId, matchNumber);
                 }
                 catch { /* already indexed or missing file */ }
 

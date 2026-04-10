@@ -102,7 +102,16 @@ public sealed class ClipStorageManager : IClipStorage
         };
 
         lock (_lock)
+        {
+            // Second dedup check under lock — guards against concurrent IndexClipAsync calls
+            // that both passed the first check before either added the clip
+            var duplicate = _clips.FirstOrDefault(c =>
+                string.Equals(c.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+            if (duplicate is not null)
+                return duplicate;
+
             _clips.Add(metadata);
+        }
 
         SaveIndex();
         var highlightTag = highlightType is not null ? $" [{highlightType}]" : "";

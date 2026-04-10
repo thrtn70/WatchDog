@@ -63,12 +63,16 @@ public partial class App : Application
 
         try
         {
-            await _host.StartAsync();
-
-            // Recover any orphaned sessions from a prior crash and activate match tracking
+            // Recover orphaned sessions BEFORE starting hosted services —
+            // GameDetectorHostedService creates a new desktop session on start,
+            // and RecoverOrphanedSessions would incorrectly mark it as Crashed.
             var sessionManager = _host.Services.GetRequiredService<SessionManager>();
             await sessionManager.RecoverOrphanedSessionsAsync();
-            _ = _host.Services.GetRequiredService<MatchTracker>(); // Resolves singleton, starts event subscription
+
+            await _host.StartAsync();
+
+            // Activate match tracking (resolves singleton, starts event subscription)
+            _ = _host.Services.GetRequiredService<MatchTracker>();
 
             // Check for updates (non-blocking, failure is silent)
             _ = Task.Run(async () =>

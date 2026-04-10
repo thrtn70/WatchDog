@@ -218,8 +218,8 @@ public sealed class ObsCaptureEngine : ICaptureEngine
             if (path is not null)
             {
                 _logger.LogInformation("Clip saved: {Path}", path);
-                ClipSaved?.Invoke(path);
-                _eventBus.Publish(new ClipSavedEvent(path, CurrentGame, DateTimeOffset.UtcNow));
+                // Note: ClipSaved + ClipSavedEvent are published by the _replayBuffer.Saved callback
+                // (registered in InitializeReplayBuffer). Do NOT publish again here — it causes duplicate clips.
             }
 
             return path;
@@ -496,7 +496,10 @@ public sealed class ObsCaptureEngine : ICaptureEngine
         _replayBuffer.Saved += path =>
         {
             ClipSaved?.Invoke(path);
-            _eventBus.Publish(new ClipSavedEvent(path, CurrentGame, DateTimeOffset.UtcNow));
+            var game = CurrentGame ?? (IsDesktopCapture
+                ? new GameDetection.GameInfo { DisplayName = "Desktop", ExecutableName = "desktop" }
+                : null);
+            _eventBus.Publish(new ClipSavedEvent(path, game, DateTimeOffset.UtcNow));
         };
 
         _replayBuffer.Error += msg =>
