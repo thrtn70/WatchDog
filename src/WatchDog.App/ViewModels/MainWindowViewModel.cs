@@ -758,11 +758,21 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 return;
             }
 
+            // Validate installer path is within expected temp directory before executing
+            var allowedDir = Path.Combine(Path.GetTempPath(), "WatchDog-Update");
+            var resolvedInstaller = Path.GetFullPath(installerPath);
+            if (!resolvedInstaller.StartsWith(allowedDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+                || !resolvedInstaller.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            {
+                System.Diagnostics.Debug.WriteLine($"Installer path outside expected directory: {resolvedInstaller}");
+                return;
+            }
+
             Process.Start(new ProcessStartInfo
             {
-                FileName = installerPath,
-                Arguments = "/SILENT /NORESTART",
+                FileName = resolvedInstaller,
                 UseShellExecute = true,
+                ArgumentList = { "/SILENT", "/NORESTART" },
             });
 
             Application.Current.Shutdown(0);

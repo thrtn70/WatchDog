@@ -12,6 +12,13 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
     private Task? _listenTask;
     private Cs2GameState? _previousState;
 
+    /// <summary>
+    /// Auth token that must match the token in gamestate_integration_watchdog.cfg.
+    /// CS2 GSI sends this in every payload under "auth": {"token": "..."}.
+    /// Payloads without a matching token are rejected to prevent local spoofing.
+    /// </summary>
+    internal const string GsiAuthToken = "watchdog_gsi_v1";
+
     public string GameExecutableName => "cs2.exe";
     public bool IsRunning => _listener?.IsListening ?? false;
 
@@ -113,6 +120,15 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
         // Respond immediately (CS2 expects a quick 200)
         context.Response.StatusCode = 200;
         context.Response.Close();
+
+        // Validate auth token to prevent local spoofing from other processes.
+        // CS2 GSI sends "auth": {"token": "..."} in every payload.
+        if (!body.Contains($"\"token\":\"{GsiAuthToken}\"", StringComparison.Ordinal)
+            && !body.Contains($"\"token\": \"{GsiAuthToken}\"", StringComparison.Ordinal))
+        {
+            _logger.LogDebug("Rejected GSI payload: auth token mismatch");
+            return;
+        }
 
         var newState = Cs2GsiPayloadParser.Parse(body);
         if (newState is null) return;
