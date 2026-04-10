@@ -387,7 +387,11 @@ public partial class App : Application
         // Auto-downloads YAMNet ONNX model on first launch if not present.
         services.AddSingleton(sp =>
         {
-            var modelPath = Path.Combine(AppContext.BaseDirectory, "Resources", "Models", "yamnet.onnx");
+            // Use %LOCALAPPDATA%/WatchDog/Models — AppContext.BaseDirectory (Program Files)
+            // is read-only for non-admin processes and causes Access Denied on write.
+            var modelPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "WatchDog", "Models", "yamnet.onnx");
             var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("App");
 
             // Download model if missing (blocking on startup — typically ~14MB, <10s).
