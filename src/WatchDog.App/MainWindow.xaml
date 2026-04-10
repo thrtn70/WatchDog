@@ -240,7 +240,7 @@
 
             <!-- Session Detail Header (back button + session info, visible in detail view) -->
             <Border Grid.Column="0" VerticalAlignment="Top" Background="{StaticResource BaseBrush}"
-                    Padding="8,6" ZIndex="1"
+                    Padding="8,6" Panel.ZIndex="1"
                     Visibility="{Binding IsSessionDetailView, Converter={StaticResource BoolToVis}}">
                 <StackPanel Orientation="Horizontal">
                     <Button Content="&#xE72B;" Style="{StaticResource IconButton}"
