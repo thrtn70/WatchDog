@@ -46,7 +46,7 @@ VersionInfoDescription=Lightweight game clipping software for Windows
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: checked
+Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Additional shortcuts:"
 
 [Files]
 ; All published output (app + .NET runtime + OBS + FFmpeg)
