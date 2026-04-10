@@ -150,25 +150,45 @@ public partial class App : Application
 
     private static System.Windows.Controls.ContextMenu CreateTrayContextMenu(TrayIconViewModel vm)
     {
-        var menu = new System.Windows.Controls.ContextMenu();
+        var menuItemStyle = (Style)Current.FindResource("TrayMenuItemStyle");
+        var infoStyle = (Style)Current.FindResource("TrayMenuInfoStyle");
+        var separatorStyle = (Style)Current.FindResource("TrayMenuSeparatorStyle");
 
-        var openItem = new System.Windows.Controls.MenuItem { Header = "Open WatchDog" };
+        var menu = new System.Windows.Controls.ContextMenu
+        {
+            Style = (Style)Current.FindResource("TrayContextMenuStyle"),
+        };
+
+        // Dynamic info rows (non-interactive status display)
+        var gameInfoItem = new System.Windows.Controls.MenuItem { Style = infoStyle };
+        gameInfoItem.SetBinding(System.Windows.Controls.HeaderedItemsControl.HeaderProperty,
+            new System.Windows.Data.Binding(nameof(TrayIconViewModel.CurrentGameText)) { Source = vm });
+        menu.Items.Add(gameInfoItem);
+
+        var bufferInfoItem = new System.Windows.Controls.MenuItem { Style = infoStyle };
+        bufferInfoItem.SetBinding(System.Windows.Controls.HeaderedItemsControl.HeaderProperty,
+            new System.Windows.Data.Binding(nameof(TrayIconViewModel.BufferStatusText)) { Source = vm });
+        menu.Items.Add(bufferInfoItem);
+
+        menu.Items.Add(new System.Windows.Controls.Separator { Style = separatorStyle });
+
+        var openItem = new System.Windows.Controls.MenuItem { Header = "Open WatchDog", Style = menuItemStyle };
         openItem.Click += (_, _) => vm.ShowMainWindowCommand.Execute(null);
         menu.Items.Add(openItem);
 
-        var saveItem = new System.Windows.Controls.MenuItem { Header = "Save Clip" };
+        var saveItem = new System.Windows.Controls.MenuItem { Header = "Save Clip", Style = menuItemStyle };
         saveItem.Click += async (_, _) => await vm.SaveClipCommand.ExecuteAsync(null);
         menu.Items.Add(saveItem);
 
-        menu.Items.Add(new System.Windows.Controls.Separator());
+        menu.Items.Add(new System.Windows.Controls.Separator { Style = separatorStyle });
 
-        var settingsItem = new System.Windows.Controls.MenuItem { Header = "Settings" };
+        var settingsItem = new System.Windows.Controls.MenuItem { Header = "Settings", Style = menuItemStyle };
         settingsItem.Click += (_, _) => vm.ShowSettingsCommand.Execute(null);
         menu.Items.Add(settingsItem);
 
-        menu.Items.Add(new System.Windows.Controls.Separator());
+        menu.Items.Add(new System.Windows.Controls.Separator { Style = separatorStyle });
 
-        var exitItem = new System.Windows.Controls.MenuItem { Header = "Exit" };
+        var exitItem = new System.Windows.Controls.MenuItem { Header = "Exit", Style = menuItemStyle };
         exitItem.Click += (_, _) => vm.ExitApplicationCommand.Execute(null);
         menu.Items.Add(exitItem);
 

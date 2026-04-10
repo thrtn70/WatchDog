@@ -16,10 +16,12 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
     private readonly IEventBus _eventBus;
     private Controls.ClipSavedToast? _activeToast;
     private readonly IDisposable _clipSavedSub;
-    private readonly IDisposable _stateChangedSub;
     private readonly IDisposable _sessionStartedSub;
     private readonly IDisposable _sessionStoppedSub;
+    private readonly IDisposable _gameDetectedSub;
+    private readonly IDisposable _gameExitedSub;
     private readonly Action<CaptureState> _captureStateHandler;
+    private System.Threading.Timer? _savingRevertTimer;
 
     [ObservableProperty]
     private string _statusText = "WatchDog - Idle";
@@ -33,16 +35,28 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _isSessionRecording;
 
+    /// <summary>Game name + highlight status for the tray context menu info row.</summary>
+    [ObservableProperty]
+    private string _currentGameText = "No game detected";
+
+    /// <summary>Buffer status text for the tray context menu info row.</summary>
+    [ObservableProperty]
+    private string _bufferStatusText = "Replay Buffer OFF";
+
     public TrayIconViewModel(ICaptureEngine captureEngine, IEventBus eventBus)
     {
         _captureEngine = captureEngine;
         _eventBus = eventBus;
 
         _clipSavedSub = eventBus.Subscribe<ClipSavedEvent>(OnClipSaved);
-        _stateChangedSub = eventBus.Subscribe<BufferStateChangedEvent>(OnStateChanged);
         _sessionStartedSub = eventBus.Subscribe<SessionRecordingStartedEvent>(OnSessionStarted);
         _sessionStoppedSub = eventBus.Subscribe<SessionRecordingStoppedEvent>(OnSessionStopped);
+        _gameDetectedSub = eventBus.Subscribe<GameDetectedEvent>(OnGameDetected);
+        _gameExitedSub = eventBus.Subscribe<GameExitedEvent>(OnGameExited);
 
+        // Use only the direct StateChanged delegate for capture state updates.
+        // Do NOT also subscribe to BufferStateChangedEvent — both fire on every
+        // state change, causing UpdateState to run twice per transition.
         _captureStateHandler = state =>
             Application.Current?.Dispatcher.Invoke(() => UpdateState(state));
         captureEngine.StateChanged += _captureStateHandler;
@@ -85,10 +99,16 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
 
     private void UpdateState(CaptureState state)
     {
+        // Cancel any pending saving→previous icon revert
+        _savingRevertTimer?.Dispose();
+        _savingRevertTimer = null;
+
         switch (state)
         {
             case CaptureState.Idle:
                 StatusText = "WatchDog - Idle";
+                IconSource = "/Resources/Icons/tray-idle.ico";
+                BufferStatusText = "Replay Buffer OFF";
                 IsRecording = false;
                 break;
             case CaptureState.Initializing:
@@ -97,22 +117,61 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
                 break;
             case CaptureState.Buffering:
                 if (_captureEngine.IsDesktopCapture)
+                {
                     StatusText = "WatchDog - Desktop Capture";
+                    CurrentGameText = "No game detected";
+                }
                 else if (_captureEngine.CurrentGame is { } g)
+                {
                     StatusText = $"WatchDog - Recording {g.DisplayName}";
+                    CurrentGameText = g.DisplayName;
+                }
                 else
+                {
                     StatusText = "WatchDog - Buffering";
+                    CurrentGameText = "No game detected";
+                }
+                // TODO: Replace with green-tinted tray-buffering.ico when created on Windows
+                IconSource = "/Resources/Icons/tray-recording.ico";
+                BufferStatusText = "Replay Buffer ON";
                 IsRecording = true;
                 break;
             case CaptureState.Saving:
                 StatusText = "WatchDog - Saving clip...";
+                // TODO: Replace with amber-tinted tray-saving.ico when created on Windows
+                IconSource = "/Resources/Icons/tray-idle.ico";
                 IsRecording = true;
+                // Revert to buffering icon after 3 seconds
+                _savingRevertTimer = new System.Threading.Timer(_ =>
+                {
+                    Application.Current?.Dispatcher.Invoke(() =>
+                    {
+                        if (_captureEngine.State == CaptureState.Buffering)
+                            IconSource = "/Resources/Icons/tray-buffering.ico";
+                    });
+                }, null, 3000, Timeout.Infinite);
                 break;
             case CaptureState.Stopping:
                 StatusText = "WatchDog - Stopping...";
                 IsRecording = false;
                 break;
         }
+    }
+
+    private void OnGameDetected(GameDetectedEvent e)
+    {
+        Application.Current?.Dispatcher.Invoke(() =>
+        {
+            CurrentGameText = $"{e.Game.DisplayName}";
+        });
+    }
+
+    private void OnGameExited(GameExitedEvent e)
+    {
+        Application.Current?.Dispatcher.Invoke(() =>
+        {
+            CurrentGameText = "No game detected";
+        });
     }
 
     private void OnClipSaved(ClipSavedEvent e)
@@ -138,10 +197,7 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
         });
     }
 
-    private void OnStateChanged(BufferStateChangedEvent e)
-    {
-        Application.Current?.Dispatcher.Invoke(() => UpdateState(e.NewState));
-    }
+
 
     private void OnSessionStarted(SessionRecordingStartedEvent e)
     {
@@ -164,10 +220,12 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _savingRevertTimer?.Dispose();
         _captureEngine.StateChanged -= _captureStateHandler;
         _clipSavedSub.Dispose();
-        _stateChangedSub.Dispose();
         _sessionStartedSub.Dispose();
         _sessionStoppedSub.Dispose();
+        _gameDetectedSub.Dispose();
+        _gameExitedSub.Dispose();
     }
 }

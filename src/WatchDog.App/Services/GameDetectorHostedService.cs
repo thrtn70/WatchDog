@@ -47,6 +47,23 @@ public sealed class GameDetectorHostedService : IHostedService
         _gameDetector.GameStarted += OnGameStarted;
         _gameDetector.GameStopped += OnGameStopped;
         _settingsService.SettingsChanged += OnSettingsChanged;
+
+        // Initialize OBS before starting game detection — if a game is already
+        // running when WatchDog launches, OnGameStarted fires immediately and
+        // needs OBS ready. Without this, a race condition causes:
+        // "OBS is not initialized. Call Obs.Initialize() first."
+        if (_settings.Recording.IsReplayBufferEnabled)
+        {
+            try
+            {
+                _captureEngine.EnsureInitialized();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to initialize capture engine — recording will be unavailable");
+            }
+        }
+
         _gameDetector.Start();
 
         _logger.LogInformation("Game detector service started — watching for games");
@@ -151,7 +168,8 @@ public sealed class GameDetectorHostedService : IHostedService
             await _sessionManager.EndSessionAsync(game);
             _eventBus.Publish(new GameExitedEvent(game));
 
-            if (_settings.DesktopCaptureEnabled || _settings.Recording.IsHighlightModeEnabled)
+            if (_settings.Recording.IsReplayBufferEnabled &&
+                (_settings.DesktopCaptureEnabled || _settings.Recording.IsHighlightModeEnabled))
             {
                 _logger.LogInformation("Switching back to desktop capture");
                 await _captureEngine.SwitchToDesktopCaptureAsync();

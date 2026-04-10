@@ -9,6 +9,12 @@ public interface ICaptureEngine : IDisposable
     bool IsDesktopCapture { get; }
     GameInfo? CurrentGame { get; }
 
+    /// <summary>
+    /// Ensures the underlying capture backend is initialized and ready.
+    /// Safe to call multiple times — subsequent calls are no-ops.
+    /// </summary>
+    void EnsureInitialized();
+
     Task StartDesktopCaptureAsync(CancellationToken ct = default);
     Task StartAsync(GameInfo game, CancellationToken ct = default);
     Task SwitchToDesktopCaptureAsync(CancellationToken ct = default);

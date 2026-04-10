@@ -389,13 +389,25 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         if (File.Exists(target.FilePath))
         {
-            Process.Start("explorer.exe", $"/select,\"{target.FilePath}\"");
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                ArgumentList = { "/select,", target.FilePath },
+                UseShellExecute = false,
+            });
         }
         else
         {
             var dir = Path.GetDirectoryName(target.FilePath);
             if (dir is not null && Directory.Exists(dir))
-                Process.Start("explorer.exe", $"\"{dir}\"");
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    ArgumentList = { dir },
+                    UseShellExecute = false,
+                });
+            }
         }
     }
 

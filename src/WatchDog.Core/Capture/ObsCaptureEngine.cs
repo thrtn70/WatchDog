@@ -203,16 +203,17 @@ public sealed class ObsCaptureEngine : ICaptureEngine
 
     public async Task<string?> SaveReplayAsync(CancellationToken ct = default)
     {
-        if (State != CaptureState.Buffering)
-        {
-            _logger.LogWarning("Cannot save replay in state {State}", State);
-            return null;
-        }
-
-        TransitionState(CaptureState.Saving);
-
+        await _stateLock.WaitAsync(ct);
         try
         {
+            if (State != CaptureState.Buffering)
+            {
+                _logger.LogWarning("Cannot save replay in state {State}", State);
+                return null;
+            }
+
+            TransitionState(CaptureState.Saving);
+
             var path = await (_replayBuffer?.SaveAsync(ct) ?? Task.FromResult<string?>(null));
 
             if (path is not null)
@@ -228,10 +229,28 @@ public sealed class ObsCaptureEngine : ICaptureEngine
         {
             if (State == CaptureState.Saving)
                 TransitionState(CaptureState.Buffering);
+            _stateLock.Release();
         }
     }
 
     // ── OBS lifecycle (called once) ──────────────────────────────────────
+
+    /// <inheritdoc />
+    public void EnsureInitialized()
+    {
+        // Acquire the state lock to prevent concurrent initialization races
+        // (e.g., GameDetectorHostedService calling this while OnGameStarted
+        // fires on a background thread and enters StartAsync).
+        _stateLock.Wait();
+        try
+        {
+            EnsureObsInitialized();
+        }
+        finally
+        {
+            _stateLock.Release();
+        }
+    }
 
     private void EnsureObsInitialized()
     {
@@ -478,8 +497,10 @@ public sealed class ObsCaptureEngine : ICaptureEngine
         var safeName = string.Concat(folderName.Split(Path.GetInvalidFileNameChars()));
         var outputDir = Path.Combine(_bufferConfig.OutputDirectory, safeName);
 
-        // Verify resolved path is still under the configured output directory
-        var resolvedBase = Path.GetFullPath(_bufferConfig.OutputDirectory);
+        // Verify resolved path is still under the configured output directory.
+        // Append separator to prevent prefix confusion (e.g., "WatchDog-Exfil" matching "WatchDog").
+        var resolvedBase = Path.GetFullPath(_bufferConfig.OutputDirectory)
+            .TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
         var resolvedOutput = Path.GetFullPath(outputDir);
         if (!resolvedOutput.StartsWith(resolvedBase, StringComparison.OrdinalIgnoreCase))
         {
