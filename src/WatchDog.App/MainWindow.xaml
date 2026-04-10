@@ -192,7 +192,7 @@
                                 Margin="4,2" Padding="12,10" Cursor="Hand"
                                 BorderBrush="Transparent" BorderThickness="1">
                             <Border.InputBindings>
-                                <MouseBinding Gesture="LeftDoubleClick"
+                                <MouseBinding Gesture="LeftClick"
                                               Command="{Binding Data.OpenSessionCommand, Source={StaticResource Proxy}}"
                                               CommandParameter="{Binding}"/>
                             </Border.InputBindings>
@@ -209,6 +209,7 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
@@ -224,7 +225,7 @@
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center"
-                                            HorizontalAlignment="Right">
+                                            HorizontalAlignment="Right" Margin="0,0,12,0">
                                     <TextBlock Text="{Binding DateDisplay}" FontSize="11"
                                                Foreground="{StaticResource SubtextBrush}"
                                                HorizontalAlignment="Right"/>
@@ -232,6 +233,12 @@
                                                Foreground="{StaticResource MutedTextBrush}"
                                                HorizontalAlignment="Right" Margin="0,2,0,0"/>
                                 </StackPanel>
+
+                                <!-- Drill-in chevron -->
+                                <TextBlock Grid.Column="2" Text="&#xE76C;"
+                                           FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                           Foreground="{StaticResource MutedTextBrush}"
+                                           VerticalAlignment="Center"/>
                             </Grid>
                         </Border>
                     </DataTemplate>
