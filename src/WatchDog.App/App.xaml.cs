@@ -69,6 +69,25 @@ public partial class App : Application
             var sessionManager = _host.Services.GetRequiredService<SessionManager>();
             await sessionManager.RecoverOrphanedSessionsAsync();
             _ = _host.Services.GetRequiredService<MatchTracker>(); // Resolves singleton, starts event subscription
+
+            // Check for updates (non-blocking, failure is silent)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var checker = _host!.Services.GetRequiredService<Core.Updates.IUpdateChecker>();
+                    var update = await checker.CheckForUpdateAsync();
+                    if (update?.IsUpdateAvailable == true)
+                    {
+                        await Application.Current!.Dispatcher.InvokeAsync(() =>
+                        {
+                            var vm = _host.Services.GetRequiredService<MainWindowViewModel>();
+                            vm.SetUpdateAvailable(update);
+                        });
+                    }
+                }
+                catch { /* update check failure is non-fatal */ }
+            });
         }
         catch (Exception ex)
         {
@@ -239,8 +258,17 @@ public partial class App : Application
         services.AddSingleton<SessionManager>();
         services.AddSingleton<MatchTracker>();
 
-        // Discord webhook
+        // Discord webhook (10-minute timeout for large file uploads)
         services.AddSingleton(_ => new HttpClient { Timeout = TimeSpan.FromMinutes(10) });
+
+        // Auto-update (separate HttpClient with short default timeout)
+        services.AddSingleton<Core.Updates.IUpdateChecker>(sp =>
+        {
+            var updateHttp = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+            return new Core.Updates.GitHubUpdateChecker(
+                updateHttp,
+                sp.GetRequiredService<ILoggerFactory>().CreateLogger<Core.Updates.GitHubUpdateChecker>());
+        });
         services.AddSingleton<Core.Discord.IDiscordWebhookService, Core.Discord.DiscordWebhookService>();
 
         // Audio device enumeration

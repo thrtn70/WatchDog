@@ -77,3 +77,6 @@ conversation-*.txt
 
 # Publish output
 publish/
+
+# Installer output (Inno Setup)
+installer/Output/

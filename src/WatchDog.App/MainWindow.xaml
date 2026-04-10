@@ -64,6 +64,7 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="40"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="24"/>
         </Grid.RowDefinitions>
@@ -160,8 +161,36 @@
             </Grid>
         </Border>
 
+        <!-- ═══ Update Banner (collapses when no update) ═════════════════ -->
+        <Border Grid.Row="1" Background="{StaticResource AccentMutedBrush}"
+                Visibility="{Binding AvailableUpdate, Converter={StaticResource NullToVisConverter}}"
+                Padding="10,6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="12"
+                           Foreground="{StaticResource TextBrush}">
+                    <Run Text="WatchDog" FontWeight="SemiBold"/>
+                    <Run Text="{Binding AvailableUpdate.LatestVersion, Mode=OneWay}"/>
+                    <Run Text="is available."/>
+                </TextBlock>
+                <Button Grid.Column="1" Content="Install Update"
+                        Command="{Binding InstallUpdateCommand}"
+                        Margin="8,0" Padding="12,4"
+                        Style="{StaticResource ActionButton}"/>
+                <Button Grid.Column="2" Content="&#xE711;" FontFamily="Segoe MDL2 Assets"
+                        Command="{Binding DismissUpdateCommand}"
+                        Style="{StaticResource IconButton}" FontSize="10"
+                        ToolTip="Dismiss"
+                        AutomationProperties.Name="Dismiss update notification"/>
+            </Grid>
+        </Border>
+
         <!-- ═══ Content Area ═════════════════════════════════════════════ -->
-        <Grid Grid.Row="1">
+        <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" MinWidth="400"/>
                 <ColumnDefinition x:Name="SplitterColumn" Width="Auto"/>
@@ -601,7 +630,7 @@
         </Grid>
 
         <!-- Floating panels canvas (draggable, resizable overlays) -->
-        <Canvas Grid.Row="1" ClipToBounds="True" x:Name="FloatingPanelCanvas"
+        <Canvas Grid.Row="2" ClipToBounds="True" x:Name="FloatingPanelCanvas"
                 Loaded="FloatingPanelCanvas_Loaded"
                 SizeChanged="FloatingPanelCanvas_SizeChanged">
 
@@ -622,7 +651,7 @@
         </Canvas>
 
         <!-- ═══ Status Strip (24px) ══════════════════════════════════════ -->
-        <Border Grid.Row="2" Background="{StaticResource CrustBrush}"
+        <Border Grid.Row="3" Background="{StaticResource CrustBrush}"
                 BorderBrush="{StaticResource Surface1Brush}" BorderThickness="0,1,0,0">
             <Grid Margin="10,0">
                 <TextBlock Text="{Binding StatusText}" FontSize="11"

@@ -11,6 +11,7 @@ using WatchDog.Core.Events;
 using WatchDog.Core.Sessions;
 using WatchDog.Core.Settings;
 using WatchDog.Core.Storage;
+using WatchDog.Core.Updates;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace WatchDog.App.ViewModels;
@@ -49,6 +50,11 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty] private string _captureStatusText = "Idle";
     [ObservableProperty] private bool _isScanning;
     [ObservableProperty] private bool _isRecording;
+
+    // Auto-update
+    [ObservableProperty] private UpdateInfo? _availableUpdate;
+    [ObservableProperty] private bool _isUpdateDownloading;
+    [ObservableProperty] private double _updateDownloadProgress;
 
     public MainWindowViewModel(
         IClipStorage clipStorage,
@@ -378,6 +384,56 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             _ => state.ToString()
         };
     }
+
+    // ── Auto-update ────────────────────────────────────────────────
+
+    public void SetUpdateAvailable(UpdateInfo update) => AvailableUpdate = update;
+
+    [RelayCommand]
+    private async Task InstallUpdateAsync()
+    {
+        if (AvailableUpdate is null) return;
+
+        IsUpdateDownloading = true;
+        try
+        {
+            var checker = App.Services.GetRequiredService<IUpdateChecker>();
+            var progress = new Progress<double>(p => UpdateDownloadProgress = p);
+            var installerPath = await checker.DownloadInstallerAsync(
+                AvailableUpdate.DownloadUrl, progress);
+
+            if (installerPath is null)
+            {
+                AvailableUpdate = null;
+                return;
+            }
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = installerPath,
+                Arguments = "/VERYSILENT /NORESTART",
+                UseShellExecute = true,
+            });
+
+            Application.Current.Shutdown(0);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Update install failed: {ex.Message}");
+            MessageBox.Show(
+                $"Could not download the update:\n\n{ex.Message}",
+                "Update Failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+        finally
+        {
+            IsUpdateDownloading = false;
+        }
+    }
+
+    [RelayCommand]
+    private void DismissUpdate() => AvailableUpdate = null;
 
     public void Dispose() => _clipSavedSub.Dispose();
 }

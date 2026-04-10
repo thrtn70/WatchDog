@@ -49,22 +49,42 @@ Think of it as **Outplayed / Medal without the bloat** — no Overwolf, no Elect
 
 ---
 
-## Quick Start
+## Installation
 
-### Prerequisites
+### Download (Recommended)
 
-- **Windows 10/11** (64-bit)
+1. Go to [**Releases**](https://github.com/thrtn70/WatchDog/releases/latest)
+2. Download **`WatchDog-Setup.exe`**
+3. Run the installer — no prerequisites needed (everything is bundled)
+
+The installer places WatchDog in Program Files, creates Desktop and Start Menu shortcuts, and registers with Add/Remove Programs for clean uninstall.
+
+**System Requirements:** Windows 10/11 (64-bit). GPU with NVENC (NVIDIA GTX 600+) or AMF (AMD RX 400+) for hardware encoding, or CPU for x264 fallback.
+
+> **Auto-Update:** WatchDog checks for updates on launch. When a new version is available, a banner appears with a one-click install button.
+>
+> **Portable:** Prefer no installer? Download `WatchDog-win-x64.zip` from the same releases page and run `WatchDog.App.exe` directly.
+
+---
+
+### Development Setup (Contributors)
+
+<details>
+<summary>Click to expand build instructions</summary>
+
+#### Prerequisites
+
 - **[.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)** or later
-- **GPU** with NVENC (NVIDIA GTX 600+) or AMF (AMD RX 400+) for hardware encoding, or CPU for x264
+- **[Inno Setup 6](https://jrsoftware.org/isdl.php)** (optional, for building the installer)
 
-### 1. Clone the repo
+#### 1. Clone the repo
 
 ```bash
 git clone https://github.com/thrtn70/WatchDog.git
 cd WatchDog
 ```
 
-### 2. Download OBS and FFmpeg runtimes
+#### 2. Download OBS and FFmpeg runtimes
 
 ```powershell
 .\tools\setup-obs-runtime.ps1
@@ -73,19 +93,24 @@ cd WatchDog
 
 These scripts download the OBS Studio binaries and FFmpeg into `obs-runtime/` and `ffmpeg-runtime/` (gitignored).
 
-### 3. Build
+#### 3. Build and run
 
 ```bash
 dotnet build
-```
-
-### 4. Run
-
-```bash
 dotnet run --project src/WatchDog.App
 ```
 
 The app starts minimized to the system tray. Right-click the tray icon to open the main window.
+
+#### 4. Package for distribution
+
+```powershell
+.\tools\package.ps1
+```
+
+This produces both `WatchDog-win-x64.zip` (portable) and `installer/Output/WatchDog-Setup.exe` (installer, requires Inno Setup 6).
+
+</details>
 
 ---
 
