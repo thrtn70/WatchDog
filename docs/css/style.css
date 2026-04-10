@@ -4,7 +4,7 @@
    Type: Archivo (display) + Manrope (body)
    ═══════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;900&family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap');
+/* Fonts loaded via <link> in HTML for faster rendering (no @import chain) */
 
 /* ── Tokens ───────────────────────────────────────────────── */
 
@@ -264,6 +264,7 @@ code {
 .hero__icon {
   width: 64px;
   height: 64px;
+  aspect-ratio: 1;
   border-radius: 14px;
 }
 
