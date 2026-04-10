@@ -119,8 +119,9 @@
     var els = document.querySelectorAll('.reveal');
     if (!els.length) return;
 
-    // Respect reduced motion
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    // Respect reduced motion or missing IntersectionObserver
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+        !('IntersectionObserver' in window)) {
       els.forEach(function (el) { el.classList.add('visible'); });
       return;
     }
@@ -138,6 +139,45 @@
     );
 
     els.forEach(function (el) { observer.observe(el); });
+  }
+
+  // ── Copy Buttons on Pre Blocks ────────────────────────────
+
+  function initCopyButtons() {
+    var blocks = document.querySelectorAll('.setup-card pre');
+
+    blocks.forEach(function (pre) {
+      var btn = document.createElement('button');
+      btn.className = 'copy-btn';
+      btn.setAttribute('aria-label', 'Copy to clipboard');
+      btn.textContent = 'Copy';
+
+      btn.addEventListener('click', function () {
+        var text = pre.textContent;
+        navigator.clipboard.writeText(text).then(function () {
+          btn.textContent = 'Copied';
+          btn.classList.add('copied');
+          setTimeout(function () {
+            btn.textContent = 'Copy';
+            btn.classList.remove('copied');
+          }, 2000);
+        }).catch(function () {
+          // Fallback: select the text
+          var range = document.createRange();
+          range.selectNodeContents(pre);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        });
+      });
+
+      // Wrap pre in a container for positioning
+      var wrapper = document.createElement('div');
+      wrapper.className = 'pre-wrapper';
+      pre.parentNode.insertBefore(wrapper, pre);
+      wrapper.appendChild(pre);
+      wrapper.appendChild(btn);
+    });
   }
 
   // ── Sticky Nav ────────────────────────────────────────────
@@ -179,5 +219,6 @@
     initFaq();
     initReveals();
     initNav();
+    initCopyButtons();
   });
 })();
