@@ -43,7 +43,8 @@ public sealed class AudioHighlightDetector : IHighlightDetector
 
     public IReadOnlyList<string> SupportedExecutableNames => [GameExecutableName];
 
-    public bool IsRunning { get; private set; }
+    private volatile bool _isRunning;
+    public bool IsRunning => _isRunning;
 
     public event Action<HighlightDetectedEventArgs>? HighlightDetected;
 
@@ -92,7 +93,7 @@ public sealed class AudioHighlightDetector : IHighlightDetector
             _capture.RecordingStopped += OnRecordingStopped;
             _capture.StartRecording();
 
-            IsRunning = true;
+            _isRunning = true;
             _logger.LogInformation("Audio highlight detector started");
         }
         catch (Exception ex)
@@ -110,7 +111,7 @@ public sealed class AudioHighlightDetector : IHighlightDetector
     {
         if (!IsRunning) return Task.CompletedTask;
 
-        IsRunning = false;
+        _isRunning = false;
         _cts?.Cancel();
         _cts?.Dispose();
         _cts = null;
@@ -244,7 +245,7 @@ public sealed class AudioHighlightDetector : IHighlightDetector
 
     public ValueTask DisposeAsync()
     {
-        IsRunning = false;
+        _isRunning = false;
         _cts?.Cancel();
         _cts?.Dispose();
         _cts = null;

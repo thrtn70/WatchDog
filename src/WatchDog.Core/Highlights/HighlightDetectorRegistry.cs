@@ -40,6 +40,10 @@ public sealed class HighlightDetectorRegistry
                 continue;
             }
 
+            // NoOp detector is a placeholder when ONNX model is missing — skip entirely
+            if (detector is NoOpHighlightDetector)
+                continue;
+
             foreach (var exeName in detector.SupportedExecutableNames)
             {
                 _detectors[exeName] = detector;

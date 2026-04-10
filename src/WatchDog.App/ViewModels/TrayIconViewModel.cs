@@ -147,7 +147,9 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
                     Application.Current?.Dispatcher.Invoke(() =>
                     {
                         if (_captureEngine.State == CaptureState.Buffering)
-                            IconSource = "/Resources/Icons/tray-buffering.ico";
+                            // Revert to the buffering icon (using tray-recording.ico
+                            // until dedicated tray-buffering.ico is created on Windows)
+                            IconSource = "/Resources/Icons/tray-recording.ico";
                     });
                 }, null, 3000, Timeout.Infinite);
                 break;

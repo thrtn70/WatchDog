@@ -7,23 +7,6 @@ namespace WatchDog.Core.Highlights.Audio;
 public static class AudioResampler
 {
     /// <summary>
-    /// Convert stereo float32 samples to mono by averaging channels.
-    /// Input: interleaved L,R,L,R,... Output: mono samples (half the length).
-    /// </summary>
-    public static float[] StereoToMono(ReadOnlySpan<float> stereoSamples)
-    {
-        var monoLength = stereoSamples.Length / 2;
-        var mono = new float[monoLength];
-
-        for (int i = 0; i < monoLength; i++)
-        {
-            mono[i] = (stereoSamples[i * 2] + stereoSamples[i * 2 + 1]) * 0.5f;
-        }
-
-        return mono;
-    }
-
-    /// <summary>
     /// Downsample audio from a higher sample rate to a lower one using linear interpolation.
     /// Simple but adequate for classification (not production audio processing).
     /// </summary>
