@@ -135,7 +135,7 @@ public sealed class AudioHighlightDetector : IHighlightDetector
         if (sampleCount == 0) return;
 
         var samples = new float[sampleCount];
-        Buffer.BlockCopy(e.Buffer, 0, samples, 0, e.BytesRecorded);
+        System.Buffer.BlockCopy(e.Buffer, 0, samples, 0, e.BytesRecorded);
 
         lock (_bufferLock)
         {
