@@ -140,11 +140,44 @@
     els.forEach(function (el) { observer.observe(el); });
   }
 
+  // ── Sticky Nav ────────────────────────────────────────────
+
+  function initNav() {
+    var nav = document.querySelector('.site-nav');
+    if (!nav) return;
+
+    // Toggle background on scroll
+    var scrollThreshold = 40;
+    var onScroll = function () {
+      nav.classList.toggle('scrolled', window.scrollY > scrollThreshold);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+
+    // Smooth scroll for anchor links
+    nav.addEventListener('click', function (e) {
+      var link = e.target.closest('a[href^="#"]');
+      if (!link) return;
+
+      var targetId = link.getAttribute('href').slice(1);
+      var target = targetId ? document.getElementById(targetId) : null;
+
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (link.getAttribute('href') === '#') {
+        e.preventDefault();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    });
+  }
+
   // ── Init ─────────────────────────────────────────────────
 
   document.addEventListener('DOMContentLoaded', function () {
     fetchLatestRelease();
     initFaq();
     initReveals();
+    initNav();
   });
 })();
