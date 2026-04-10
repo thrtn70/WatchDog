@@ -31,6 +31,10 @@
   --accent-hover:   oklch(62% 0.12 180);
   --accent-subtle:  oklch(72% 0.14 180 / 0.12);
 
+  /* Warm accent — amber counterpoint */
+  --warm:         oklch(75% 0.14 75);
+  --warm-muted:   oklch(60% 0.10 75);
+
   /* Semantic */
   --success: oklch(68% 0.15 155);
   --code-bg: oklch(10% 0.01 195);
@@ -401,7 +405,7 @@ code {
   font-family: var(--font-display);
   font-weight: 900;
   font-size: 2rem;
-  color: var(--accent);
+  color: var(--warm);
   line-height: 1;
   margin-bottom: var(--space-lg);
 }
@@ -486,7 +490,7 @@ code {
 }
 
 .setup-auto__check {
-  color: var(--success);
+  color: var(--warm);
   font-size: 1.1rem;
   flex-shrink: 0;
   line-height: 1.6;
