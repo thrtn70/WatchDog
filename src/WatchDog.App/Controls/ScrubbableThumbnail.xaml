@@ -24,7 +24,7 @@
 
         <!-- Loading shimmer (while generating strip on first hover) -->
         <Border x:Name="LoadingOverlay" Visibility="Collapsed" IsHitTestVisible="False"
-                Background="#18FFFFFF">
+                Background="{StaticResource ShimmerOverlayBrush}">
             <Border.Style>
                 <Style TargetType="Border">
                     <Style.Triggers>

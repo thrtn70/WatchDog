@@ -23,9 +23,9 @@
                 MouseMove="OnCanvasMouseMove"
                 MouseLeftButtonUp="OnCanvasMouseUp">
             <!-- Left exclusion zone -->
-            <Border x:Name="LeftExclusion" Background="#AA000000" Height="60" Canvas.Left="0"/>
+            <Border x:Name="LeftExclusion" Background="{StaticResource TimelineExclusionBrush}" Height="60" Canvas.Left="0"/>
             <!-- Right exclusion zone -->
-            <Border x:Name="RightExclusion" Background="#AA000000" Height="60"/>
+            <Border x:Name="RightExclusion" Background="{StaticResource TimelineExclusionBrush}" Height="60"/>
 
             <!-- Start trim handle -->
             <Border x:Name="StartHandle" Background="{StaticResource AccentBrush}"
@@ -43,10 +43,10 @@
         </Canvas>
 
         <!-- Time labels -->
-        <TextBlock x:Name="StartTimeLabel" FontSize="10" Foreground="White"
+        <TextBlock x:Name="StartTimeLabel" FontSize="10" Foreground="{StaticResource TextBrush}"
                    VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="8,0,0,2"
                    IsHitTestVisible="False"/>
-        <TextBlock x:Name="EndTimeLabel" FontSize="10" Foreground="White"
+        <TextBlock x:Name="EndTimeLabel" FontSize="10" Foreground="{StaticResource TextBrush}"
                    VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,8,2"
                    IsHitTestVisible="False"/>
     </Grid>

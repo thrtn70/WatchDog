@@ -60,6 +60,11 @@
     <SolidColorBrush x:Key="MauveBrush" Color="#7B6BA4"/>
     <SolidColorBrush x:Key="LavenderBrush" Color="#8CA0C4"/>
 
+    <!-- Semi-transparent overlays (timeline exclusion zones, badges, shimmers) -->
+    <SolidColorBrush x:Key="TimelineExclusionBrush" Color="#AA0A1114"/>
+    <SolidColorBrush x:Key="DurationBadgeBrush" Color="#CC0A1114"/>
+    <SolidColorBrush x:Key="ShimmerOverlayBrush" Color="#18FFFFFF"/>
+
     <!-- ── Effects ────────────────────────────────────────────────────── -->
     <DropShadowEffect x:Key="FloatingPanelShadow" BlurRadius="16" ShadowDepth="6"
                       Direction="270" Opacity="0.5" Color="{StaticResource CrustColor}"/>

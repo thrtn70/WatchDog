@@ -326,7 +326,7 @@
                                             ClipFilePath="{Binding FilePath}"/>
                                     </Border>
                                     <!-- Duration badge -->
-                                    <Border Background="#CC0A1114" CornerRadius="3" Padding="4,1"
+                                    <Border Background="{StaticResource DurationBadgeBrush}" CornerRadius="3" Padding="4,1"
                                             HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="5">
                                         <TextBlock Text="{Binding DurationDisplay}" FontSize="11"
                                                    FontWeight="Medium" Foreground="{StaticResource TextBrush}"/>
