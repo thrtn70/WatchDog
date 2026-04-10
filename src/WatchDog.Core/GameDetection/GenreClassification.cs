@@ -29,6 +29,7 @@ public static class GenreClassification
         GameGenre.Sandbox => false,
         GameGenre.MMO => false,
         GameGenre.Platformer => false,
+        GameGenre.Sim => false,
         // Unknown — offer AI highlights with accuracy caveat
         GameGenre.Unknown => true,
         _ => true,
@@ -53,6 +54,7 @@ public static class GenreClassification
         GameGenre.Sandbox => "Sandbox games have varied audio that makes highlight detection unreliable.",
         GameGenre.MMO => "MMO gameplay is too varied for reliable automatic highlight detection.",
         GameGenre.Platformer => "Platformer audio patterns don't map well to highlight events.",
+        GameGenre.Sim => "Simulation games lack distinct combat audio for highlight detection.",
         _ => null,
     };
 }

@@ -49,7 +49,7 @@
                           FontSize="11"
                           Foreground="{StaticResource SubtextBrush}"
                           VerticalAlignment="Center"
-                          IsChecked="True"/>
+                          IsChecked="False"/>
             </DockPanel>
         </StackPanel>
     </Border>

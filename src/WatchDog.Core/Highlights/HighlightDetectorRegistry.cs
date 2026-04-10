@@ -17,6 +17,10 @@ public sealed class HighlightDetectorRegistry
     /// <summary>Whether the currently active detector is the AI audio fallback.</summary>
     public bool IsAudioFallbackActive => _activeDetector == _audioFallback && _audioFallback is not null;
 
+    /// <summary>Whether a dedicated (non-AI-fallback) detector exists for this game executable.</summary>
+    public bool HasDedicatedDetector(string executableName)
+        => _detectors.ContainsKey(executableName);
+
     public HighlightDetectorRegistry(
         IEnumerable<IHighlightDetector> detectors,
         IEventBus eventBus,

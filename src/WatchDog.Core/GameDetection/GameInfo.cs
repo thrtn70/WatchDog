@@ -29,5 +29,6 @@ public enum GameGenre
     Sports,
     Sandbox,
     Platformer,
+    Sim,
 }
 

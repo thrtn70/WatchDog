@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using WatchDog.Core.Capture;
 using WatchDog.Core.Events;
 using WatchDog.Core.GameDetection;
+using WatchDog.Core.Highlights;
 using WatchDog.Core.Recording;
 using WatchDog.Core.Sessions;
 using WatchDog.Core.Settings;
@@ -21,6 +22,7 @@ public sealed class GameDetectorHostedService : IHostedService
     private readonly IEventBus _eventBus;
     private readonly SessionManager _sessionManager;
     private readonly ISettingsService _settingsService;
+    private readonly HighlightDetectorRegistry _highlightRegistry;
     private volatile AppSettings _settings;
     private readonly ILogger<GameDetectorHostedService> _logger;
     private readonly object _settingsLock = new();
@@ -33,6 +35,7 @@ public sealed class GameDetectorHostedService : IHostedService
         SessionManager sessionManager,
         AppSettings settings,
         ISettingsService settingsService,
+        HighlightDetectorRegistry highlightRegistry,
         ILogger<GameDetectorHostedService> logger)
     {
         _gameDetector = gameDetector;
@@ -41,6 +44,7 @@ public sealed class GameDetectorHostedService : IHostedService
         _sessionManager = sessionManager;
         _settings = settings;
         _settingsService = settingsService;
+        _highlightRegistry = highlightRegistry;
         _logger = logger;
     }
 
@@ -191,7 +195,10 @@ public sealed class GameDetectorHostedService : IHostedService
             {
                 var highlightsAvailable = GenreClassification.SupportsHighlights(game.Genre);
                 var caveat = GenreClassification.GetHighlightCaveat(game.Genre);
-                var isAiFallback = highlightsAvailable && caveat is null;
+                // Check if a dedicated detector (CS2 GSI, Valorant lockfile, etc.) exists
+                // vs AI audio fallback — determines the label shown on the toast button
+                var hasDedicated = _highlightRegistry.HasDedicatedDetector(game.ExecutableName);
+                var isAiFallback = highlightsAvailable && !hasDedicated;
 
                 // Close any existing toast before showing a new one
                 _activeToast?.Close();
