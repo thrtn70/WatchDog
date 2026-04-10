@@ -872,25 +872,25 @@ public sealed class ClipItemViewModel : System.ComponentModel.INotifyPropertyCha
     /// <summary>Abbreviated highlight badge text for thumbnail overlay.</summary>
     public string? HighlightBadgeText => HighlightType switch
     {
-        HighlightType.Kill => "K",
-        HighlightType.Ace => "ACE",
-        HighlightType.Multikill => "MK",
-        HighlightType.RoundWin => "RW",
-        HighlightType.RoundLoss => "RL",
-        HighlightType.MatchWin => "W",
-        HighlightType.MatchLoss => "L",
-        HighlightType.Death => "D",
+        WatchDog.Core.Highlights.HighlightType.Kill => "K",
+        WatchDog.Core.Highlights.HighlightType.Ace => "ACE",
+        WatchDog.Core.Highlights.HighlightType.Multikill => "MK",
+        WatchDog.Core.Highlights.HighlightType.RoundWin => "RW",
+        WatchDog.Core.Highlights.HighlightType.RoundLoss => "RL",
+        WatchDog.Core.Highlights.HighlightType.MatchWin => "W",
+        WatchDog.Core.Highlights.HighlightType.MatchLoss => "L",
+        WatchDog.Core.Highlights.HighlightType.Death => "D",
         _ => null,
     };
 
     /// <summary>Badge color hex for thumbnail overlay.</summary>
     public string HighlightBadgeColor => HighlightType switch
     {
-        HighlightType.Kill => "#D95555",
-        HighlightType.Ace => "#D9B84C",
-        HighlightType.Multikill => "#38BF7F",
-        HighlightType.RoundWin => "#4C96D9",
-        HighlightType.MatchWin => "#2EC4B6",
+        WatchDog.Core.Highlights.HighlightType.Kill => "#D95555",
+        WatchDog.Core.Highlights.HighlightType.Ace => "#D9B84C",
+        WatchDog.Core.Highlights.HighlightType.Multikill => "#38BF7F",
+        WatchDog.Core.Highlights.HighlightType.RoundWin => "#4C96D9",
+        WatchDog.Core.Highlights.HighlightType.MatchWin => "#2EC4B6",
         _ => "#4A5F6B",
     };
 
