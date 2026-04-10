@@ -460,6 +460,59 @@ code {
 }
 
 /* ══════════════════════════════════════════════════════════
+   SCREENSHOTS
+   ══════════════════════════════════════════════════════════ */
+
+.screenshots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.screenshot {
+  display: block;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  position: relative;
+  transition:
+    border-color var(--duration-fast) var(--ease-out-expo),
+    transform var(--duration-med) var(--ease-out-expo);
+}
+
+.screenshot:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-2px);
+}
+
+.screenshot img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.screenshot__caption {
+  display: block;
+  padding: var(--space-md) var(--space-lg);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  background: var(--bg-raised);
+}
+
+.screenshot-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--space-lg);
+}
+
+@media (max-width: 768px) {
+  .screenshot-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
    QUICK START
    ══════════════════════════════════════════════════════════ */
 
