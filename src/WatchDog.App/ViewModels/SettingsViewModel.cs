@@ -335,9 +335,16 @@ public partial class SettingsViewModel : ObservableObject
             {
                 UpdateStatusText = $"Update available: v{result.LatestVersion}. Close settings and use the update banner to install.";
             }
+            else if (Version.TryParse(result.LatestVersion, out var latest)
+                     && Version.TryParse(result.CurrentVersion, out var current)
+                     && latest > current)
+            {
+                // Newer version exists but installer isn't uploaded yet (CI still building)
+                UpdateStatusText = $"v{result.LatestVersion} is available but the installer is still building. Try again in a few minutes.";
+            }
             else
             {
-                UpdateStatusText = $"You're on the latest version.";
+                UpdateStatusText = $"You're on the latest version ({result.CurrentVersion}).";
             }
         }
         catch
