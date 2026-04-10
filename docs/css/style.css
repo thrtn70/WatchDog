@@ -24,7 +24,7 @@
   /* Text */
   --text-primary:   oklch(88% 0.015 195);
   --text-secondary: oklch(65% 0.02 195);
-  --text-tertiary:  oklch(50% 0.02 195);
+  --text-tertiary:  oklch(55% 0.02 195);
 
   /* Accent — Persian Teal */
   --accent:         oklch(72% 0.14 180);
@@ -95,6 +95,26 @@ a {
   transition: color var(--duration-fast) var(--ease-out-expo);
 }
 a:hover { color: var(--text-primary); }
+
+/* Skip to content link */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: var(--space-lg);
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--accent);
+  color: var(--bg-deep);
+  font-weight: 600;
+  font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+  z-index: 200;
+  transition: top var(--duration-fast) var(--ease-out-expo);
+}
+
+.skip-link:focus {
+  top: var(--space-sm);
+  color: var(--bg-deep);
+}
 
 /* Focus — visible for keyboard navigation only */
 :focus-visible {
