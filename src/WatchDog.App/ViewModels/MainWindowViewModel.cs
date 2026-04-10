@@ -180,7 +180,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         });
     }
 
-    private void BuildSessionGroups(IReadOnlyList<Sessions.GameSession> sessions, IReadOnlyList<ClipMetadata> allClips, string filterGame)
+    private void BuildSessionGroups(IReadOnlyList<GameSession> sessions, IReadOnlyList<ClipMetadata> allClips, string filterGame)
     {
         try
         {
