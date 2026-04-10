@@ -14,6 +14,7 @@ using WatchDog.Core.Highlights.RainbowSixSiege;
 using WatchDog.Core.Highlights.Valorant;
 using WatchDog.Core.Hotkeys;
 using WatchDog.Core.Recording;
+using WatchDog.Core.Sessions;
 using WatchDog.Core.Settings;
 using WatchDog.App.Services;
 using WatchDog.App.ViewModels;
@@ -61,6 +62,11 @@ public partial class App : Application
         InitializeTrayIcon();
 
         await _host.StartAsync();
+
+        // Recover any orphaned sessions from a prior crash and activate match tracking
+        var sessionManager = _host.Services.GetRequiredService<SessionManager>();
+        await sessionManager.RecoverOrphanedSessionsAsync();
+        _ = _host.Services.GetRequiredService<MatchTracker>(); // Resolves singleton, starts event subscription
     }
 
     protected override async void OnExit(ExitEventArgs e)
@@ -208,6 +214,17 @@ public partial class App : Application
             };
         });
         services.AddSingleton<Core.Storage.IClipStorage, Core.Storage.ClipStorageManager>();
+
+        // Session management
+        services.AddSingleton<ISessionRepository>(sp =>
+        {
+            var bufferConfig = sp.GetRequiredService<Core.Buffer.BufferConfig>();
+            return new JsonSessionRepository(
+                bufferConfig.OutputDirectory,
+                sp.GetRequiredService<ILoggerFactory>().CreateLogger<JsonSessionRepository>());
+        });
+        services.AddSingleton<SessionManager>();
+        services.AddSingleton<MatchTracker>();
 
         // Discord webhook
         services.AddSingleton(_ => new HttpClient { Timeout = TimeSpan.FromMinutes(10) });

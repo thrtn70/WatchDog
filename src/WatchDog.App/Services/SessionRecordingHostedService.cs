@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using WatchDog.Core.Events;
 using WatchDog.Core.GameDetection;
 using WatchDog.Core.Recording;
+using WatchDog.Core.Sessions;
 using WatchDog.Core.Settings;
 
 namespace WatchDog.App.Services;
@@ -17,6 +18,7 @@ public sealed class SessionRecordingHostedService : IHostedService, IDisposable
 {
     private readonly ISessionRecorder _recorder;
     private readonly IEventBus _eventBus;
+    private readonly SessionManager _sessionManager;
     private readonly AppSettings _settings;
     private readonly ILogger<SessionRecordingHostedService> _logger;
 
@@ -26,11 +28,13 @@ public sealed class SessionRecordingHostedService : IHostedService, IDisposable
     public SessionRecordingHostedService(
         ISessionRecorder recorder,
         IEventBus eventBus,
+        SessionManager sessionManager,
         AppSettings settings,
         ILogger<SessionRecordingHostedService> logger)
     {
         _recorder = recorder;
         _eventBus = eventBus;
+        _sessionManager = sessionManager;
         _settings = settings;
         _logger = logger;
     }
@@ -116,11 +120,20 @@ public sealed class SessionRecordingHostedService : IHostedService, IDisposable
         }
     }
 
-    private void OnSegmentSaved(string filePath)
+    private async void OnSegmentSaved(string filePath)
     {
         _eventBus.Publish(new SessionRecordingSegmentSavedEvent(
             filePath, null, _recorder.Elapsed));
         _logger.LogInformation("Session segment saved: {File}", Path.GetFileName(filePath));
+
+        try
+        {
+            await _sessionManager.AddRecordingPathAsync(filePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to track recording path in session");
+        }
     }
 
     private void OnRecorderError(string message)

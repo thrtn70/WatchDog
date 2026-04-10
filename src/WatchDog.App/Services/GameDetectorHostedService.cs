@@ -4,6 +4,7 @@ using WatchDog.Core.Capture;
 using WatchDog.Core.Events;
 using WatchDog.Core.GameDetection;
 using WatchDog.Core.Recording;
+using WatchDog.Core.Sessions;
 using WatchDog.Core.Settings;
 
 namespace WatchDog.App.Services;
@@ -18,6 +19,7 @@ public sealed class GameDetectorHostedService : IHostedService
     private readonly IGameDetector _gameDetector;
     private readonly ICaptureEngine _captureEngine;
     private readonly IEventBus _eventBus;
+    private readonly SessionManager _sessionManager;
     private readonly ISettingsService _settingsService;
     private AppSettings _settings;
     private readonly ILogger<GameDetectorHostedService> _logger;
@@ -26,6 +28,7 @@ public sealed class GameDetectorHostedService : IHostedService
         IGameDetector gameDetector,
         ICaptureEngine captureEngine,
         IEventBus eventBus,
+        SessionManager sessionManager,
         AppSettings settings,
         ISettingsService settingsService,
         ILogger<GameDetectorHostedService> logger)
@@ -33,6 +36,7 @@ public sealed class GameDetectorHostedService : IHostedService
         _gameDetector = gameDetector;
         _captureEngine = captureEngine;
         _eventBus = eventBus;
+        _sessionManager = sessionManager;
         _settings = settings;
         _settingsService = settingsService;
         _logger = logger;
@@ -56,6 +60,7 @@ public sealed class GameDetectorHostedService : IHostedService
             try
             {
                 await _captureEngine.StartDesktopCaptureAsync(cancellationToken);
+                await _sessionManager.StartDesktopSessionAsync(cancellationToken);
                 _logger.LogInformation("Desktop capture started (desktopCapture={Desktop}, highlights={Highlights})",
                     _settings.DesktopCaptureEnabled, _settings.Recording.IsHighlightModeEnabled);
             }
@@ -125,6 +130,8 @@ public sealed class GameDetectorHostedService : IHostedService
             if (_settings.Recording.IsReplayBufferEnabled)
                 await _captureEngine.StartAsync(game);
 
+            await _sessionManager.StartSessionAsync(game);
+
             // Publish AFTER capture engine is initialized so session recorder
             // can safely use OBS resources
             _eventBus.Publish(new GameDetectedEvent(game));
@@ -138,6 +145,8 @@ public sealed class GameDetectorHostedService : IHostedService
     private async void OnGameStopped(GameInfo game)
     {
         _logger.LogInformation("Game exited: {Game}", game.DisplayName);
+
+        await _sessionManager.EndSessionAsync(game);
         _eventBus.Publish(new GameExitedEvent(game));
 
         try
@@ -146,6 +155,7 @@ public sealed class GameDetectorHostedService : IHostedService
             {
                 _logger.LogInformation("Switching back to desktop capture");
                 await _captureEngine.SwitchToDesktopCaptureAsync();
+                await _sessionManager.StartDesktopSessionAsync();
             }
             else
             {

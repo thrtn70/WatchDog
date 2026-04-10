@@ -5,6 +5,7 @@ using WatchDog.Core.Capture;
 using WatchDog.Core.Events;
 using WatchDog.Core.Highlights;
 using WatchDog.Core.Recording;
+using WatchDog.Core.Sessions;
 using WatchDog.Core.Storage;
 
 namespace WatchDog.App.Services;
@@ -20,6 +21,7 @@ public sealed class HighlightClipService : IHostedService, IDisposable
     private readonly IClipStorage _clipStorage;
     private readonly IEventBus _eventBus;
     private readonly HighlightDetectorRegistry _registry;
+    private readonly SessionManager _sessionManager;
     private readonly HighlightConfig _config;
     private readonly SessionRecordingConfig _recordingConfig;
     private readonly ILogger<HighlightClipService> _logger;
@@ -36,6 +38,7 @@ public sealed class HighlightClipService : IHostedService, IDisposable
         IClipStorage clipStorage,
         IEventBus eventBus,
         HighlightDetectorRegistry registry,
+        SessionManager sessionManager,
         HighlightConfig config,
         SessionRecordingConfig recordingConfig,
         ILogger<HighlightClipService> logger)
@@ -44,6 +47,7 @@ public sealed class HighlightClipService : IHostedService, IDisposable
         _clipStorage = clipStorage;
         _eventBus = eventBus;
         _registry = registry;
+        _sessionManager = sessionManager;
         _config = config;
         _recordingConfig = recordingConfig;
         _logger = logger;
@@ -119,6 +123,10 @@ public sealed class HighlightClipService : IHostedService, IDisposable
     {
         try
         {
+            // MatchStarted is a session signal, not a clip-worthy event
+            if (e.Type == HighlightType.MatchStarted)
+                return;
+
             // Check if this type is enabled
             if (!_config.EnabledTypes.Contains(e.Type))
             {
@@ -168,8 +176,12 @@ public sealed class HighlightClipService : IHostedService, IDisposable
                 return;
             }
 
-            // Index with highlight metadata — HighlightType is preserved in ClipMetadata
-            await _clipStorage.IndexClipAsync(path, e.Game.DisplayName, e.Type, ct);
+            // Index with highlight metadata and session context
+            var sessionId = _sessionManager.CurrentSessionId;
+            var matchNumber = _sessionManager.CurrentSession?.Matches.Count > 0
+                ? _sessionManager.CurrentSession.Matches[^1].MatchNumber
+                : (int?)null;
+            await _clipStorage.IndexClipAsync(path, e.Game.DisplayName, e.Type, sessionId, matchNumber, ct);
             _logger.LogInformation("Highlight clip saved: {Type} — {Path}", e.Type, Path.GetFileName(path));
         }
         catch (OperationCanceledException)
