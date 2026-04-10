@@ -97,10 +97,10 @@ public partial class GameProfilesViewModel : ObservableObject
             HasProfile = true;
             SelectedMode = profile.Mode;
             UseDefaultResolution = profile.OutputWidth is null;
-            OutputWidth = profile.OutputWidth ?? _settings.Capture.OutputWidth;
-            OutputHeight = profile.OutputHeight ?? _settings.Capture.OutputHeight;
+            OutputWidth = profile.OutputWidth ?? (int)_settings.Capture.OutputWidth;
+            OutputHeight = profile.OutputHeight ?? (int)_settings.Capture.OutputHeight;
             UseDefaultBitrate = profile.BitrateKbps is null;
-            BitrateKbps = profile.BitrateKbps ?? _settings.Capture.BitrateKbps;
+            BitrateKbps = profile.BitrateKbps ?? _settings.Capture.Bitrate;
             UseDefaultBufferDuration = profile.BufferDurationSeconds is null;
             BufferDurationSeconds = profile.BufferDurationSeconds ?? _settings.Buffer.MaxSeconds;
             HighlightSensitivity = profile.HighlightSensitivity ?? 0.6f;
@@ -110,10 +110,10 @@ public partial class GameProfilesViewModel : ObservableObject
             HasProfile = false;
             SelectedMode = GenreClassification.DefaultMode(value.Genre);
             UseDefaultResolution = true;
-            OutputWidth = _settings.Capture.OutputWidth;
-            OutputHeight = _settings.Capture.OutputHeight;
+            OutputWidth = (int)_settings.Capture.OutputWidth;
+            OutputHeight = (int)_settings.Capture.OutputHeight;
             UseDefaultBitrate = true;
-            BitrateKbps = _settings.Capture.BitrateKbps;
+            BitrateKbps = _settings.Capture.Bitrate;
             UseDefaultBufferDuration = true;
             BufferDurationSeconds = _settings.Buffer.MaxSeconds;
             HighlightSensitivity = 0.6f;
