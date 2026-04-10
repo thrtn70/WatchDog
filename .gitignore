@@ -80,3 +80,4 @@ publish/
 
 # Installer output (Inno Setup)
 installer/Output/
+.superpowers/
