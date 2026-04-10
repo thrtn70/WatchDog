@@ -105,11 +105,11 @@
                             <ColumnDefinition Width="60"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="Width:" VerticalAlignment="Center" Grid.Column="0" Margin="0,0,8,0"/>
-                        <TextBox Text="{Binding OutputWidth}" Grid.Column="1"/>
+                        <TextBox Text="{Binding OutputWidth}" Grid.Column="1" PreviewTextInput="NumericOnly_PreviewTextInput"/>
                         <TextBlock Text="Height:" VerticalAlignment="Center" Grid.Column="2" Margin="12,0,8,0"/>
-                        <TextBox Text="{Binding OutputHeight}" Grid.Column="3"/>
+                        <TextBox Text="{Binding OutputHeight}" Grid.Column="3" PreviewTextInput="NumericOnly_PreviewTextInput"/>
                         <TextBlock Text="FPS:" VerticalAlignment="Center" Grid.Column="4" Margin="12,0,8,0"/>
-                        <TextBox Text="{Binding Fps}" Grid.Column="5"/>
+                        <TextBox Text="{Binding Fps}" Grid.Column="5" PreviewTextInput="NumericOnly_PreviewTextInput"/>
                     </Grid>
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
@@ -120,9 +120,9 @@
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
                         <TextBlock Text="Quality (CQP):" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                        <TextBox Text="{Binding Quality}" Width="48"/>
+                        <TextBox Text="{Binding Quality}" Width="48" PreviewTextInput="NumericOnly_PreviewTextInput"/>
                         <TextBlock Text="Bitrate (kbps):" VerticalAlignment="Center" Margin="16,0,8,0"/>
-                        <TextBox Text="{Binding Bitrate}" Width="64"/>
+                        <TextBox Text="{Binding Bitrate}" Width="64" PreviewTextInput="NumericOnly_PreviewTextInput"/>
                     </StackPanel>
 
                     <!-- Recording Mode -->
@@ -137,11 +137,11 @@
                                TextWrapping="Wrap" Foreground="{StaticResource SubtextBrush}" Margin="0,0,0,8" FontSize="11"/>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                         <TextBlock Text="Segment Duration (min):" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                        <TextBox Text="{Binding SegmentDurationMinutes}" Width="48"/>
+                        <TextBox Text="{Binding SegmentDurationMinutes}" Width="48" PreviewTextInput="NumericOnly_PreviewTextInput"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Max Duration (min, 0=unlimited):" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                        <TextBox Text="{Binding MaxDurationMinutes}" Width="48"/>
+                        <TextBox Text="{Binding MaxDurationMinutes}" Width="48" PreviewTextInput="NumericOnly_PreviewTextInput"/>
                     </StackPanel>
                 </StackPanel>
             </TabItem>
