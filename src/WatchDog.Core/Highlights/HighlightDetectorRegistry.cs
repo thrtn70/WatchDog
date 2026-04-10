@@ -1,16 +1,21 @@
 using Microsoft.Extensions.Logging;
 using WatchDog.Core.Events;
 using WatchDog.Core.GameDetection;
+using WatchDog.Core.Highlights.Audio;
 
 namespace WatchDog.Core.Highlights;
 
 public sealed class HighlightDetectorRegistry
 {
     private readonly Dictionary<string, IHighlightDetector> _detectors;
+    private readonly IHighlightDetector? _audioFallback;
     private readonly IEventBus _eventBus;
     private readonly ILogger<HighlightDetectorRegistry> _logger;
     private IHighlightDetector? _activeDetector;
     private GameInfo? _activeGame;
+
+    /// <summary>Whether the currently active detector is the AI audio fallback.</summary>
+    public bool IsAudioFallbackActive => _activeDetector == _audioFallback && _audioFallback is not null;
 
     public HighlightDetectorRegistry(
         IEnumerable<IHighlightDetector> detectors,
@@ -23,6 +28,14 @@ public sealed class HighlightDetectorRegistry
 
         foreach (var detector in detectors)
         {
+            // The audio fallback detector uses a sentinel name — store it separately
+            if (detector is AudioHighlightDetector audioDetector)
+            {
+                _audioFallback = audioDetector;
+                _logger.LogInformation("Registered AI audio fallback highlight detector");
+                continue;
+            }
+
             foreach (var exeName in detector.SupportedExecutableNames)
             {
                 _detectors[exeName] = detector;
@@ -38,8 +51,18 @@ public sealed class HighlightDetectorRegistry
 
         if (!_detectors.TryGetValue(game.ExecutableName, out var detector))
         {
-            _logger.LogInformation("No highlight detector available for {Game}", game.DisplayName);
-            return;
+            // No dedicated detector — try the AI audio fallback
+            if (_audioFallback is not null)
+            {
+                detector = _audioFallback;
+                _logger.LogInformation("No dedicated detector for {Game}, using AI audio fallback",
+                    game.DisplayName);
+            }
+            else
+            {
+                _logger.LogInformation("No highlight detector available for {Game}", game.DisplayName);
+                return;
+            }
         }
 
         _activeDetector = detector;

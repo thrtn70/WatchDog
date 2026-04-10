@@ -10,7 +10,7 @@ using WatchDog.Core.GameDetection;
 using WatchDog.Core.Highlights;
 using WatchDog.Core.Highlights.Cs2;
 using WatchDog.Core.Highlights.Overwatch2;
-using WatchDog.Core.Highlights.RainbowSixSiege;
+using WatchDog.Core.Highlights.Audio;
 using WatchDog.Core.Highlights.Valorant;
 using WatchDog.Core.Hotkeys;
 using WatchDog.Core.Recording;
@@ -361,7 +361,19 @@ public partial class App : Application
         services.AddSingleton<IHighlightDetector, Cs2HighlightDetector>();
         services.AddSingleton<IHighlightDetector, ValorantHighlightDetector>();
         services.AddSingleton<IHighlightDetector, Ow2HighlightDetector>();
-        services.AddSingleton<IHighlightDetector, R6HighlightDetector>();
+
+        // AI audio highlight detector — universal fallback for all other games
+        // (also replaces the broken R6 Siege log-based detector)
+        services.AddSingleton(sp =>
+        {
+            var modelPath = Path.Combine(AppContext.BaseDirectory, "Resources", "Models", "yamnet.onnx");
+            return new AudioClassifier(modelPath, sp.GetRequiredService<ILoggerFactory>()
+                .CreateLogger<AudioClassifier>());
+        });
+        services.AddSingleton<IHighlightDetector>(sp => new AudioHighlightDetector(
+            sp.GetRequiredService<AudioClassifier>(),
+            sp.GetRequiredService<ILoggerFactory>().CreateLogger<AudioHighlightDetector>()));
+
         services.AddSingleton<HighlightDetectorRegistry>();
 
         // Hosted services (background workers)
