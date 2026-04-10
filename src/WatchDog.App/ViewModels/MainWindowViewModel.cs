@@ -48,6 +48,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty] private string _statusText = string.Empty;
     [ObservableProperty] private string _captureStatusText = "Idle";
     [ObservableProperty] private bool _isScanning;
+    [ObservableProperty] private bool _isRecording;
 
     public MainWindowViewModel(
         IClipStorage clipStorage,
@@ -346,6 +347,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     private void UpdateCaptureStatus(CaptureState state)
     {
+        IsRecording = (state is CaptureState.Buffering or CaptureState.Saving)
+                      && !_captureEngine.IsDesktopCapture;
         CaptureStatusText = state switch
         {
             CaptureState.Idle => "Idle",

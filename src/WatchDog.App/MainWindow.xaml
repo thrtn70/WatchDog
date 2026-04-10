@@ -129,7 +129,8 @@
                             HorizontalAlignment="Center" VerticalAlignment="Center">
                     <!-- Recording dot (visible when recording) -->
                     <Ellipse x:Name="RecordingDot" Width="8" Height="8" Margin="0,0,8,0"
-                             Fill="{StaticResource RecordingBrush}" Visibility="Collapsed"/>
+                             Fill="{StaticResource RecordingBrush}"
+                             Visibility="{Binding IsRecording, Converter={StaticResource BoolToVis}}"/>
                     <TextBlock Text="{Binding CaptureStatusText}"
                                FontSize="11" FontWeight="Medium"
                                Foreground="{StaticResource SubtextBrush}"/>

@@ -36,7 +36,8 @@
                             Click="CollapseToggle_Click"
                             Background="Transparent" BorderThickness="0"
                             Padding="4,0" Cursor="Hand"
-                            ToolTip="Collapse / Expand">
+                            ToolTip="Collapse / Expand"
+                            AutomationProperties.Name="Collapse or expand panel">
                         <TextBlock x:Name="CollapseIcon"
                                    Text="&#x25BC;"
                                    Foreground="{StaticResource MutedTextBrush}"
