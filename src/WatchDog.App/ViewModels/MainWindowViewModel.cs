@@ -156,18 +156,36 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     private void LoadSessionGroups()
     {
+        // Load sessions and clips off the UI thread, then dispatch results
+        var filterGame = FilterGame;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var sessions = await _sessionRepository.GetRecentAsync(100);
+                var allClips = _clipStorage.GetAllClips();
+                Application.Current?.Dispatcher.InvokeAsync(() =>
+                    BuildSessionGroups(sessions, allClips, filterGame));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Session group load failed: {ex.Message}");
+            }
+        });
+    }
+
+    private void BuildSessionGroups(IReadOnlyList<Sessions.GameSession> sessions, IReadOnlyList<ClipMetadata> allClips, string filterGame)
+    {
         try
         {
-            var sessions = _sessionRepository.GetRecentAsync(100).GetAwaiter().GetResult();
-            var allClips = _clipStorage.GetAllClips();
 
             var groups = new List<SessionGroupViewModel>();
 
             foreach (var session in sessions)
             {
                 // Filter by game if needed
-                if (FilterGame != "All Games" && FilterGame != "\u2605 Favorites"
-                    && !string.Equals(session.GameName, FilterGame, StringComparison.OrdinalIgnoreCase))
+                if (filterGame != "All Games" && filterGame != "\u2605 Favorites"
+                    && !string.Equals(session.GameName, filterGame, StringComparison.OrdinalIgnoreCase))
                     continue;
 
                 var sessionClips = allClips

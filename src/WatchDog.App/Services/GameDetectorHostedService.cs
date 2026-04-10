@@ -146,11 +146,11 @@ public sealed class GameDetectorHostedService : IHostedService
     {
         _logger.LogInformation("Game exited: {Game}", game.DisplayName);
 
-        await _sessionManager.EndSessionAsync(game);
-        _eventBus.Publish(new GameExitedEvent(game));
-
         try
         {
+            await _sessionManager.EndSessionAsync(game);
+            _eventBus.Publish(new GameExitedEvent(game));
+
             if (_settings.DesktopCaptureEnabled || _settings.Recording.IsHighlightModeEnabled)
             {
                 _logger.LogInformation("Switching back to desktop capture");

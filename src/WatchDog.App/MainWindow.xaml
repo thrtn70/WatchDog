@@ -10,6 +10,7 @@
         Background="{StaticResource BaseBrush}"
         Foreground="{StaticResource TextBrush}"
         FontFamily="{StaticResource UIFont}" FontSize="13"
+        UseLayoutRounding="True"
         Icon="pack://application:,,,/Resources/WatchDog.ico">
 
     <Window.Resources>
