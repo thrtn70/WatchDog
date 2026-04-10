@@ -61,23 +61,36 @@ public partial class App : Application
         // Create system tray icon
         InitializeTrayIcon();
 
-        await _host.StartAsync();
+        try
+        {
+            await _host.StartAsync();
 
-        // Recover any orphaned sessions from a prior crash and activate match tracking
-        var sessionManager = _host.Services.GetRequiredService<SessionManager>();
-        await sessionManager.RecoverOrphanedSessionsAsync();
-        _ = _host.Services.GetRequiredService<MatchTracker>(); // Resolves singleton, starts event subscription
+            // Recover any orphaned sessions from a prior crash and activate match tracking
+            var sessionManager = _host.Services.GetRequiredService<SessionManager>();
+            await sessionManager.RecoverOrphanedSessionsAsync();
+            _ = _host.Services.GetRequiredService<MatchTracker>(); // Resolves singleton, starts event subscription
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"WatchDog failed to start:\n\n{ex.Message}",
+                "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            Shutdown(1);
+        }
     }
 
     protected override async void OnExit(ExitEventArgs e)
     {
         _trayIcon?.Dispose();
 
-        if (_host is not null)
+        try
         {
-            await _host.StopAsync(TimeSpan.FromSeconds(5));
-            _host.Dispose();
+            if (_host is not null)
+            {
+                await _host.StopAsync(TimeSpan.FromSeconds(5));
+                _host.Dispose();
+            }
         }
+        catch { /* best-effort shutdown */ }
 
         base.OnExit(e);
     }

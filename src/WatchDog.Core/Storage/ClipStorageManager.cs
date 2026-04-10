@@ -154,23 +154,31 @@ public sealed class ClipStorageManager : IClipStorage
 
     public void DeleteClip(string filePath)
     {
+        string? thumbnailPath;
         lock (_lock)
         {
             var clip = _clips.FirstOrDefault(c => c.FilePath == filePath);
             if (clip is null) return;
 
+            thumbnailPath = clip.ThumbnailPath;
             _clips.Remove(clip);
-
-            // Delete video file
-            if (File.Exists(filePath))
-                File.Delete(filePath);
-
-            // Delete thumbnail
-            if (clip.ThumbnailPath is not null && File.Exists(clip.ThumbnailPath))
-                File.Delete(clip.ThumbnailPath);
         }
 
+        // Persist index first (atomic write), then best-effort delete files
         SaveIndex();
+
+        try
+        {
+            if (File.Exists(filePath))
+                File.Delete(filePath);
+            if (thumbnailPath is not null && File.Exists(thumbnailPath))
+                File.Delete(thumbnailPath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to delete clip file(s) for {File}", filePath);
+        }
+
         _logger.LogInformation("Deleted clip: {File}", filePath);
     }
 

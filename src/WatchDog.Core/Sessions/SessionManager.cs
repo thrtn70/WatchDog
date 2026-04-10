@@ -33,6 +33,7 @@ public sealed class SessionManager
     {
         // Collect events to publish after releasing the lock
         SessionEndedEvent? endedEvent = null;
+        GameSession? created = null;
 
         await _lock.WaitAsync(ct);
         try
@@ -50,6 +51,7 @@ public sealed class SessionManager
 
             await _repository.SaveAsync(session, ct);
             _currentSession = session;
+            created = session;
         }
         finally
         {
@@ -59,8 +61,8 @@ public sealed class SessionManager
         // Publish events outside the lock to prevent deadlock via re-entrant subscribers
         if (endedEvent is not null)
             _eventBus.Publish(endedEvent);
-        _eventBus.Publish(new SessionStartedEvent(_currentSession!.Id, game));
-        _logger.LogInformation("Session started: {Game} ({Id})", game.DisplayName, _currentSession.Id);
+        _eventBus.Publish(new SessionStartedEvent(created!.Id, game));
+        _logger.LogInformation("Session started: {Game} ({Id})", game.DisplayName, created.Id);
     }
 
     public async Task StartDesktopSessionAsync(CancellationToken ct = default)

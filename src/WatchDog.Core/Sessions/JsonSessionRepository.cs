@@ -26,7 +26,16 @@ public sealed class JsonSessionRepository : ISessionRepository, IDisposable
     {
         _indexPath = Path.Combine(storageBasePath, "sessions-index.json");
         _logger = logger;
-        Directory.CreateDirectory(storageBasePath);
+
+        try
+        {
+            Directory.CreateDirectory(storageBasePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create sessions storage directory: {Path}", storageBasePath);
+        }
+
         LoadIndex();
     }
 

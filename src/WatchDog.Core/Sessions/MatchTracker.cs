@@ -10,11 +10,19 @@ public sealed class MatchTracker : IDisposable
     private readonly IEventBus _eventBus;
     private readonly ILogger<MatchTracker> _logger;
     private readonly IDisposable _subscription;
+    private readonly object _stateLock = new();
 
     private int _currentMatchNumber;
     private DateTimeOffset? _currentMatchStartedAt;
 
-    public int? CurrentMatchNumber => _currentMatchStartedAt is not null ? _currentMatchNumber : null;
+    public int? CurrentMatchNumber
+    {
+        get
+        {
+            lock (_stateLock)
+                return _currentMatchStartedAt is not null ? _currentMatchNumber : null;
+        }
+    }
 
     public MatchTracker(
         SessionManager sessionManager,
@@ -33,17 +41,20 @@ public sealed class MatchTracker : IDisposable
         var sessionId = _sessionManager.CurrentSessionId;
         if (sessionId is null) return;
 
-        switch (e.Type)
+        lock (_stateLock)
         {
-            case HighlightType.MatchStarted:
-                StartNewMatch(sessionId.Value, e);
-                break;
-            case HighlightType.MatchWin:
-                EndCurrentMatch(sessionId.Value, MatchResult.Win, e);
-                break;
-            case HighlightType.MatchLoss:
-                EndCurrentMatch(sessionId.Value, MatchResult.Loss, e);
-                break;
+            switch (e.Type)
+            {
+                case HighlightType.MatchStarted:
+                    StartNewMatch(sessionId.Value, e);
+                    break;
+                case HighlightType.MatchWin:
+                    EndCurrentMatch(sessionId.Value, MatchResult.Win, e);
+                    break;
+                case HighlightType.MatchLoss:
+                    EndCurrentMatch(sessionId.Value, MatchResult.Loss, e);
+                    break;
+            }
         }
     }
 
@@ -79,7 +90,7 @@ public sealed class MatchTracker : IDisposable
         _currentMatchStartedAt = null;
 
         // Snapshot values and persist asynchronously
-        _ = PersistMatchEndAsync(sessionId, matchNumber, startedAt);
+        _ = PersistMatchEndAsync(sessionId, matchNumber, startedAt, result, score);
     }
 
     private async Task PersistMatchStartAsync(Guid sessionId, int matchNumber, DateTimeOffset startedAt)
@@ -104,7 +115,7 @@ public sealed class MatchTracker : IDisposable
         }
     }
 
-    private async Task PersistMatchEndAsync(Guid sessionId, int matchNumber, DateTimeOffset startedAt)
+    private async Task PersistMatchEndAsync(Guid sessionId, int matchNumber, DateTimeOffset startedAt, MatchResult result, string? score)
     {
         try
         {
@@ -119,16 +130,19 @@ public sealed class MatchTracker : IDisposable
                 matches[existingIdx] = matches[existingIdx] with
                 {
                     EndedAt = DateTimeOffset.UtcNow,
+                    Result = result,
+                    Score = score,
                 };
             }
             else
             {
-                // Match wasn't persisted yet (start was still in flight); create it ended
                 matches.Add(new SessionMatch
                 {
                     MatchNumber = matchNumber,
                     StartedAt = startedAt,
                     EndedAt = DateTimeOffset.UtcNow,
+                    Result = result,
+                    Score = score,
                 });
             }
 
@@ -142,8 +156,11 @@ public sealed class MatchTracker : IDisposable
 
     public void Reset()
     {
-        _currentMatchNumber = 0;
-        _currentMatchStartedAt = null;
+        lock (_stateLock)
+        {
+            _currentMatchNumber = 0;
+            _currentMatchStartedAt = null;
+        }
     }
 
     public void Dispose() => _subscription.Dispose();
