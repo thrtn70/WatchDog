@@ -16,11 +16,11 @@ public partial class GameLaunchToast : Window
 {
     private readonly DispatcherTimer _countdownTimer;
     private int _secondsRemaining = 15;
-    private RecordingMode _selectedMode = RecordingMode.ReplayBuffer;
+    private GameRecordingMode _selectedMode = GameRecordingMode.ReplayBuffer;
     private bool _eventFired;
 
     /// <summary>Fires when the user selects a mode (or auto-dismiss triggers).</summary>
-    public event Action<RecordingMode, bool>? ModeSelected; // (mode, remember)
+    public event Action<GameRecordingMode, bool>? ModeSelected; // (mode, remember)
 
     public GameLaunchToast(GameInfo game, bool highlightsAvailable, bool isAiFallback, string? caveat)
     {
@@ -47,11 +47,11 @@ public partial class GameLaunchToast : Window
         if (highlightsAvailable && caveat is null)
         {
             var label = isAiFallback ? "Highlights (AI)" : "Highlights";
-            AddModeButton(label, RecordingMode.Highlight);
+            AddModeButton(label, GameRecordingMode.Highlight);
         }
 
-        AddModeButton("Session", RecordingMode.SessionRecording);
-        AddModeButton("Replay Buffer", RecordingMode.ReplayBuffer);
+        AddModeButton("Session", GameRecordingMode.SessionRecording);
+        AddModeButton("Replay Buffer", GameRecordingMode.ReplayBuffer);
 
         // Position near system tray (bottom-right)
         var workArea = SystemParameters.WorkArea;
@@ -68,7 +68,7 @@ public partial class GameLaunchToast : Window
         Closed += (_, _) => _countdownTimer.Stop();
     }
 
-    private void AddModeButton(string label, RecordingMode mode)
+    private void AddModeButton(string label, GameRecordingMode mode)
     {
         var btn = new Button
         {
@@ -89,7 +89,7 @@ public partial class GameLaunchToast : Window
         ModeButtonsPanel.Children.Add(btn);
     }
 
-    private void SelectMode(RecordingMode mode)
+    private void SelectMode(GameRecordingMode mode)
     {
         // Guard: prevent double-fire from countdown + button click race
         if (_eventFired) return;
@@ -110,7 +110,7 @@ public partial class GameLaunchToast : Window
         if (_secondsRemaining <= 0)
         {
             // Unified path through SelectMode — guarded by _eventFired
-            SelectMode(RecordingMode.ReplayBuffer);
+            SelectMode(GameRecordingMode.ReplayBuffer);
         }
     }
 

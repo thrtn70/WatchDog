@@ -38,10 +38,10 @@ public static class GenreClassification
     /// <summary>
     /// Recommended default recording mode for a genre when no profile exists.
     /// </summary>
-    public static Settings.RecordingMode DefaultMode(GameGenre genre) =>
+    public static Settings.GameRecordingMode DefaultMode(GameGenre genre) =>
         SupportsHighlights(genre)
-            ? Settings.RecordingMode.Highlight
-            : Settings.RecordingMode.ReplayBuffer;
+            ? Settings.GameRecordingMode.Highlight
+            : Settings.GameRecordingMode.ReplayBuffer;
 
     /// <summary>
     /// User-facing description of why highlights may not work for this genre.

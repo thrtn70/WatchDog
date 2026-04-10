@@ -238,7 +238,7 @@ public sealed class GameDetectorHostedService : IHostedService
         });
     }
 
-    private void SaveGameProfile(GameInfo game, Settings.RecordingMode mode)
+    private void SaveGameProfile(GameInfo game, GameRecordingMode mode)
     {
         try
         {
@@ -272,7 +272,7 @@ public sealed class GameDetectorHostedService : IHostedService
         }
     }
 
-    private async Task ApplyModeToActiveSessionAsync(GameInfo game, Settings.RecordingMode mode)
+    private async Task ApplyModeToActiveSessionAsync(GameInfo game, GameRecordingMode mode)
     {
         try
         {

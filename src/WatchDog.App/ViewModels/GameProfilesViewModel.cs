@@ -19,7 +19,7 @@ public partial class GameProfilesViewModel : ObservableObject
     [ObservableProperty] private string _searchText = string.Empty;
 
     // Profile editor fields (bound to the right panel)
-    [ObservableProperty] private RecordingMode _selectedMode = RecordingMode.ReplayBuffer;
+    [ObservableProperty] private GameRecordingMode _selectedMode = GameRecordingMode.ReplayBuffer;
     [ObservableProperty] private bool _useDefaultResolution = true;
     [ObservableProperty] private int _outputWidth = 1920;
     [ObservableProperty] private int _outputHeight = 1080;

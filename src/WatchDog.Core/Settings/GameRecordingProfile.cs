@@ -9,7 +9,7 @@ public sealed record GameRecordingProfile
     public required string GameExecutableName { get; init; }
 
     /// <summary>Recording mode for this game.</summary>
-    public RecordingMode Mode { get; init; } = RecordingMode.ReplayBuffer;
+    public GameRecordingMode Mode { get; init; } = GameRecordingMode.ReplayBuffer;
 
     /// <summary>Resolution override. Null = use default from CaptureConfig.</summary>
     public int? OutputWidth { get; init; }
@@ -45,7 +45,7 @@ public sealed record GameRecordingProfile
     public bool AutoRecord { get; init; } = true;
 }
 
-public enum RecordingMode
+public enum GameRecordingMode
 {
     /// <summary>Replay buffer — press hotkey to save last N seconds.</summary>
     ReplayBuffer,

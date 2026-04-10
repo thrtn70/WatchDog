@@ -9,7 +9,7 @@ namespace WatchDog.App.Services;
 /// Generates tray icon variants by applying colored status dot overlays
 /// to the base WatchDog icon. Icons are generated at app startup and cached to disk.
 /// </summary>
-public static class TrayIconGenerator
+public static partial class TrayIconGenerator
 {
     private static readonly string CacheDir = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),

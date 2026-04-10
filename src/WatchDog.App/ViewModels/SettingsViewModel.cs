@@ -63,7 +63,7 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _desktopCaptureEnabled;
 
     // Recording mode
-    [ObservableProperty] private RecordingMode _recordingMode;
+    [ObservableProperty] private Core.Recording.RecordingMode _recordingMode;
     [ObservableProperty] private int _segmentDurationMinutes;
     [ObservableProperty] private int _maxDurationMinutes;
 
