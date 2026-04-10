@@ -168,7 +168,103 @@
 
             <!-- ── Clip Library ──────────────────────────────────────────── -->
 
-            <!-- Grid View -->
+            <!-- Session List View (default, shows session groups) -->
+            <ListBox x:Name="SessionListView" Grid.Column="0"
+                     ItemsSource="{Binding SessionGroups}"
+                     Background="{StaticResource BaseBrush}" BorderThickness="0"
+                     VirtualizingPanel.IsVirtualizing="True"
+                     VirtualizingPanel.VirtualizationMode="Recycling"
+                     ScrollViewer.CanContentScroll="True"
+                     Padding="4">
+                <ListBox.Style>
+                    <Style TargetType="ListBox" BasedOn="{StaticResource {x:Type ListBox}}">
+                        <Setter Property="Visibility" Value="Visible"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsSessionDetailView}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListBox.Style>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="5"
+                                Margin="4,2" Padding="12,10" Cursor="Hand"
+                                BorderBrush="Transparent" BorderThickness="1">
+                            <Border.InputBindings>
+                                <MouseBinding Gesture="LeftDoubleClick"
+                                              Command="{Binding Data.OpenSessionCommand, Source={StaticResource Proxy}}"
+                                              CommandParameter="{Binding}"/>
+                            </Border.InputBindings>
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="BorderBrush" Value="{StaticResource Surface1Brush}"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding GameName}" FontWeight="SemiBold" FontSize="13"
+                                                   Foreground="{StaticResource AccentBrush}"/>
+                                        <TextBlock Text="{Binding StatusDisplay}" FontSize="10" FontWeight="Bold"
+                                                   Foreground="{StaticResource RecordingBrush}" Margin="8,0,0,0"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding SummaryDisplay}" FontSize="11"
+                                               Foreground="{StaticResource SubtextBrush}" Margin="0,3,0,0"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center"
+                                            HorizontalAlignment="Right">
+                                    <TextBlock Text="{Binding DateDisplay}" FontSize="11"
+                                               Foreground="{StaticResource SubtextBrush}"
+                                               HorizontalAlignment="Right"/>
+                                    <TextBlock Text="{Binding TimeDisplay}" FontSize="11"
+                                               Foreground="{StaticResource MutedTextBrush}"
+                                               HorizontalAlignment="Right" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- Session Detail Header (back button + session info, visible in detail view) -->
+            <Border Grid.Column="0" VerticalAlignment="Top" Background="{StaticResource BaseBrush}"
+                    Padding="8,6" ZIndex="1"
+                    Visibility="{Binding IsSessionDetailView, Converter={StaticResource BoolToVis}}">
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="&#xE72B;" Style="{StaticResource IconButton}"
+                            Command="{Binding BackToSessionsCommand}" ToolTip="Back to sessions"
+                            AutomationProperties.Name="Back to sessions"
+                            VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding SelectedSession.GameName}"
+                               FontWeight="SemiBold" FontSize="14"
+                               Foreground="{StaticResource AccentBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text=" — " Foreground="{StaticResource MutedTextBrush}"
+                               VerticalAlignment="Center" FontSize="12"/>
+                    <TextBlock Text="{Binding SelectedSession.DateDisplay}"
+                               FontSize="12" Foreground="{StaticResource SubtextBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text=" · " Foreground="{StaticResource MutedTextBrush}"
+                               VerticalAlignment="Center" FontSize="12"/>
+                    <TextBlock Text="{Binding SelectedSession.SummaryDisplay}"
+                               FontSize="12" Foreground="{StaticResource SubtextBrush}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Grid View (shown in session detail view) -->
             <ListBox x:Name="ClipGridView" Grid.Column="0"
                      ItemsSource="{Binding Clips}"
                      SelectedItem="{Binding SelectedClip}"
@@ -177,6 +273,8 @@
                      VirtualizingPanel.IsVirtualizing="True"
                      VirtualizingPanel.VirtualizationMode="Recycling"
                      ScrollViewer.CanContentScroll="True"
+                     Visibility="{Binding IsSessionDetailView, Converter={StaticResource BoolToVis}}"
+                     Margin="0,38,0,0"
                      Padding="4">
                 <ListBox.ItemsPanel>
                     <ItemsPanelTemplate>
@@ -253,7 +351,7 @@
                 </ListBox.ItemTemplate>
             </ListBox>
 
-            <!-- List View (hidden by default) -->
+            <!-- List View (hidden by default, available in session detail) -->
             <ListBox x:Name="ClipListView" Grid.Column="0"
                      ItemsSource="{Binding Clips}"
                      SelectedItem="{Binding SelectedClip}"
@@ -262,6 +360,7 @@
                      VirtualizingPanel.VirtualizationMode="Recycling"
                      ScrollViewer.CanContentScroll="True"
                      Visibility="Collapsed"
+                     Margin="0,38,0,0"
                      Padding="4">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
@@ -333,16 +432,20 @@
                 </ListBox.ItemTemplate>
             </ListBox>
 
-            <!-- Empty state (shown when no clips) -->
+            <!-- Empty state (shown when no sessions or clips) -->
             <StackPanel Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Center"
                         IsHitTestVisible="False">
                 <StackPanel.Style>
                     <Style TargetType="StackPanel">
                         <Setter Property="Visibility" Value="Collapsed"/>
                         <Style.Triggers>
-                            <DataTrigger Binding="{Binding Clips.Count}" Value="0">
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding SessionGroups.Count}" Value="0"/>
+                                    <Condition Binding="{Binding IsSessionDetailView}" Value="False"/>
+                                </MultiDataTrigger.Conditions>
                                 <Setter Property="Visibility" Value="Visible"/>
-                            </DataTrigger>
+                            </MultiDataTrigger>
                         </Style.Triggers>
                     </Style>
                 </StackPanel.Style>

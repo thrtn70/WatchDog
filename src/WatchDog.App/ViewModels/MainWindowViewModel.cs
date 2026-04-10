@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using WatchDog.Core.Capture;
 using WatchDog.Core.ClipEditor;
 using WatchDog.Core.Events;
+using WatchDog.Core.Sessions;
 using WatchDog.Core.Settings;
 using WatchDog.Core.Storage;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,8 +20,15 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly IClipStorage _clipStorage;
     private readonly IClipEditor _clipEditorService;
     private readonly ICaptureEngine _captureEngine;
+    private readonly ISessionRepository _sessionRepository;
     private readonly IDisposable _clipSavedSub;
 
+    // Session-grouped view
+    [ObservableProperty] private ObservableCollection<SessionGroupViewModel> _sessionGroups = [];
+    [ObservableProperty] private SessionGroupViewModel? _selectedSession;
+    [ObservableProperty] private bool _isSessionDetailView;
+
+    // Flat clip view (used within session detail and for unsorted clips)
     [ObservableProperty] private ObservableCollection<ClipItemViewModel> _clips = [];
     [ObservableProperty] private ClipItemViewModel? _selectedClip;
     [ObservableProperty] private string _filterGame = "All Games";
@@ -46,6 +54,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IClipEditor clipEditor,
         ICaptureEngine captureEngine,
         IEventBus eventBus,
+        ISessionRepository sessionRepository,
         AudioMixerViewModel? audioMixer = null,
         PerformanceViewModel? performance = null)
     {
@@ -54,15 +63,16 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _clipStorage = clipStorage;
         _clipEditorService = clipEditor;
         _captureEngine = captureEngine;
+        _sessionRepository = sessionRepository;
 
         _clipSavedSub = eventBus.Subscribe<ClipSavedEvent>(e =>
         {
-            // Auto-index the newly saved clip, then refresh the UI
             Task.Run(async () =>
             {
                 try
                 {
-                    await _clipStorage.IndexClipAsync(e.FilePath, e.Game?.DisplayName);
+                    await _clipStorage.IndexClipAsync(e.FilePath, e.Game?.DisplayName,
+                        highlightType: null, e.SessionId, e.MatchNumber);
                 }
                 catch { /* already indexed or missing file */ }
 
@@ -87,14 +97,13 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             _initialScanDone = true;
             IsScanning = true;
-            // Show already-indexed clips immediately, then scan for new ones in background
             Task.Run(async () =>
             {
                 try
                 {
                     await _clipStorage.ScanAndIndexAsync();
                 }
-                catch { /* scan failure is non-fatal — existing index is still usable */ }
+                catch { /* scan failure is non-fatal */ }
                 finally
                 {
                     Application.Current?.Dispatcher.Invoke(() =>
@@ -106,6 +115,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             });
         }
 
+        // Load session groups
+        LoadSessionGroups();
+
+        // Also load flat clip list for the current view
         var allClips = FilterGame switch
         {
             "All Games" => _clipStorage.GetAllClips(),
@@ -138,6 +151,77 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         var totalSize = allClips.Sum(c => c.FileSizeBytes);
         var sizeMb = totalSize / (1024.0 * 1024.0);
         StatusText = $"{allClips.Count} clips ({sizeMb:F0} MB)";
+    }
+
+    private void LoadSessionGroups()
+    {
+        try
+        {
+            var sessions = _sessionRepository.GetRecentAsync(100).GetAwaiter().GetResult();
+            var allClips = _clipStorage.GetAllClips();
+
+            var groups = new List<SessionGroupViewModel>();
+
+            foreach (var session in sessions)
+            {
+                // Filter by game if needed
+                if (FilterGame != "All Games" && FilterGame != "\u2605 Favorites"
+                    && !string.Equals(session.GameName, FilterGame, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var sessionClips = allClips
+                    .Where(c => c.SessionId == session.Id)
+                    .OrderByDescending(c => c.CreatedAt)
+                    .Select(c => new ClipItemViewModel(c))
+                    .ToList();
+
+                groups.Add(new SessionGroupViewModel(session, sessionClips));
+            }
+
+            // Add "Unsorted" group for clips without a session
+            var unsortedClips = allClips
+                .Where(c => c.SessionId is null)
+                .OrderByDescending(c => c.CreatedAt)
+                .Select(c => new ClipItemViewModel(c))
+                .ToList();
+
+            if (unsortedClips.Count > 0)
+            {
+                var unsortedSession = new GameSession
+                {
+                    Id = Guid.Empty,
+                    GameName = "Unsorted",
+                    GameExecutableName = "unsorted",
+                    StartedAt = unsortedClips[^1].CreatedAt,
+                    EndedAt = unsortedClips[0].CreatedAt,
+                    Status = SessionStatus.Completed,
+                };
+                groups.Add(new SessionGroupViewModel(unsortedSession, unsortedClips));
+            }
+
+            SessionGroups = new ObservableCollection<SessionGroupViewModel>(groups);
+        }
+        catch
+        {
+            // Session loading failure is non-fatal — flat clip list still works
+        }
+    }
+
+    [RelayCommand]
+    private void OpenSession(SessionGroupViewModel? session)
+    {
+        if (session is null) return;
+        SelectedSession = session;
+        Clips = new ObservableCollection<ClipItemViewModel>(session.Clips);
+        IsSessionDetailView = true;
+    }
+
+    [RelayCommand]
+    private void BackToSessions()
+    {
+        SelectedSession = null;
+        IsSessionDetailView = false;
+        RefreshClips();
     }
 
     partial void OnFilterGameChanged(string value) => RefreshClips();

@@ -74,19 +74,39 @@ public partial class MainWindow : Window
     }
 
     // ── View Switching ─────────────────────────────────────────────────
+    private bool _isListView;
+
     private void OnGridViewChecked(object sender, RoutedEventArgs e)
     {
         if (ListViewToggle is null || ClipGridView is null || ClipListView is null) return;
         ListViewToggle.IsChecked = false;
-        ClipGridView.Visibility = Visibility.Visible;
-        ClipListView.Visibility = Visibility.Collapsed;
+        _isListView = false;
+        UpdateClipViewVisibility();
     }
 
     private void OnListViewChecked(object sender, RoutedEventArgs e)
     {
         if (GridViewToggle is null) return;
         GridViewToggle.IsChecked = false;
-        ClipGridView.Visibility = Visibility.Collapsed;
-        ClipListView.Visibility = Visibility.Visible;
+        _isListView = true;
+        UpdateClipViewVisibility();
+    }
+
+    private void UpdateClipViewVisibility()
+    {
+        if (ClipGridView is null || ClipListView is null) return;
+
+        var vm = DataContext as MainWindowViewModel;
+        var inDetail = vm?.IsSessionDetailView == true;
+
+        if (!inDetail)
+        {
+            ClipGridView.Visibility = Visibility.Collapsed;
+            ClipListView.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        ClipGridView.Visibility = _isListView ? Visibility.Collapsed : Visibility.Visible;
+        ClipListView.Visibility = _isListView ? Visibility.Visible : Visibility.Collapsed;
     }
 }
