@@ -872,25 +872,25 @@ public sealed class ClipItemViewModel : System.ComponentModel.INotifyPropertyCha
     /// <summary>Abbreviated highlight badge text for thumbnail overlay.</summary>
     public string? HighlightBadgeText => HighlightType switch
     {
-        Highlights.HighlightType.Kill => "K",
-        Highlights.HighlightType.Ace => "ACE",
-        Highlights.HighlightType.Multikill => "MK",
-        Highlights.HighlightType.RoundWin => "RW",
-        Highlights.HighlightType.RoundLoss => "RL",
-        Highlights.HighlightType.MatchWin => "W",
-        Highlights.HighlightType.MatchLoss => "L",
-        Highlights.HighlightType.Death => "D",
+        HighlightType.Kill => "K",
+        HighlightType.Ace => "ACE",
+        HighlightType.Multikill => "MK",
+        HighlightType.RoundWin => "RW",
+        HighlightType.RoundLoss => "RL",
+        HighlightType.MatchWin => "W",
+        HighlightType.MatchLoss => "L",
+        HighlightType.Death => "D",
         _ => null,
     };
 
     /// <summary>Badge color hex for thumbnail overlay.</summary>
     public string HighlightBadgeColor => HighlightType switch
     {
-        Highlights.HighlightType.Kill => "#D95555",
-        Highlights.HighlightType.Ace => "#D9B84C",
-        Highlights.HighlightType.Multikill => "#38BF7F",
-        Highlights.HighlightType.RoundWin => "#4C96D9",
-        Highlights.HighlightType.MatchWin => "#2EC4B6",
+        HighlightType.Kill => "#D95555",
+        HighlightType.Ace => "#D9B84C",
+        HighlightType.Multikill => "#38BF7F",
+        HighlightType.RoundWin => "#4C96D9",
+        HighlightType.MatchWin => "#2EC4B6",
         _ => "#4A5F6B",
     };
 

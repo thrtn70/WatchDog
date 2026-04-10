@@ -247,7 +247,7 @@ public sealed class GameDetectorHostedService : IHostedService
             // while a game-launch toast is resolving).
             lock (_settingsLock)
             {
-                var newProfile = new Settings.GameRecordingProfile
+                var newProfile = new GameRecordingProfile
                 {
                     GameExecutableName = game.ExecutableName,
                     Mode = mode,
