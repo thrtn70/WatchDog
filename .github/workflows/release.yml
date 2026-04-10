@@ -1,0 +1,126 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      # ── Download OBS runtime ─────────────────────────────────
+      - name: Download OBS Studio runtime
+        shell: pwsh
+        run: |
+          $ObsVersion = "31.0.1"
+          $ZipUrl = "https://github.com/obsproject/obs-studio/releases/download/$ObsVersion/OBS-Studio-$ObsVersion-Windows.zip"
+          Write-Host "Downloading OBS Studio $ObsVersion..."
+          Invoke-WebRequest -Uri $ZipUrl -OutFile obs-studio.zip -UseBasicParsing
+          Expand-Archive -Path obs-studio.zip -DestinationPath obs-extracted -Force
+
+          New-Item -ItemType Directory -Path obs-runtime -Force | Out-Null
+          # Copy bin/64bit flat into obs-runtime root
+          Get-ChildItem -Path obs-extracted/bin/64bit -File | Copy-Item -Destination obs-runtime
+          # Copy data and obs-plugins directories
+          if (Test-Path obs-extracted/data) { Copy-Item obs-extracted/data -Destination obs-runtime -Recurse }
+          if (Test-Path obs-extracted/obs-plugins) { Copy-Item obs-extracted/obs-plugins -Destination obs-runtime -Recurse }
+
+          # Verify
+          if (Test-Path obs-runtime/obs.dll) { Write-Host "OBS runtime OK" }
+          else { Write-Host "ERROR: obs.dll missing"; exit 1 }
+
+      # ── Download FFmpeg ──────────────────────────────────────
+      - name: Download FFmpeg
+        shell: pwsh
+        run: |
+          $ZipUrl = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+          Write-Host "Downloading FFmpeg..."
+          Invoke-WebRequest -Uri $ZipUrl -OutFile ffmpeg.zip -UseBasicParsing
+          Expand-Archive -Path ffmpeg.zip -DestinationPath ffmpeg-extracted -Force
+
+          New-Item -ItemType Directory -Path ffmpeg-runtime -Force | Out-Null
+          $BinDir = Get-ChildItem -Path ffmpeg-extracted -Recurse -Directory -Filter "bin" | Select-Object -First 1
+          Copy-Item "$($BinDir.FullName)/ffmpeg.exe" -Destination ffmpeg-runtime
+          Copy-Item "$($BinDir.FullName)/ffprobe.exe" -Destination ffmpeg-runtime
+
+          if (Test-Path ffmpeg-runtime/ffmpeg.exe) { Write-Host "FFmpeg OK" }
+          else { Write-Host "ERROR: ffmpeg.exe missing"; exit 1 }
+
+      # ── Publish (self-contained) ─────────────────────────────
+      - name: Publish
+        run: |
+          dotnet publish src/WatchDog.App/WatchDog.App.csproj `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            --output publish
+        shell: pwsh
+
+      - name: Verify publish output
+        shell: pwsh
+        run: |
+          foreach ($f in @("WatchDog.App.exe", "obs.dll", "data", "obs-plugins")) {
+            if (-not (Test-Path "publish/$f")) { Write-Host "MISSING: $f"; exit 1 }
+          }
+          Write-Host "Publish output verified"
+
+      # ── Create portable ZIP ──────────────────────────────────
+      - name: Create portable ZIP
+        shell: pwsh
+        run: Compress-Archive -Path publish/* -DestinationPath WatchDog-win-x64.zip
+
+      # ── Build installer ──────────────────────────────────────
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Read version from build props
+        id: version
+        shell: pwsh
+        run: |
+          [xml]$props = Get-Content Directory.Build.props
+          $v = $props.Project.PropertyGroup.Version
+          Write-Host "Version: $v"
+          echo "APP_VERSION=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Compile installer
+        shell: pwsh
+        run: |
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          & $iscc /DAppVersion=${{ steps.version.outputs.APP_VERSION }} installer/watchdog.iss
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Write-Host "Installer compiled"
+
+      - name: Verify installer
+        shell: pwsh
+        run: |
+          $setup = "installer/Output/WatchDog-Setup.exe"
+          if (Test-Path $setup) {
+            $size = [math]::Round((Get-Item $setup).Length / 1MB, 1)
+            Write-Host "WatchDog-Setup.exe: $size MB"
+          } else {
+            Write-Host "ERROR: WatchDog-Setup.exe not found"; exit 1
+          }
+
+      # ── Upload assets to release ─────────────────────────────
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ github.ref_name }} `
+            "installer/Output/WatchDog-Setup.exe" `
+            "WatchDog-win-x64.zip" `
+            --clobber
+        shell: pwsh
