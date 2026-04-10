@@ -81,3 +81,5 @@ publish/
 # Installer output (Inno Setup)
 installer/Output/
 .superpowers/
+docs/assets/issues/
+docs/assets/system tray*

@@ -145,20 +145,22 @@
 
   function initCopyButtons() {
     var blocks = document.querySelectorAll('.setup-card pre');
+    var COPY_LABEL = 'Copy';
+    var CHECK_SVG = '<svg class="copy-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
 
     blocks.forEach(function (pre) {
       var btn = document.createElement('button');
       btn.className = 'copy-btn';
       btn.setAttribute('aria-label', 'Copy to clipboard');
-      btn.textContent = 'Copy';
+      btn.textContent = COPY_LABEL;
 
       btn.addEventListener('click', function () {
         var text = pre.textContent;
         navigator.clipboard.writeText(text).then(function () {
-          btn.textContent = 'Copied';
+          btn.innerHTML = CHECK_SVG;
           btn.classList.add('copied');
           setTimeout(function () {
-            btn.textContent = 'Copy';
+            btn.textContent = COPY_LABEL;
             btn.classList.remove('copied');
           }, 2000);
         }).catch(function () {
@@ -217,6 +219,49 @@
     });
   }
 
+  // ── Scroll Spy ───────────────────────────────────────────
+
+  function initScrollSpy() {
+    var navLinks = document.querySelectorAll('.site-nav__links a[href^="#"]');
+    if (!navLinks.length || !('IntersectionObserver' in window)) return;
+
+    var sections = [];
+    navLinks.forEach(function (link) {
+      var id = link.getAttribute('href').slice(1);
+      var section = document.getElementById(id);
+      if (section) sections.push({ el: section, link: link });
+    });
+
+    if (!sections.length) return;
+
+    var observer = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          var match = sections.find(function (s) { return s.el === entry.target; });
+          if (!match) return;
+          if (entry.isIntersecting) {
+            navLinks.forEach(function (l) { l.classList.remove('active'); });
+            match.link.classList.add('active');
+          }
+        });
+      },
+      { rootMargin: '-20% 0px -60% 0px' }
+    );
+
+    sections.forEach(function (s) { observer.observe(s.el); });
+  }
+
+  // ── Console Easter Egg ───────────────────────────────────
+
+  function initConsoleEasterEgg() {
+    if (typeof console === 'undefined' || !console.log) return;
+    console.log(
+      '%c WatchDog ',
+      'background: #2EC4B6; color: #0d1117; font-weight: 900; font-size: 14px; padding: 4px 8px; border-radius: 4px;',
+      '\n\nLightweight game clipper for Windows.\nhttps://github.com/thrtn70/WatchDog\n\nGPL-2.0 · .NET 9 · OBS Studio\n'
+    );
+  }
+
   // ── Init ─────────────────────────────────────────────────
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -225,5 +270,7 @@
     initReveals();
     initNav();
     initCopyButtons();
+    initScrollSpy();
+    initConsoleEasterEgg();
   });
 })();

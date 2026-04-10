@@ -234,6 +234,8 @@ code {
   text-decoration: none;
 }
 
+.site-nav__logo picture { display: contents; }
+
 .site-nav__logo img {
   border-radius: 4px;
 }
@@ -255,7 +257,33 @@ code {
   font-weight: 500;
   color: var(--text-tertiary);
   text-decoration: none;
+  position: relative;
   transition: color var(--duration-fast) var(--ease-out-expo);
+}
+
+.site-nav__links a::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: translateX(-50%) scale(0);
+  opacity: 0;
+  transition:
+    transform var(--duration-med) var(--ease-out-expo),
+    opacity var(--duration-med) var(--ease-out-expo);
+}
+
+.site-nav__links a.active::after {
+  transform: translateX(-50%) scale(1);
+  opacity: 1;
+}
+
+.site-nav__links a.active {
+  color: var(--text-primary);
 }
 
 .site-nav__links a:hover {
@@ -368,13 +396,24 @@ code {
   background: var(--bg-raised);
   color: var(--text-primary);
   letter-spacing: -0.01em;
-  transition: border-color var(--duration-fast) var(--ease-out-expo);
+  transition:
+    border-color var(--duration-fast) var(--ease-out-expo),
+    box-shadow var(--duration-med) var(--ease-out-expo),
+    transform var(--duration-fast) var(--ease-out-expo);
 }
 
-.game-pill--cs2  { border-color: oklch(55% 0.12 60); color: oklch(75% 0.10 60); }
-.game-pill--val  { border-color: oklch(55% 0.14 15); color: oklch(70% 0.12 15); }
-.game-pill--ow2  { border-color: oklch(55% 0.10 50); color: oklch(75% 0.08 50); }
-.game-pill--r6s  { border-color: oklch(55% 0.08 250); color: oklch(72% 0.06 250); }
+.game-pill--cs2  { border-color: oklch(55% 0.12 60); color: oklch(75% 0.10 60); --pill-glow: 60; }
+.game-pill--val  { border-color: oklch(55% 0.14 15); color: oklch(70% 0.12 15); --pill-glow: 15; }
+.game-pill--ow2  { border-color: oklch(55% 0.10 50); color: oklch(75% 0.08 50); --pill-glow: 50; }
+.game-pill--r6s  { border-color: oklch(55% 0.08 250); color: oklch(72% 0.06 250); --pill-glow: 250; }
+
+.game-pill--ai  { border-color: var(--accent); color: var(--accent); --pill-glow: 180; }
+
+.game-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px oklch(45% 0.12 var(--pill-glow) / 0.25);
+  border-color: oklch(65% 0.14 var(--pill-glow));
+}
 
 .hero__games-note {
   font-size: 0.75rem;
@@ -385,8 +424,14 @@ code {
 .hero__icon {
   width: 64px;
   height: 64px;
-  aspect-ratio: 1;
   border-radius: 14px;
+  overflow: hidden;
+}
+
+.hero__icon img {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .hero__title {
@@ -441,6 +486,32 @@ code {
   border: 1px solid var(--border-subtle);
   border-radius: 999px;
   color: var(--text-tertiary);
+  transition:
+    border-color var(--duration-fast) var(--ease-out-expo),
+    color var(--duration-fast) var(--ease-out-expo);
+}
+
+.badge:hover {
+  border-color: var(--accent);
+  color: var(--text-secondary);
+}
+
+/* ── "New" Tag ───────────────────────────────────────────── */
+
+.tag-new {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--warm);
+  color: var(--bg-deep);
+  vertical-align: middle;
+  margin-left: 6px;
+  line-height: 1.4;
 }
 
 /* ── Buttons ──────────────────────────────────────────────── */
@@ -456,20 +527,29 @@ code {
   border-radius: var(--radius-sm);
   transition:
     background var(--duration-fast) var(--ease-out-expo),
+    box-shadow var(--duration-fast) var(--ease-out-expo),
+    border-color var(--duration-fast) var(--ease-out-expo),
     transform 100ms;
   text-decoration: none;
 }
-.btn:active { transform: scale(0.97); transition-duration: 100ms; transition-timing-function: var(--ease-out-expo); }
 
 .btn--primary {
   background: var(--accent);
   color: var(--bg-deep);
   padding: var(--space-md) var(--space-xl);
   font-size: 0.95rem;
+  box-shadow: 0 2px 8px oklch(72% 0.14 180 / 0.2);
 }
 .btn--primary:hover {
   background: var(--accent-hover);
   color: var(--bg-deep);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px oklch(72% 0.14 180 / 0.3);
+}
+.btn--primary:active {
+  transform: translateY(1px) scale(0.98);
+  box-shadow: 0 1px 4px oklch(72% 0.14 180 / 0.15);
+  transition-duration: 80ms;
 }
 
 .btn--ghost {
@@ -482,6 +562,11 @@ code {
 .btn--ghost:hover {
   border-color: var(--accent);
   color: var(--text-primary);
+  transform: translateY(-1px);
+}
+.btn--ghost:active {
+  transform: translateY(1px) scale(0.98);
+  transition-duration: 80ms;
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -538,6 +623,37 @@ code {
   max-width: 55ch;
 }
 
+.feature-hero__icon--ai {
+  background: oklch(75% 0.14 75 / 0.12);
+  color: var(--warm);
+}
+
+/* Feature icon hover animations — CSS-only, subtle */
+
+.feature-hero__icon svg {
+  transition: transform var(--duration-med) var(--ease-out-expo);
+}
+
+.feature-hero:nth-child(1):hover .feature-hero__icon svg {
+  /* Replay Buffer — clock tick */
+  transform: rotate(30deg);
+}
+
+.feature-hero:nth-child(2):hover .feature-hero__icon svg {
+  /* Highlight Detection — bolt pulse */
+  transform: scale(1.15);
+}
+
+.feature-hero:nth-child(3):hover .feature-hero__icon svg {
+  /* Discord Sharing — nudge right */
+  transform: translateX(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feature-hero__icon svg { transition: none; }
+  .feature-hero:hover .feature-hero__icon svg { transform: none; }
+}
+
 /* ── Features — Compact tier (supporting 6) ───────────────── */
 
 .features-compact {
@@ -580,6 +696,16 @@ code {
   color: var(--text-secondary);
 }
 
+/* ── Content Visibility — skip rendering of off-screen sections ── */
+
+#screenshots,
+#quickstart,
+#setup,
+#faq {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 600px;
+}
+
 /* ══════════════════════════════════════════════════════════
    SCREENSHOTS
    ══════════════════════════════════════════════════════════ */
@@ -611,6 +737,9 @@ code {
   height: auto;
   display: block;
 }
+
+/* picture wrapper inherits screenshot layout without extra box */
+.screenshot picture { display: contents; }
 
 .screenshot__caption {
   display: block;
@@ -758,6 +887,20 @@ code {
 .copy-btn.copied {
   color: var(--warm);
   border-color: var(--warm-muted);
+}
+
+.copy-check {
+  display: block;
+}
+
+.copy-check polyline {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: check-draw 300ms var(--ease-out-expo) forwards;
+}
+
+@keyframes check-draw {
+  to { stroke-dashoffset: 0; }
 }
 
 .setup-auto {

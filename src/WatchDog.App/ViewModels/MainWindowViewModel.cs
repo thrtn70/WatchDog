@@ -25,6 +25,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly ICaptureEngine _captureEngine;
     private readonly ISessionRepository _sessionRepository;
     private readonly SessionManager _sessionManager;
+    private readonly int _maxStorageGb;
     private readonly IDisposable _clipSavedSub;
     private readonly Action<CaptureState> _stateChangedHandler;
 
@@ -103,6 +104,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IEventBus eventBus,
         ISessionRepository sessionRepository,
         SessionManager sessionManager,
+        Core.Storage.StorageConfig storageConfig,
         AudioMixerViewModel? audioMixer = null,
         PerformanceViewModel? performance = null)
     {
@@ -113,6 +115,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _captureEngine = captureEngine;
         _sessionRepository = sessionRepository;
         _sessionManager = sessionManager;
+        _maxStorageGb = storageConfig.MaxStorageGb;
 
         _clipSavedSub = eventBus.Subscribe<ClipSavedEvent>(e =>
         {
@@ -713,7 +716,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             var clips = _clipStorage.GetAllClips();
             var totalBytes = clips.Sum(c => c.FileSizeBytes);
             var totalGb = totalBytes / (1024.0 * 1024.0 * 1024.0);
-            var maxGb = 50; // TODO: read from StorageSettings when available via DI
+            var maxGb = _maxStorageGb;
             var usagePercent = maxGb > 0 ? totalGb / maxGb * 100 : 0;
 
             StorageText = $"{totalGb:F1} / {maxGb} GB";
