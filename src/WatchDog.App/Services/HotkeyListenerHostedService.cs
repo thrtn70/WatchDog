@@ -53,7 +53,6 @@ public sealed class HotkeyListenerHostedService : IHostedService
             HotkeyConfig.FormatDisplay(_currentHotkey.SaveClipKey, _currentHotkey.Modifiers),
             HotkeyConfig.FormatDisplay(_currentHotkey.ToggleRecordingKey, _currentHotkey.ToggleRecordingModifiers));
 
-        return Task.CompletedTask;
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)
