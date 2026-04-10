@@ -661,17 +661,60 @@
             </controls:FloatingPanel>
         </Canvas>
 
-        <!-- ═══ Status Strip (24px) ══════════════════════════════════════ -->
+        <!-- ═══ Status Bar ═══════════════════════════════════════════════ -->
         <Border Grid.Row="3" Background="{StaticResource CrustBrush}"
-                BorderBrush="{StaticResource Surface1Brush}" BorderThickness="0,1,0,0">
+                BorderBrush="{StaticResource Surface1Brush}" BorderThickness="0,1,0,0"
+                Height="26">
             <Grid Margin="10,0">
-                <TextBlock Text="{Binding StatusText}" FontSize="11"
-                           Foreground="{StaticResource SubtextBrush}"
-                           HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding AppVersion}" FontSize="11"
-                           Foreground="{StaticResource SubtextBrush}"
-                           HorizontalAlignment="Right" VerticalAlignment="Center"
-                           Opacity="0.6"/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                            HorizontalAlignment="Left">
+                    <!-- Buffer state -->
+                    <Ellipse Width="6" Height="6" VerticalAlignment="Center"
+                             Fill="{Binding BufferIndicatorBrush}" Margin="0,0,5,0"/>
+                    <TextBlock Text="{Binding BufferStatusText}" FontSize="11"
+                               Foreground="{StaticResource SubtextBrush}"
+                               VerticalAlignment="Center" Margin="0,0,14,0"/>
+
+                    <!-- Separator dot -->
+                    <TextBlock Text="·" FontSize="11" Foreground="{StaticResource OverlayBrush}"
+                               VerticalAlignment="Center" Margin="0,0,14,0"/>
+
+                    <!-- Current game -->
+                    <Ellipse Width="6" Height="6" VerticalAlignment="Center"
+                             Fill="{Binding GameIndicatorBrush}" Margin="0,0,5,0"/>
+                    <TextBlock Text="{Binding CurrentGameName}" FontSize="11"
+                               Foreground="{StaticResource SubtextBrush}"
+                               VerticalAlignment="Center" Margin="0,0,14,0"/>
+
+                    <!-- Separator dot -->
+                    <TextBlock Text="·" FontSize="11" Foreground="{StaticResource OverlayBrush}"
+                               VerticalAlignment="Center" Margin="0,0,14,0"/>
+
+                    <!-- Highlight compatibility -->
+                    <TextBlock Text="{Binding HighlightStatusText}" FontSize="11"
+                               Foreground="{Binding HighlightStatusBrush}"
+                               VerticalAlignment="Center" Margin="0,0,14,0"/>
+
+                    <!-- Separator dot -->
+                    <TextBlock Text="·" FontSize="11" Foreground="{StaticResource OverlayBrush}"
+                               VerticalAlignment="Center" Margin="0,0,14,0"/>
+
+                    <!-- Encoder info -->
+                    <TextBlock Text="{Binding EncoderInfoText}" FontSize="11"
+                               Foreground="{StaticResource OverlayBrush}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Right side: storage + version -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                            HorizontalAlignment="Right">
+                    <TextBlock Text="{Binding StorageText}" FontSize="11"
+                               Foreground="{Binding StorageTextBrush}"
+                               VerticalAlignment="Center" Margin="0,0,14,0"/>
+                    <TextBlock Text="{Binding AppVersion}" FontSize="11"
+                               Foreground="{StaticResource SubtextBrush}"
+                               VerticalAlignment="Center" Opacity="0.6"/>
+                </StackPanel>
             </Grid>
         </Border>
     </Grid>

@@ -21,6 +21,16 @@ public sealed record AppSettings
     public bool DesktopCaptureEnabled { get; init; } = true;
     public bool StartWithWindows { get; init; } = false;
     public bool StartMinimized { get; init; } = true;
+    public OverlaySettings Overlay { get; init; } = new();
+}
+
+public sealed record OverlaySettings
+{
+    public bool Enabled { get; init; } = false;
+    public int HotkeyKey { get; init; } = 0x7A;    // F11
+    public uint HotkeyModifiers { get; init; } = 0;
+    public double PositionX { get; init; } = -1;    // -1 = default (top-right)
+    public double PositionY { get; init; } = -1;
 }
 
 public sealed record DiscordSettings

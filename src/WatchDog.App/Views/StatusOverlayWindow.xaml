@@ -1,0 +1,35 @@
+<Window x:Class="WatchDog.App.Views.StatusOverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="WatchDog Status"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        SizeToContent="WidthAndHeight"
+        Background="Transparent"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+
+    <Border Background="#D9131D22"
+            BorderBrush="#33FFFFFF"
+            BorderThickness="1"
+            CornerRadius="6"
+            Padding="10,6">
+        <StackPanel Orientation="Horizontal">
+            <!-- Status indicator dot -->
+            <Ellipse Width="7" Height="7"
+                     VerticalAlignment="Center"
+                     Margin="0,0,7,0"
+                     Fill="{Binding IndicatorBrush}"/>
+
+            <!-- Status text -->
+            <TextBlock Text="{Binding StatusLine}"
+                       FontFamily="{StaticResource UIFont}"
+                       FontSize="11"
+                       FontWeight="Medium"
+                       Foreground="#B8C5CF"
+                       VerticalAlignment="Center"/>
+        </StackPanel>
+    </Border>
+</Window>

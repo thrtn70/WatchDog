@@ -54,6 +54,26 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _isScanning;
     [ObservableProperty] private bool _isRecording;
 
+    // Status bar indicators — brush defaults are set in InitializeStatusBar()
+    // to avoid calling FindResource at field-init time (crashes in unit tests).
+    [ObservableProperty] private string _bufferStatusText = "Buffer OFF";
+    [ObservableProperty] private System.Windows.Media.Brush? _bufferIndicatorBrush;
+    [ObservableProperty] private string _currentGameName = "No game detected";
+    [ObservableProperty] private System.Windows.Media.Brush? _gameIndicatorBrush;
+    [ObservableProperty] private string _highlightStatusText = "No highlights";
+    [ObservableProperty] private System.Windows.Media.Brush? _highlightStatusBrush;
+    [ObservableProperty] private string _encoderInfoText = string.Empty;
+    [ObservableProperty] private string _storageText = string.Empty;
+    [ObservableProperty] private System.Windows.Media.Brush? _storageTextBrush;
+
+    // Cached theme brushes for status bar (resolved once, reused on every state change)
+    private System.Windows.Media.Brush? _successBrush;
+    private System.Windows.Media.Brush? _dangerBrush;
+    private System.Windows.Media.Brush? _accentBrush;
+    private System.Windows.Media.Brush? _overlayBrush;
+    private System.Windows.Media.Brush? _subtextBrush;
+    private System.Windows.Media.Brush? _warningBrush;
+
     // App version (read once from assembly at startup)
     public string AppVersion { get; } = GetAppVersion();
 
@@ -105,6 +125,26 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _stateChangedHandler = state =>
             Application.Current?.Dispatcher.Invoke(() => UpdateCaptureStatus(state));
         captureEngine.StateChanged += _stateChangedHandler;
+
+        InitializeStatusBarBrushes();
+    }
+
+    private void InitializeStatusBarBrushes()
+    {
+        if (Application.Current is null) return; // unit test safety
+
+        _successBrush = Application.Current.TryFindResource("SuccessBrush") as System.Windows.Media.Brush;
+        _dangerBrush = Application.Current.TryFindResource("DangerBrush") as System.Windows.Media.Brush;
+        _accentBrush = Application.Current.TryFindResource("AccentBrush") as System.Windows.Media.Brush;
+        _overlayBrush = Application.Current.TryFindResource("OverlayBrush") as System.Windows.Media.Brush;
+        _subtextBrush = Application.Current.TryFindResource("SubtextBrush") as System.Windows.Media.Brush;
+        _warningBrush = Application.Current.TryFindResource("WarningBrush") as System.Windows.Media.Brush;
+
+        // Set initial values
+        BufferIndicatorBrush = _dangerBrush;
+        GameIndicatorBrush = _overlayBrush;
+        HighlightStatusBrush = _overlayBrush;
+        StorageTextBrush = _subtextBrush;
     }
 
     private bool _initialScanDone;
@@ -463,6 +503,75 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             CaptureState.Stopping => "Stopping...",
             _ => state.ToString()
         };
+
+        // Status bar indicators (use cached brushes — no FindResource per call)
+        var isBuffering = state is CaptureState.Buffering or CaptureState.Saving;
+
+        // Buffer state
+        BufferStatusText = isBuffering ? "Buffer ON" : "Buffer OFF";
+        BufferIndicatorBrush = isBuffering ? _successBrush : _dangerBrush;
+
+        // Game name
+        if (_captureEngine.CurrentGame is { } game)
+        {
+            CurrentGameName = game.DisplayName;
+            GameIndicatorBrush = _accentBrush;
+        }
+        else if (_captureEngine.IsDesktopCapture)
+        {
+            CurrentGameName = "Desktop";
+            GameIndicatorBrush = _overlayBrush;
+        }
+        else
+        {
+            CurrentGameName = "No game detected";
+            GameIndicatorBrush = _overlayBrush;
+        }
+
+        // Highlight status (placeholder — will be enriched in Phase 3 with AI detection)
+        if (_captureEngine.CurrentGame is not null && !_captureEngine.IsDesktopCapture)
+        {
+            HighlightStatusText = "\u2713 Highlights";
+            HighlightStatusBrush = _successBrush;
+        }
+        else
+        {
+            HighlightStatusText = "No highlights";
+            HighlightStatusBrush = _overlayBrush;
+        }
+
+        // Encoder info
+        var config = _captureEngine.Config;
+        EncoderInfoText = $"{config.OutputWidth}x{config.OutputHeight} @ {config.Fps}fps";
+
+        // Storage usage
+        UpdateStorageStatus();
+    }
+
+    private void UpdateStorageStatus()
+    {
+        try
+        {
+            var clips = _clipStorage.GetAllClips();
+            var totalBytes = clips.Sum(c => c.FileSizeBytes);
+            var totalGb = totalBytes / (1024.0 * 1024.0 * 1024.0);
+            var maxGb = 50; // TODO: read from StorageSettings when available via DI
+            var usagePercent = maxGb > 0 ? totalGb / maxGb * 100 : 0;
+
+            StorageText = $"{totalGb:F1} / {maxGb} GB";
+
+            StorageTextBrush = usagePercent switch
+            {
+                > 95 => _dangerBrush,
+                > 80 => _warningBrush,
+                _ => _subtextBrush,
+            };
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[StatusBar] Storage status update failed: {ex.Message}");
+            StorageText = string.Empty;
+        }
     }
 
     // ── Auto-update ────────────────────────────────────────────────

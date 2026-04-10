@@ -25,6 +25,7 @@ public partial class App : Application
 {
     private IHost? _host;
     private H.NotifyIcon.TaskbarIcon? _trayIcon;
+    private Views.StatusOverlayWindow? _overlayWindow;
 
     public static IServiceProvider Services { get; private set; } = null!;
 
@@ -74,6 +75,13 @@ public partial class App : Application
             // Activate match tracking (resolves singleton, starts event subscription)
             _ = _host.Services.GetRequiredService<MatchTracker>();
 
+            // Initialize status overlay if enabled
+            var overlaySettings = _host.Services.GetRequiredService<OverlaySettings>();
+            if (overlaySettings.Enabled)
+            {
+                ShowOverlay();
+            }
+
             // Check for updates (non-blocking, failure is silent)
             _ = Task.Run(async () =>
             {
@@ -103,6 +111,7 @@ public partial class App : Application
 
     protected override async void OnExit(ExitEventArgs e)
     {
+        _overlayWindow?.Close();
         _trayIcon?.Dispose();
 
         try
@@ -146,6 +155,37 @@ public partial class App : Application
 
         _trayIcon.TrayLeftMouseDown += (_, _) => viewModel.ShowMainWindowCommand.Execute(null);
         _trayIcon.ForceCreate(enablesEfficiencyMode: false);
+    }
+
+    private void ShowOverlay()
+    {
+        if (_overlayWindow is not null) return;
+
+        var vm = Services.GetRequiredService<StatusOverlayViewModel>();
+        var settings = Services.GetRequiredService<OverlaySettings>();
+        _overlayWindow = new Views.StatusOverlayWindow(settings)
+        {
+            DataContext = vm,
+        };
+        _overlayWindow.Closed += (_, _) =>
+        {
+            vm.Dispose();
+            _overlayWindow = null;
+        };
+        _overlayWindow.Show();
+    }
+
+    /// <summary>Toggle the status overlay. Must be called on the UI thread.</summary>
+    public void ToggleOverlay()
+    {
+        if (_overlayWindow is not null)
+        {
+            _overlayWindow.Close(); // Closed handler disposes VM and nulls _overlayWindow
+        }
+        else
+        {
+            ShowOverlay();
+        }
     }
 
     private static System.Windows.Controls.ContextMenu CreateTrayContextMenu(TrayIconViewModel vm)
@@ -306,9 +346,13 @@ public partial class App : Application
         services.AddSingleton<Core.Performance.IPerformanceMonitor, Core.Performance.ObsPerformanceMonitor>();
         services.AddSingleton<PerformanceViewModel>();
 
+        // Overlay settings
+        services.AddSingleton(sp => sp.GetRequiredService<AppSettings>().Overlay);
+
         // ViewModels
         services.AddSingleton<TrayIconViewModel>();
         services.AddSingleton<MainWindowViewModel>();
+        services.AddTransient<StatusOverlayViewModel>();
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<StorageDashboardViewModel>();
 

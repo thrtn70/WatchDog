@@ -24,6 +24,18 @@ public static partial class User32
     public static (int Width, int Height) GetPrimaryMonitorResolution()
         => (GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN));
 
+    // Window extended style manipulation (used for click-through overlay).
+    // Use the Ptr variants which are 64-bit aware on x64 processes —
+    // GetWindowLongW silently truncates to 32-bit on 64-bit Windows.
+    public const int GWL_EXSTYLE = -20;
+    public const nint WS_EX_TRANSPARENT = 0x00000020;
+
+    [LibraryImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
+    public static partial nint GetWindowLongPtr(nint hWnd, int nIndex);
+
+    [LibraryImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
+    public static partial nint SetWindowLongPtr(nint hWnd, int nIndex, nint dwNewLong);
+
     // Modifier key constants
     public const uint MOD_NONE = 0x0000;
     public const uint MOD_ALT = 0x0001;
