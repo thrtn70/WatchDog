@@ -253,6 +253,51 @@ code {
 
 .hero {
   padding: var(--space-5xl) 0 var(--space-4xl);
+  overflow: clip;
+}
+
+/* ── Scroll-driven parallax (overdrive) ───────────────────── */
+
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .hero {
+      view-timeline-name: --hero;
+      view-timeline-axis: block;
+    }
+
+    @keyframes hero-icon-drift {
+      from { transform: translateY(0); opacity: 1; }
+      to   { transform: translateY(-60px); opacity: 0.3; }
+    }
+
+    @keyframes hero-title-drift {
+      from { transform: translateY(0); opacity: 1; }
+      to   { transform: translateY(-30px); opacity: 0.5; }
+    }
+
+    @keyframes hero-games-drift {
+      from { transform: translateY(0); opacity: 1; }
+      to   { transform: translateY(20px); opacity: 0.2; }
+    }
+
+    .hero__icon {
+      animation: hero-icon-drift linear both;
+      animation-timeline: --hero;
+      animation-range: exit 0% exit 60%;
+    }
+
+    .hero__title {
+      animation: hero-title-drift linear both;
+      animation-timeline: --hero;
+      animation-range: exit 0% exit 60%;
+    }
+
+    .hero__games {
+      animation: hero-games-drift linear both;
+      animation-timeline: --hero;
+      animation-range: exit 0% exit 50%;
+    }
+  }
 }
 
 .hero__layout {
