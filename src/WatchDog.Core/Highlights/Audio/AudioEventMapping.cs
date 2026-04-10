@@ -39,18 +39,9 @@ public static class AudioEventMapping
             9    // Yell
         );
 
-        var announcerScore = Max(scores,
-            0,   // Speech
-            2,   // Conversation
-            3    // Narration, monologue
-        );
-
-        var uiSoundScore = Max(scores,
-            477, // Ding
-            382, // Alarm
-            475, // Beep, bleep
-            195  // Bell
-        );
+        // Note: announcer/speech and UI sounds (ding, alarm, beep) are too generic
+        // to reliably map to specific highlight types — omitted to reduce false positives.
+        // These may be added in a future version with game-specific calibration.
 
         // Find the highest-scoring category above threshold
         var candidates = new (float Score, HighlightType Type, string Description)[]

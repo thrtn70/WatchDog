@@ -362,17 +362,36 @@ public partial class App : Application
         services.AddSingleton<IHighlightDetector, ValorantHighlightDetector>();
         services.AddSingleton<IHighlightDetector, Ow2HighlightDetector>();
 
-        // AI audio highlight detector — universal fallback for all other games
-        // (also replaces the broken R6 Siege log-based detector)
+        // AI audio highlight detector — universal fallback for all other games.
+        // Lazy initialization: if the ONNX model is missing, the app still works
+        // without AI highlights rather than crashing on startup.
         services.AddSingleton(sp =>
         {
             var modelPath = Path.Combine(AppContext.BaseDirectory, "Resources", "Models", "yamnet.onnx");
-            return new AudioClassifier(modelPath, sp.GetRequiredService<ILoggerFactory>()
-                .CreateLogger<AudioClassifier>());
+            try
+            {
+                return new AudioClassifier(modelPath, sp.GetRequiredService<ILoggerFactory>()
+                    .CreateLogger<AudioClassifier>());
+            }
+            catch (FileNotFoundException ex)
+            {
+                sp.GetRequiredService<ILoggerFactory>().CreateLogger("App")
+                    .LogWarning(ex, "ONNX model not found — AI audio highlights disabled");
+                return (AudioClassifier?)null;
+            }
         });
-        services.AddSingleton<IHighlightDetector>(sp => new AudioHighlightDetector(
-            sp.GetRequiredService<AudioClassifier>(),
-            sp.GetRequiredService<ILoggerFactory>().CreateLogger<AudioHighlightDetector>()));
+        services.AddSingleton<IHighlightDetector>(sp =>
+        {
+            var classifier = sp.GetRequiredService<AudioClassifier?>();
+            if (classifier is null)
+            {
+                // Return a no-op detector that never fires highlights
+                return new NoOpHighlightDetector();
+            }
+            return new AudioHighlightDetector(
+                classifier,
+                sp.GetRequiredService<ILoggerFactory>().CreateLogger<AudioHighlightDetector>());
+        });
 
         services.AddSingleton<HighlightDetectorRegistry>();
 

@@ -52,11 +52,40 @@ public static class AudioResampler
     }
 
     /// <summary>
-    /// Full pipeline: stereo 48kHz → mono 16kHz.
+    /// Full pipeline: multi-channel audio at any sample rate → mono 16kHz for YAMNet.
     /// </summary>
-    public static float[] ConvertForYamnet(ReadOnlySpan<float> stereo48kHz)
+    public static float[] ConvertForYamnet(ReadOnlySpan<float> samples, int sampleRate, int channels)
     {
-        var mono48k = StereoToMono(stereo48kHz);
-        return Resample(mono48k, 48000, AudioClassifier.InputSampleRate);
+        var mono = channels >= 2 ? DownmixToMono(samples, channels) : samples.ToArray();
+        return Resample(mono, sampleRate, AudioClassifier.InputSampleRate);
     }
+
+    /// <summary>
+    /// Convert interleaved multi-channel samples to mono by averaging all channels.
+    /// Works for stereo (2ch), 5.1 (6ch), 7.1 (8ch), etc.
+    /// </summary>
+    public static float[] DownmixToMono(ReadOnlySpan<float> interleavedSamples, int channels)
+    {
+        if (channels <= 1) return interleavedSamples.ToArray();
+
+        var monoLength = interleavedSamples.Length / channels;
+        var mono = new float[monoLength];
+        var scale = 1f / channels;
+
+        for (int i = 0; i < monoLength; i++)
+        {
+            var sum = 0f;
+            for (int ch = 0; ch < channels; ch++)
+                sum += interleavedSamples[i * channels + ch];
+            mono[i] = sum * scale;
+        }
+
+        return mono;
+    }
+
+    /// <summary>
+    /// Convert stereo (2-channel) interleaved samples to mono. Kept for backwards compatibility.
+    /// </summary>
+    public static float[] StereoToMono(ReadOnlySpan<float> stereoSamples)
+        => DownmixToMono(stereoSamples, 2);
 }

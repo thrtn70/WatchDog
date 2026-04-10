@@ -181,17 +181,8 @@ public sealed class AudioHighlightDetector : IHighlightDetector
     {
         try
         {
-            // Convert: stereo 48kHz → mono 16kHz
-            float[] yamnetInput;
-            if (_captureChannels >= 2)
-            {
-                yamnetInput = AudioResampler.ConvertForYamnet(rawSamples);
-            }
-            else
-            {
-                yamnetInput = AudioResampler.Resample(rawSamples, _captureRate,
-                    AudioClassifier.InputSampleRate);
-            }
+            // Convert: any format → mono 16kHz (handles stereo, 5.1, 7.1, any sample rate)
+            var yamnetInput = AudioResampler.ConvertForYamnet(rawSamples, _captureRate, _captureChannels);
 
             // Pad or trim to exactly 15600 samples
             if (yamnetInput.Length < AudioClassifier.InputWindowSamples)
