@@ -22,7 +22,7 @@
     <PackageReference Include="System.Management" Version="9.*" />
 
     <!-- AI audio highlight detection -->
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.*" />
+    <!-- DirectML package includes the base OnnxRuntime — do not add both -->
     <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.*" />
     <PackageReference Include="NAudio" Version="2.*" />
   </ItemGroup>
