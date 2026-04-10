@@ -209,20 +209,25 @@ public sealed class GameDetectorHostedService : IHostedService
                 {
                     if (_activeToast == toast) _activeToast = null;
                 };
-                toast.ModeSelected += (mode, remember) =>
+                toast.ModeSelected += async (mode, remember) =>
                 {
-                    _logger.LogInformation("User selected {Mode} for {Game} (remember={Remember})",
-                        mode, game.DisplayName, remember);
-
-                    if (remember)
+                    try
                     {
-                        SaveGameProfile(game, mode);
-                    }
+                        _logger.LogInformation("User selected {Mode} for {Game} (remember={Remember})",
+                            mode, game.DisplayName, remember);
 
-                    // TODO: Apply mode to the already-running capture session.
-                    // Currently the profile only takes effect on the next game launch.
-                    // Full runtime mode switching requires ObsCaptureEngine changes
-                    // (reconfigure encoder/buffer mid-session) — tracked for follow-up.
+                        if (remember)
+                        {
+                            SaveGameProfile(game, mode);
+                        }
+
+                        await ApplyModeToActiveSessionAsync(game, mode);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Unhandled error in ModeSelected handler for {Game}",
+                            game.DisplayName);
+                    }
                 };
                 toast.Show();
             }
@@ -264,6 +269,29 @@ public sealed class GameDetectorHostedService : IHostedService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save game profile for {Game}", game.DisplayName);
+        }
+    }
+
+    private async Task ApplyModeToActiveSessionAsync(GameInfo game, Settings.RecordingMode mode)
+    {
+        try
+        {
+            _logger.LogInformation("Applying {Mode} to active session for {Game}", mode, game.DisplayName);
+
+            // Stop current capture first — StopAsync is a no-op if already idle.
+            // Trust the engine's internal _stateLock rather than checking State externally
+            // (avoids TOCTOU races with concurrent game exit events).
+            await _captureEngine.StopAsync();
+
+            // Restart with the selected mode
+            await _captureEngine.StartAsync(game);
+
+            _logger.LogInformation("Applied {Mode} to active session for {Game}", mode, game.DisplayName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to apply {Mode} to active session for {Game}",
+                mode, game.DisplayName);
         }
     }
 

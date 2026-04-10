@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:helpers="clr-namespace:WatchDog.App.Helpers"
         xmlns:controls="clr-namespace:WatchDog.App.Controls"
+        xmlns:converters="clr-namespace:WatchDog.App.Converters"
         Title="WatchDog Settings" Height="600" Width="620"
         MinWidth="500" MinHeight="400"
         WindowStartupLocation="CenterScreen"
@@ -13,6 +14,9 @@
         Icon="pack://application:,,,/Resources/WatchDog.ico">
 
     <Window.Resources>
+        <converters:NullToVisibilityConverter x:Key="NullToVisConverter"/>
+        <converters:EnumBoolConverter x:Key="EnumBoolConverter"/>
+
         <!-- Sidebar tab item style -->
         <Style x:Key="SettingsTab" TargetType="TabItem">
             <Setter Property="Background" Value="Transparent"/>
@@ -316,6 +320,116 @@
                                    Foreground="{StaticResource SubtextBrush}"/>
                     </StackPanel>
                 </StackPanel>
+            </TabItem>
+
+            <!-- Game Profiles Tab -->
+            <TabItem Header="Game Profiles" Style="{StaticResource SettingsTab}">
+                <Grid Margin="16,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="200"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left: Game list with search -->
+                    <DockPanel Grid.Column="0">
+                        <TextBox DockPanel.Dock="Top"
+                                 Text="{Binding GameProfiles.SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 FontSize="12" Margin="0,0,8,8"
+                                 Padding="6,4"
+                                 Background="{StaticResource SurfaceBrush}"
+                                 Foreground="{StaticResource TextBrush}"
+                                 BorderBrush="{StaticResource Surface1Brush}">
+                            <TextBox.Style>
+                                <Style TargetType="TextBox">
+                                    <Setter Property="Tag" Value="Search games..."/>
+                                </Style>
+                            </TextBox.Style>
+                        </TextBox>
+                        <ListBox ItemsSource="{Binding GameProfiles.FilteredGames}"
+                                 SelectedItem="{Binding GameProfiles.SelectedGame}"
+                                 Background="Transparent" BorderThickness="0"
+                                 Margin="0,0,8,0"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="2,3">
+                                        <TextBlock Text="{Binding DisplayName}" FontSize="12"
+                                                   Foreground="{StaticResource TextBrush}"/>
+                                        <TextBlock FontSize="10"
+                                                   Foreground="{StaticResource SubtextBrush}">
+                                            <Run Text="{Binding GenreDisplay, Mode=OneWay}"/>
+                                            <Run Text=" · "/>
+                                            <Run Text="{Binding StatusDisplay, Mode=OneWay}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+
+                    <!-- Right: Profile editor -->
+                    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="8,0,0,0"
+                                    DataContext="{Binding GameProfiles}"
+                                    Visibility="{Binding SelectedGame, Converter={StaticResource NullToVisConverter}}">
+
+                            <TextBlock Text="{Binding SelectedGame.DisplayName}"
+                                       Style="{StaticResource Heading2}" Margin="0,0,0,4"/>
+                            <TextBlock FontSize="11" Foreground="{StaticResource SubtextBrush}"
+                                       Margin="0,0,0,12">
+                                <Run Text="{Binding SelectedGame.GenreDisplay, Mode=OneWay}"/>
+                                <Run Text=" · "/>
+                                <Run Text="{Binding SelectedGame.ExecutableName, Mode=OneWay}"/>
+                            </TextBlock>
+
+                            <!-- Recording Mode -->
+                            <TextBlock Text="Recording Mode" FontWeight="SemiBold"
+                                       FontSize="12" Margin="0,0,0,6"/>
+                            <StackPanel Margin="0,0,0,16">
+                                <RadioButton Content="Highlight (auto-clip on events)"
+                                             IsChecked="{Binding SelectedMode, Converter={StaticResource EnumBoolConverter}, ConverterParameter=Highlight}"
+                                             IsEnabled="{Binding SelectedGame.SupportsHighlights}"
+                                             Foreground="{StaticResource TextBrush}"
+                                             FontSize="12" Margin="0,2"/>
+                                <RadioButton Content="Session Recording (full capture)"
+                                             IsChecked="{Binding SelectedMode, Converter={StaticResource EnumBoolConverter}, ConverterParameter=SessionRecording}"
+                                             Foreground="{StaticResource TextBrush}"
+                                             FontSize="12" Margin="0,2"/>
+                                <RadioButton Content="Replay Buffer (hotkey to save)"
+                                             IsChecked="{Binding SelectedMode, Converter={StaticResource EnumBoolConverter}, ConverterParameter=ReplayBuffer}"
+                                             Foreground="{StaticResource TextBrush}"
+                                             FontSize="12" Margin="0,2"/>
+                            </StackPanel>
+
+                            <!-- Highlight Sensitivity -->
+                            <TextBlock Text="Highlight Sensitivity" FontWeight="SemiBold"
+                                       FontSize="12" Margin="0,0,0,4"/>
+                            <DockPanel Margin="0,0,0,16">
+                                <TextBlock DockPanel.Dock="Left" Text="More clips"
+                                           FontSize="10" Foreground="{StaticResource SubtextBrush}"
+                                           VerticalAlignment="Center" Width="60"/>
+                                <TextBlock DockPanel.Dock="Right" Text="Fewer clips"
+                                           FontSize="10" Foreground="{StaticResource SubtextBrush}"
+                                           VerticalAlignment="Center" Width="60"
+                                           TextAlignment="Right"/>
+                                <Slider Minimum="0.1" Maximum="1.0"
+                                        Value="{Binding HighlightSensitivity}"
+                                        TickFrequency="0.1" IsSnapToTickEnabled="True"
+                                        VerticalAlignment="Center"/>
+                            </DockPanel>
+
+                            <!-- Actions -->
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button Content="Save Profile"
+                                        Command="{Binding SaveProfileCommand}"
+                                        Style="{StaticResource ActionButton}"
+                                        Margin="0,0,8,0"/>
+                                <Button Content="Reset to Default"
+                                        Command="{Binding ResetProfileCommand}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
             </TabItem>
         </TabControl>
 

@@ -131,6 +131,25 @@ public partial class App : Application
     {
         var viewModel = Services.GetRequiredService<TrayIconViewModel>();
 
+        // Generate tray icon color variants (idle/buffering/recording/saving)
+        try
+        {
+            var baseIconPath = Path.Combine(AppContext.BaseDirectory, "Resources", "WatchDog.ico");
+            if (File.Exists(baseIconPath))
+            {
+                var icons = WatchDog.App.Services.TrayIconGenerator.EnsureIcons(baseIconPath);
+                viewModel.IdleIconPath = icons.Idle;
+                viewModel.BufferingIconPath = icons.Buffering;
+                viewModel.RecordingIconPath = icons.Recording;
+                viewModel.SavingIconPath = icons.Saving;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Tray icon generation failed: {ex.Message}");
+            // Non-critical — fall back to embedded default icons
+        }
+
         _trayIcon = new H.NotifyIcon.TaskbarIcon
         {
             ToolTipText = "WatchDog",
@@ -354,6 +373,7 @@ public partial class App : Application
         services.AddSingleton<MainWindowViewModel>();
         services.AddTransient<StatusOverlayViewModel>();
         services.AddTransient<SettingsViewModel>();
+        services.AddTransient<GameProfilesViewModel>();
         services.AddTransient<StorageDashboardViewModel>();
 
         // Highlight detection
@@ -363,20 +383,34 @@ public partial class App : Application
         services.AddSingleton<IHighlightDetector, Ow2HighlightDetector>();
 
         // AI audio highlight detector — universal fallback for all other games.
-        // Lazy initialization: if the ONNX model is missing, the app still works
-        // without AI highlights rather than crashing on startup.
+        // Auto-downloads YAMNet ONNX model on first launch if not present.
         services.AddSingleton(sp =>
         {
             var modelPath = Path.Combine(AppContext.BaseDirectory, "Resources", "Models", "yamnet.onnx");
+            var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("App");
+
+            // Download model if missing (blocking on startup — typically ~14MB, <10s).
+            // 30-second timeout prevents indefinite hang on CDN stall.
+            if (!File.Exists(modelPath))
+            {
+                using var downloadCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                var downloaded = AudioModelDownloader.EnsureModelAsync(modelPath, logger, downloadCts.Token)
+                    .GetAwaiter().GetResult();
+                if (!downloaded)
+                {
+                    logger.LogWarning("ONNX model unavailable — AI audio highlights disabled");
+                    return (AudioClassifier?)null;
+                }
+            }
+
             try
             {
                 return new AudioClassifier(modelPath, sp.GetRequiredService<ILoggerFactory>()
                     .CreateLogger<AudioClassifier>());
             }
-            catch (FileNotFoundException ex)
+            catch (Exception ex)
             {
-                sp.GetRequiredService<ILoggerFactory>().CreateLogger("App")
-                    .LogWarning(ex, "ONNX model not found — AI audio highlights disabled");
+                logger.LogWarning(ex, "Failed to load ONNX model — AI audio highlights disabled");
                 return (AudioClassifier?)null;
             }
         });

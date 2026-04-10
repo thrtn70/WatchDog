@@ -23,6 +23,12 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
     private readonly Action<CaptureState> _captureStateHandler;
     private System.Threading.Timer? _savingRevertTimer;
 
+    // Icon file paths (set by App.xaml.cs after TrayIconGenerator runs)
+    public string IdleIconPath { get; set; } = "/Resources/Icons/tray-idle.ico";
+    public string BufferingIconPath { get; set; } = "/Resources/Icons/tray-recording.ico";
+    public string RecordingIconPath { get; set; } = "/Resources/Icons/tray-recording.ico";
+    public string SavingIconPath { get; set; } = "/Resources/Icons/tray-idle.ico";
+
     [ObservableProperty]
     private string _statusText = "WatchDog - Idle";
 
@@ -107,7 +113,7 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
         {
             case CaptureState.Idle:
                 StatusText = "WatchDog - Idle";
-                IconSource = "/Resources/Icons/tray-idle.ico";
+                IconSource = IdleIconPath;
                 BufferStatusText = "Replay Buffer OFF";
                 IsRecording = false;
                 break;
@@ -131,15 +137,13 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
                     StatusText = "WatchDog - Buffering";
                     CurrentGameText = "No game detected";
                 }
-                // TODO: Replace with green-tinted tray-buffering.ico when created on Windows
-                IconSource = "/Resources/Icons/tray-recording.ico";
+                IconSource = BufferingIconPath;
                 BufferStatusText = "Replay Buffer ON";
                 IsRecording = true;
                 break;
             case CaptureState.Saving:
                 StatusText = "WatchDog - Saving clip...";
-                // TODO: Replace with amber-tinted tray-saving.ico when created on Windows
-                IconSource = "/Resources/Icons/tray-idle.ico";
+                IconSource = SavingIconPath;
                 IsRecording = true;
                 // Revert to buffering icon after 3 seconds
                 _savingRevertTimer = new System.Threading.Timer(_ =>
@@ -147,9 +151,7 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
                     Application.Current?.Dispatcher.Invoke(() =>
                     {
                         if (_captureEngine.State == CaptureState.Buffering)
-                            // Revert to the buffering icon (using tray-recording.ico
-                            // until dedicated tray-buffering.ico is created on Windows)
-                            IconSource = "/Resources/Icons/tray-recording.ico";
+                            IconSource = BufferingIconPath;
                     });
                 }, null, 3000, Timeout.Infinite);
                 break;

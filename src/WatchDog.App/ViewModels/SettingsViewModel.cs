@@ -85,6 +85,9 @@ public partial class SettingsViewModel : ObservableObject
 
     public string AppVersion { get; } = GetAppVersion();
 
+    /// <summary>Sub-ViewModel for the Game Profiles tab.</summary>
+    public GameProfilesViewModel? GameProfiles { get; }
+
     // Hotkey settings
     [ObservableProperty] private int _saveClipKey;
     [ObservableProperty] private uint _saveClipModifiers;
@@ -98,11 +101,16 @@ public partial class SettingsViewModel : ObservableObject
     public string ToggleRecordingHotkeyDisplay =>
         HotkeyConfig.FormatDisplay(ToggleRecordingKey, ToggleRecordingModifiers);
 
-    public SettingsViewModel(ISettingsService settingsService, IAudioDeviceEnumerator? audioDeviceEnumerator = null, IUpdateChecker? updateChecker = null)
+    public SettingsViewModel(
+        ISettingsService settingsService,
+        IAudioDeviceEnumerator? audioDeviceEnumerator = null,
+        IUpdateChecker? updateChecker = null,
+        GameProfilesViewModel? gameProfiles = null)
     {
         _settingsService = settingsService;
         _audioDeviceEnumerator = audioDeviceEnumerator;
         _updateChecker = updateChecker;
+        GameProfiles = gameProfiles;
         _settings = settingsService.Load();
         LoadFromSettings(_settings);
     }
