@@ -139,9 +139,10 @@ public sealed class ProcessGameDetector : IGameDetector
 
     private void ScanRunningProcesses()
     {
+        Process[]? processes = null;
         try
         {
-            var processes = Process.GetProcesses();
+            processes = Process.GetProcesses();
             foreach (var process in processes)
             {
                 try
@@ -165,6 +166,12 @@ public sealed class ProcessGameDetector : IGameDetector
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "Error scanning processes");
+        }
+        finally
+        {
+            if (processes is not null)
+                foreach (var p in processes)
+                    p.Dispose();
         }
     }
 

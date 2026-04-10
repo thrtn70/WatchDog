@@ -25,6 +25,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly ISessionRepository _sessionRepository;
     private readonly SessionManager _sessionManager;
     private readonly IDisposable _clipSavedSub;
+    private readonly Action<CaptureState> _stateChangedHandler;
 
     // Session-grouped view
     [ObservableProperty] private ObservableCollection<SessionGroupViewModel> _sessionGroups = [];
@@ -101,8 +102,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             });
         });
 
-        captureEngine.StateChanged += state =>
+        _stateChangedHandler = state =>
             Application.Current?.Dispatcher.Invoke(() => UpdateCaptureStatus(state));
+        captureEngine.StateChanged += _stateChangedHandler;
     }
 
     private bool _initialScanDone;
@@ -509,7 +511,11 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         return version is not null ? $"v{version}" : "v?.?.?";
     }
 
-    public void Dispose() => _clipSavedSub.Dispose();
+    public void Dispose()
+    {
+        _captureEngine.StateChanged -= _stateChangedHandler;
+        _clipSavedSub.Dispose();
+    }
 }
 
 public sealed class ClipItemViewModel

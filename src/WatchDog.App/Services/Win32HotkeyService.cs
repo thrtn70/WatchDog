@@ -107,5 +107,7 @@ public sealed class Win32HotkeyService : IGlobalHotkeyService
 
         _hwndSource?.RemoveHook(WndProc);
         _hwndSource?.Dispose();
+        _hwndSource = null;
+        _hwnd = nint.Zero;
     }
 }

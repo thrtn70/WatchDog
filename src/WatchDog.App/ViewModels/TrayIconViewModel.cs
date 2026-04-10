@@ -19,6 +19,7 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
     private readonly IDisposable _stateChangedSub;
     private readonly IDisposable _sessionStartedSub;
     private readonly IDisposable _sessionStoppedSub;
+    private readonly Action<CaptureState> _captureStateHandler;
 
     [ObservableProperty]
     private string _statusText = "WatchDog - Idle";
@@ -42,8 +43,9 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
         _sessionStartedSub = eventBus.Subscribe<SessionRecordingStartedEvent>(OnSessionStarted);
         _sessionStoppedSub = eventBus.Subscribe<SessionRecordingStoppedEvent>(OnSessionStopped);
 
-        captureEngine.StateChanged += state =>
+        _captureStateHandler = state =>
             Application.Current?.Dispatcher.Invoke(() => UpdateState(state));
+        captureEngine.StateChanged += _captureStateHandler;
     }
 
     [RelayCommand]
@@ -162,6 +164,7 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _captureEngine.StateChanged -= _captureStateHandler;
         _clipSavedSub.Dispose();
         _stateChangedSub.Dispose();
         _sessionStartedSub.Dispose();

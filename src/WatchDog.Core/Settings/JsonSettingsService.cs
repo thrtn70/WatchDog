@@ -37,8 +37,18 @@ public sealed class JsonSettingsService : ISettingsService
         _cached = settings;
         Directory.CreateDirectory(SettingsDir);
 
-        var json = JsonSerializer.Serialize(settings, JsonOptions);
-        File.WriteAllText(SettingsPath, json);
+        var tmp = Path.Combine(SettingsDir, $"settings.{Guid.NewGuid():N}.tmp");
+        try
+        {
+            var json = JsonSerializer.Serialize(settings, JsonOptions);
+            File.WriteAllText(tmp, json);
+            File.Move(tmp, SettingsPath, overwrite: true);
+        }
+        catch
+        {
+            try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* best-effort */ }
+            throw;
+        }
 
         _logger.LogDebug("Settings saved to {Path}", SettingsPath);
         SettingsChanged?.Invoke(settings);
