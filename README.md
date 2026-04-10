@@ -24,7 +24,7 @@
 
 WatchDog embeds OBS Studio's recording engine into a native WPF app. It runs in the background, detects when you launch a game, and keeps a rolling replay buffer so you can save the last 2 minutes of gameplay with a single hotkey. It also auto-clips highlight moments (kills, aces, round wins) for supported games.
 
-Think of it as **Outplayed / Medal without the bloat** — no Overwolf, no Electron, no account required.
+Think of it as **Outplayed / Medal without the bloat** — and also without the blood of innocent children.
 
 ---
 
