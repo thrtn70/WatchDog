@@ -300,6 +300,21 @@
 
                     <CheckBox Content="Start with Windows" IsChecked="{Binding StartWithWindows}" Margin="0,0,0,8"/>
                     <CheckBox Content="Start minimized to tray" IsChecked="{Binding StartMinimized}"/>
+
+                    <!-- About / Version -->
+                    <TextBlock Text="About" FontWeight="SemiBold" Margin="0,24,0,8"/>
+                    <TextBlock FontSize="12" Foreground="{StaticResource SubtextBrush}" Margin="0,0,0,8">
+                        <Run Text="WatchDog"/>
+                        <Run Text="{Binding AppVersion, Mode=OneTime}"/>
+                    </TextBlock>
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Check for Updates"
+                                Command="{Binding CheckForUpdateCommand}"
+                                Padding="12,6"/>
+                        <TextBlock Text="{Binding UpdateStatusText}" VerticalAlignment="Center"
+                                   Margin="12,0,0,0" FontSize="11"
+                                   Foreground="{StaticResource SubtextBrush}"/>
+                    </StackPanel>
                 </StackPanel>
             </TabItem>
         </TabControl>

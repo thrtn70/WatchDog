@@ -668,6 +668,10 @@
                 <TextBlock Text="{Binding StatusText}" FontSize="11"
                            Foreground="{StaticResource SubtextBrush}"
                            HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding AppVersion}" FontSize="11"
+                           Foreground="{StaticResource SubtextBrush}"
+                           HorizontalAlignment="Right" VerticalAlignment="Center"
+                           Opacity="0.6"/>
             </Grid>
         </Border>
     </Grid>

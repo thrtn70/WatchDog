@@ -52,6 +52,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _isScanning;
     [ObservableProperty] private bool _isRecording;
 
+    // App version (read once from assembly at startup)
+    public string AppVersion { get; } = GetAppVersion();
+
     // Auto-update
     [ObservableProperty] private UpdateInfo? _availableUpdate;
     [ObservableProperty] private bool _isUpdateDownloading;
@@ -496,6 +499,14 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     [RelayCommand]
     private void DismissUpdate() => AvailableUpdate = null;
+
+    private static string GetAppVersion()
+    {
+        var version = System.Reflection.Assembly.GetEntryAssembly()
+            ?.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion?.Split('+')[0];
+        return version is not null ? $"v{version}" : "v?.?.?";
+    }
 
     public void Dispose() => _clipSavedSub.Dispose();
 }

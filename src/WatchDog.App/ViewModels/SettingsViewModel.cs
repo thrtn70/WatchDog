@@ -3,11 +3,13 @@ using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Windows.Forms;
+using System.Reflection;
 using WatchDog.Core.Audio;
 using WatchDog.Core.Capture;
 using WatchDog.Core.Hotkeys;
 using WatchDog.Core.Recording;
 using WatchDog.Core.Settings;
+using WatchDog.Core.Updates;
 
 namespace WatchDog.App.ViewModels;
 
@@ -15,6 +17,7 @@ public partial class SettingsViewModel : ObservableObject
 {
     private readonly ISettingsService _settingsService;
     private readonly IAudioDeviceEnumerator? _audioDeviceEnumerator;
+    private readonly IUpdateChecker? _updateChecker;
     private AppSettings _settings;
 
     // Capture settings
@@ -76,6 +79,12 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty] private string _statusMessage = string.Empty;
 
+    // Version & update
+    [ObservableProperty] private string _updateStatusText = string.Empty;
+    [ObservableProperty] private bool _isCheckingForUpdate;
+
+    public string AppVersion { get; } = GetAppVersion();
+
     // Hotkey settings
     [ObservableProperty] private int _saveClipKey;
     [ObservableProperty] private uint _saveClipModifiers;
@@ -89,10 +98,11 @@ public partial class SettingsViewModel : ObservableObject
     public string ToggleRecordingHotkeyDisplay =>
         HotkeyConfig.FormatDisplay(ToggleRecordingKey, ToggleRecordingModifiers);
 
-    public SettingsViewModel(ISettingsService settingsService, IAudioDeviceEnumerator? audioDeviceEnumerator = null)
+    public SettingsViewModel(ISettingsService settingsService, IAudioDeviceEnumerator? audioDeviceEnumerator = null, IUpdateChecker? updateChecker = null)
     {
         _settingsService = settingsService;
         _audioDeviceEnumerator = audioDeviceEnumerator;
+        _updateChecker = updateChecker;
         _settings = settingsService.Load();
         LoadFromSettings(_settings);
     }
@@ -299,5 +309,52 @@ public partial class SettingsViewModel : ObservableObject
         MicDevices = new ObservableCollection<AudioDeviceInfo>(inputs);
         SelectedMicDevice = inputs.FirstOrDefault(d => d.DeviceId == micDeviceId)
                             ?? inputs.FirstOrDefault(d => d.IsDefault);
+    }
+
+    [RelayCommand]
+    private async Task CheckForUpdateAsync()
+    {
+        if (_updateChecker is null)
+        {
+            UpdateStatusText = "Update checking unavailable.";
+            return;
+        }
+
+        IsCheckingForUpdate = true;
+        UpdateStatusText = "Checking for updates...";
+
+        try
+        {
+            var result = await _updateChecker.CheckForUpdateAsync();
+
+            if (result is null)
+            {
+                UpdateStatusText = "Could not check for updates. Try again later.";
+            }
+            else if (result.IsUpdateAvailable)
+            {
+                UpdateStatusText = $"Update available: v{result.LatestVersion}. Close settings and use the update banner to install.";
+            }
+            else
+            {
+                UpdateStatusText = $"You're on the latest version.";
+            }
+        }
+        catch
+        {
+            UpdateStatusText = "Update check failed. Check your internet connection.";
+        }
+        finally
+        {
+            IsCheckingForUpdate = false;
+        }
+    }
+
+    private static string GetAppVersion()
+    {
+        var version = Assembly.GetEntryAssembly()
+            ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion?.Split('+')[0];
+        return version is not null ? $"v{version}" : "v?.?.?";
     }
 }
