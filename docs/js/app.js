@@ -1,112 +1,150 @@
 /* ═══════════════════════════════════════════════════════════
-   WatchDog Landing Page — JavaScript
-   - Fetches latest release from GitHub API
-   - FAQ accordion behavior
+   WatchDog — Landing Page
+   - GitHub API release fetch
+   - FAQ accordion (grid-template-rows)
+   - Scroll-triggered reveals (IntersectionObserver)
    ═══════════════════════════════════════════════════════════ */
 
 (function () {
   'use strict';
 
+  // ── URL Validation ───────────────────────────────────────
+
+  var ALLOWED_HOSTS = ['github.com', 'objects.githubusercontent.com'];
+
+  function isSafeDownloadUrl(url) {
+    try {
+      var parsed = new URL(url);
+      return parsed.protocol === 'https:' &&
+        ALLOWED_HOSTS.indexOf(parsed.hostname) !== -1;
+    } catch (e) {
+      return false;
+    }
+  }
+
   // ── GitHub Release Fetch ─────────────────────────────────
 
-  const RELEASES_URL = 'https://api.github.com/repos/thrtn70/WatchDog/releases/latest';
-  const SETUP_SUFFIX = '-Setup.exe';
-  const ZIP_SUFFIX = '-win-x64.zip';
-  const FALLBACK_URL = 'https://github.com/thrtn70/WatchDog/releases/latest';
+  var RELEASES_URL = 'https://api.github.com/repos/thrtn70/WatchDog/releases/latest';
+  var SETUP_SUFFIX = '-Setup.exe';
+  var ZIP_SUFFIX = '-win-x64.zip';
 
-  async function fetchLatestRelease() {
-    try {
-      const response = await fetch(RELEASES_URL, {
-        headers: { 'Accept': 'application/vnd.github+json' },
+  function fetchLatestRelease() {
+    fetch(RELEASES_URL, {
+      headers: { 'Accept': 'application/vnd.github+json' },
+    })
+      .then(function (res) {
+        if (!res.ok) {
+          // Consume the response body to free the connection
+          return res.text().then(function () { return null; });
+        }
+        return res.json();
+      })
+      .then(function (release) {
+        if (!release) return;
+
+        var version = (release.tag_name || '').replace(/^v/, '');
+        if (!version) return;
+
+        var setupAsset = null;
+        var zipAsset = null;
+
+        (release.assets || []).forEach(function (asset) {
+          if (asset.name && asset.name.endsWith(SETUP_SUFFIX)) setupAsset = asset;
+          if (asset.name && asset.name.endsWith(ZIP_SUFFIX)) zipAsset = asset;
+        });
+
+        // Download button — validate URL before assigning
+        var btn = document.getElementById('download-btn');
+        var btnText = document.getElementById('download-text');
+        if (btn && btnText) {
+          btnText.textContent = 'Download v' + version;
+          if (setupAsset && isSafeDownloadUrl(setupAsset.browser_download_url)) {
+            btn.href = setupAsset.browser_download_url;
+          }
+        }
+
+        // File size
+        if (setupAsset && setupAsset.size) {
+          var sizeMb = (setupAsset.size / (1024 * 1024)).toFixed(0);
+          var sizeEl = document.getElementById('download-size');
+          var dotEl = document.getElementById('size-dot');
+          if (sizeEl) sizeEl.textContent = '~' + sizeMb + ' MB';
+          if (dotEl) dotEl.style.display = '';
+        }
+
+        // Portable links — validate URL before assigning
+        if (zipAsset && isSafeDownloadUrl(zipAsset.browser_download_url)) {
+          ['portable-link', 'portable-link-2'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.href = zipAsset.browser_download_url;
+          });
+        }
+      })
+      .catch(function () {
+        // Silently fall back — generic release link already set in HTML
       });
-
-      if (!response.ok) return;
-
-      const release = await response.json();
-      const version = (release.tag_name || '').replace(/^v/, '');
-      if (!version) return;
-
-      let setupAsset = null;
-      let zipAsset = null;
-
-      for (const asset of release.assets || []) {
-        if (asset.name && asset.name.endsWith(SETUP_SUFFIX)) {
-          setupAsset = asset;
-        }
-        if (asset.name && asset.name.endsWith(ZIP_SUFFIX)) {
-          zipAsset = asset;
-        }
-      }
-
-      // Update download button
-      const btn = document.getElementById('download-btn');
-      const btnText = document.getElementById('download-text');
-      if (btn && btnText) {
-        btnText.textContent = 'Download v' + version;
-        if (setupAsset) {
-          btn.href = setupAsset.browser_download_url;
-        }
-      }
-
-      // Update file size
-      if (setupAsset && setupAsset.size) {
-        const sizeMb = (setupAsset.size / (1024 * 1024)).toFixed(0);
-        const sizeEl = document.getElementById('download-size');
-        const sepEl = document.getElementById('size-sep');
-        if (sizeEl) sizeEl.textContent = '~' + sizeMb + ' MB';
-        if (sepEl) sepEl.style.display = '';
-      }
-
-      // Update portable ZIP links
-      if (zipAsset) {
-        var portableLinks = [
-          document.getElementById('portable-link'),
-          document.getElementById('portable-link-2'),
-        ];
-        for (const link of portableLinks) {
-          if (link) link.href = zipAsset.browser_download_url;
-        }
-      }
-    } catch (_) {
-      // Silently fall back to generic release link — already set in HTML
-    }
   }
 
   // ── FAQ Accordion ────────────────────────────────────────
 
-  function initFaqAccordion() {
+  function initFaq() {
     var items = document.querySelectorAll('.faq-item');
 
     items.forEach(function (item) {
-      var question = item.querySelector('.faq-question');
-      if (!question) return;
+      var btn = item.querySelector('.faq-q');
+      if (!btn) return;
 
-      question.addEventListener('click', function () {
-        var isOpen = item.classList.contains('open');
+      btn.addEventListener('click', function () {
+        var wasOpen = item.classList.contains('open');
 
-        // Close all items
+        // Close all and reset ARIA
         items.forEach(function (other) {
           other.classList.remove('open');
-          var answer = other.querySelector('.faq-answer');
-          if (answer) answer.style.maxHeight = null;
+          var otherBtn = other.querySelector('.faq-q');
+          if (otherBtn) otherBtn.setAttribute('aria-expanded', 'false');
         });
 
-        // Open clicked item (if it wasn't already open)
-        if (!isOpen) {
+        // Toggle clicked
+        if (!wasOpen) {
           item.classList.add('open');
-          var answer = item.querySelector('.faq-answer');
-          if (answer) {
-            answer.style.maxHeight = answer.scrollHeight + 'px';
-          }
+          btn.setAttribute('aria-expanded', 'true');
         }
       });
     });
+  }
+
+  // ── Scroll Reveals ───────────────────────────────────────
+
+  function initReveals() {
+    var els = document.querySelectorAll('.reveal');
+    if (!els.length) return;
+
+    // Respect reduced motion
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      els.forEach(function (el) { el.classList.add('visible'); });
+      return;
+    }
+
+    var observer = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.15, rootMargin: '0px 0px -40px 0px' }
+    );
+
+    els.forEach(function (el) { observer.observe(el); });
   }
 
   // ── Init ─────────────────────────────────────────────────
 
   document.addEventListener('DOMContentLoaded', function () {
     fetchLatestRelease();
-    initFaqAccordion();
+    initFaq();
+    initReveals();
   });
 })();
