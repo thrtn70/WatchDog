@@ -166,8 +166,10 @@
           var range = document.createRange();
           range.selectNodeContents(pre);
           var sel = window.getSelection();
-          sel.removeAllRanges();
-          sel.addRange(range);
+          if (sel) {
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }
         });
       });
 
