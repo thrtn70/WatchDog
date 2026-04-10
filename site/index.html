@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WatchDog — Lightweight Game Clipping for Windows</title>
+  <meta name="description" content="Capture highlights, trim clips, and share to Discord. Open-source, GPU-accelerated, runs from the system tray.">
+  <meta property="og:title" content="WatchDog — Game Clipping for Windows">
+  <meta property="og:description" content="Lightweight, open-source replay buffer and highlight clipper. NVENC/AMF GPU encoding, auto game detection, Discord sharing.">
+  <meta property="og:image" content="assets/og-image.png">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#2EC4B6">
+  <link rel="icon" type="image/png" href="assets/watchdog-icon.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ═══ Hero ═══════════════════════════════════════════════ -->
+  <section class="hero">
+    <div class="container">
+      <img src="assets/watchdog-icon.png" alt="WatchDog" class="hero-icon">
+      <h1>WatchDog</h1>
+      <p class="hero-tagline">Lightweight, open-source game clipping for Windows.</p>
+      <p class="hero-subtitle">Capture highlights, trim clips, share to Discord — all from the system tray.</p>
+
+      <a id="download-btn" class="btn btn-primary" href="https://github.com/thrtn70/WatchDog/releases/latest" target="_blank" rel="noopener">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span id="download-text">Download Latest</span>
+      </a>
+
+      <div class="download-meta">
+        <span id="download-size"></span>
+        <span class="sep" id="size-sep" style="display:none">|</span>
+        <span>Windows 10/11 64-bit</span>
+        <span class="sep">|</span>
+        <a id="portable-link" href="https://github.com/thrtn70/WatchDog/releases/latest" target="_blank" rel="noopener">Portable ZIP</a>
+      </div>
+
+      <div class="badges">
+        <span class="badge">.NET 9</span>
+        <span class="badge">OBS Studio</span>
+        <span class="badge">GPL-2.0</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Features ═══════════════════════════════════════════ -->
+  <section id="features">
+    <div class="container">
+      <h2 class="section-title">Features</h2>
+      <p class="section-subtitle">Everything you need to clip, edit, and share your best moments.</p>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <h3>Replay Buffer</h3>
+          <p>Press F9 to save the last 2 minutes instantly. Always rolling, zero setup.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10"/></svg>
+          </div>
+          <h3>Session Recording</h3>
+          <p>Record entire game sessions with automatic segment splitting.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <h3>Highlight Detection</h3>
+          <p>Auto-clip kills, aces, and round wins for CS2, Valorant, OW2, and R6S.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <h3>Discord Sharing</h3>
+          <p>Upload clips via webhook with rich embeds — no bot required.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+          </div>
+          <h3>Clip Editor</h3>
+          <p>Trim with a visual timeline, thumbnail strip, and lossless FFmpeg export.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <h3>Game Detection</h3>
+          <p>Auto-detects 100+ games by process name. Starts and stops capture automatically.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+          </div>
+          <h3>GPU Encoding</h3>
+          <p>NVENC H.264/HEVC/AV1, AMD AMF, and x264 CPU fallback.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <h3>Storage Management</h3>
+          <p>Auto-delete old clips, configurable quota, per-game folders.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+          </div>
+          <h3>System Tray</h3>
+          <p>Runs silently in the background. Start with Windows. Right-click for quick actions.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Quick Start ════════════════════════════════════════ -->
+  <section id="quickstart">
+    <div class="container">
+      <h2 class="section-title">Quick Start</h2>
+      <p class="section-subtitle">Up and running in under a minute.</p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <h3>Download</h3>
+          <p>Grab <strong>WatchDog-Setup.exe</strong> from the button above.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <h3>Install</h3>
+          <p>Run the installer. If SmartScreen appears, click <strong>More info &rarr; Run anyway</strong>.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <h3>Done</h3>
+          <p>WatchDog starts in your system tray. Press <strong>F9</strong> to save clips.</p>
+        </div>
+      </div>
+
+      <p class="steps-note">
+        Prefer no installer? Download the <a id="portable-link-2" href="https://github.com/thrtn70/WatchDog/releases/latest" target="_blank" rel="noopener">Portable ZIP</a> and run <code>WatchDog.App.exe</code> directly.<br>
+        WatchDog checks for updates on launch — you'll see a banner when a new version is available.
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══ Game Setup ═════════════════════════════════════════ -->
+  <section id="setup">
+    <div class="container">
+      <h2 class="section-title">Game Setup</h2>
+      <p class="section-subtitle">Most games work automatically. A few need a quick config step.</p>
+
+      <div class="setup-block">
+        <h3>CS2 (Counter-Strike 2)</h3>
+        <p>CS2 requires a Game State Integration config file so WatchDog can detect kills, rounds, and aces. Copy the template to your CS2 config directory:</p>
+        <code>Copy-Item cfg\gamestate_integration_watchdog.cfg "C:\Program Files (x86)\Steam\steamapps\common\Counter-Strike Global Offensive\game\csgo\cfg\"</code>
+        <p style="margin-top: 0.75rem;">Restart CS2 after placing the file.</p>
+      </div>
+
+      <div class="setup-auto">
+        <span class="check">&#10003;</span>
+        <p><strong>Valorant, Overwatch 2, and Rainbow Six Siege</strong> work automatically — no setup required. WatchDog reads game logs and the Riot Client lockfile to detect events.</p>
+      </div>
+
+      <div class="setup-block">
+        <h3>Discord Sharing</h3>
+        <p>Share clips to any Discord channel via webhook:</p>
+        <p>1. In Discord: <strong>Server Settings &rarr; Integrations &rarr; Webhooks &rarr; New Webhook &rarr; Copy URL</strong><br>
+        2. In WatchDog: <strong>Settings &rarr; Discord &rarr; Paste webhook URL &rarr; Save</strong><br>
+        3. Right-click any clip &rarr; <strong>"Share to Discord"</strong></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ FAQ ════════════════════════════════════════════════ -->
+  <section id="faq">
+    <div class="container">
+      <h2 class="section-title">FAQ</h2>
+      <p class="section-subtitle">Common questions and troubleshooting.</p>
+
+      <div class="faq-list">
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>Windows SmartScreen blocked the installer</span>
+            <svg class="faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="faq-answer">
+            <div class="faq-answer-inner">
+              Click <strong>"More info"</strong> then <strong>"Run anyway."</strong> SmartScreen flags unsigned apps — WatchDog isn't code-signed yet. The installer and app are open-source; you can inspect the full source on GitHub.
+            </div>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>My clips are black with audio</span>
+            <svg class="faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="faq-answer">
+            <div class="faq-answer-inner">
+              Game capture may take 30–60 seconds to hook into the game process. Wait for the hook to attach, or switch to <strong>desktop capture mode</strong> in Settings. Anti-cheat games may take longer to hook.
+            </div>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>My game isn't detected</span>
+            <svg class="faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="faq-answer">
+            <div class="faq-answer-inner">
+              WatchDog recognizes 100+ games by process name. If yours isn't detected, use <strong>desktop capture mode</strong> (always-on). Custom game entries are planned for a future release.
+            </div>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>CS2 highlights aren't working</span>
+            <svg class="faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="faq-answer">
+            <div class="faq-answer-inner">
+              1. Verify <code>gamestate_integration_watchdog.cfg</code> is in your CS2 <code>cfg</code> directory.<br>
+              2. Restart CS2 after placing the file.<br>
+              3. Check that recording mode is set to <strong>Highlights</strong> in Settings &gt; Capture.
+            </div>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>F9 hotkey doesn't work</span>
+            <svg class="faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="faq-answer">
+            <div class="faq-answer-inner">
+              Another app (Game Bar, Discord, GeForce Experience) may have registered F9. Change the hotkey in <strong>Settings &gt; Hotkeys</strong>, or use the system tray right-click menu to save clips.
+            </div>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>How do I share clips to Discord?</span>
+            <svg class="faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="faq-answer">
+            <div class="faq-answer-inner">
+              Set up a webhook URL in <strong>Settings &gt; Discord</strong> first. In Discord, go to <strong>Server Settings &rarr; Integrations &rarr; Webhooks &rarr; New Webhook</strong>, copy the URL, and paste it into WatchDog. Then right-click any clip and select <strong>"Share to Discord."</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Footer ═════════════════════════════════════════════ -->
+  <footer>
+    <div class="container">
+      <div class="footer-links">
+        <a href="https://github.com/thrtn70/WatchDog" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: -3px; margin-right: 4px;"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          GitHub
+        </a>
+        <span class="sep">|</span>
+        <span>GPL-2.0 License</span>
+        <span class="sep">|</span>
+        <span>Built with OBS Studio &amp; FFmpeg</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
