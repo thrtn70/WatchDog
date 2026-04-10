@@ -227,6 +227,17 @@
                                               Command="{Binding Data.OpenSessionCommand, Source={StaticResource Proxy}}"
                                               CommandParameter="{Binding}"/>
                             </Border.InputBindings>
+                            <Border.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Open"
+                                              Command="{Binding Data.OpenSessionCommand, Source={StaticResource Proxy}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                    <Separator/>
+                                    <MenuItem Header="Delete Session" Foreground="{StaticResource DangerBrush}"
+                                              Command="{Binding Data.DeleteSessionCommand, Source={StaticResource Proxy}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                </ContextMenu>
+                            </Border.ContextMenu>
                             <Border.Style>
                                 <Style TargetType="Border">
                                     <Style.Triggers>

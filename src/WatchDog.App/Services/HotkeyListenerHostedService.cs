@@ -35,7 +35,7 @@ public sealed class HotkeyListenerHostedService : IHostedService
         _logger = logger;
     }
 
-    public Task StartAsync(CancellationToken cancellationToken)
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
         var settings = _settingsService.Load();
         _currentHotkey = settings.Hotkey;
@@ -43,7 +43,10 @@ public sealed class HotkeyListenerHostedService : IHostedService
         _hotkeyService.HotkeyPressed += OnHotkeyPressed;
         _settingsService.SettingsChanged += OnSettingsChanged;
 
-        RegisterAllHotkeys(_currentHotkey);
+        // RegisterHotKey must be called from the HWND's owning thread (UI thread).
+        // Use InvokeAsync (not Invoke) to avoid deadlocking with the UI thread
+        // that is synchronously awaiting _host.StartAsync().
+        await Application.Current!.Dispatcher.InvokeAsync(() => RegisterAllHotkeys(_currentHotkey));
 
         _logger.LogInformation(
             "Hotkey listener started. SaveClip={SaveClip}, ToggleRecording={Toggle}",
@@ -53,13 +56,20 @@ public sealed class HotkeyListenerHostedService : IHostedService
         return Task.CompletedTask;
     }
 
-    public Task StopAsync(CancellationToken cancellationToken)
+    public async Task StopAsync(CancellationToken cancellationToken)
     {
         _settingsService.SettingsChanged -= OnSettingsChanged;
         _hotkeyService.HotkeyPressed -= OnHotkeyPressed;
-        _hotkeyService.Unregister(SaveClipHotkeyId);
-        _hotkeyService.Unregister(ToggleRecordingHotkeyId);
-        return Task.CompletedTask;
+
+        // UnregisterHotKey must be called from the HWND's owning thread
+        if (Application.Current is not null)
+        {
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                _hotkeyService.Unregister(SaveClipHotkeyId);
+                _hotkeyService.Unregister(ToggleRecordingHotkeyId);
+            });
+        }
     }
 
     private void OnSettingsChanged(AppSettings settings)

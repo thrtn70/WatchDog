@@ -255,6 +255,59 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         RefreshClips();
     }
 
+    [RelayCommand]
+    private async Task DeleteSessionAsync(SessionGroupViewModel? session)
+    {
+        if (session is null) return;
+
+        var clipCount = session.ClipCount;
+        var msg = clipCount > 0
+            ? $"Delete session \"{session.GameName}\" and its {clipCount} clip(s)?\n\nClip files will be permanently deleted."
+            : $"Delete session \"{session.GameName}\"?\n\nThis cannot be undone.";
+
+        var result = MessageBox.Show(msg, "Delete Session",
+            MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+        if (result != MessageBoxResult.Yes)
+            return;
+
+        try
+        {
+            // Delete all clips in the session
+            var failures = new List<string>();
+            foreach (var clip in session.Clips)
+            {
+                try { _clipStorage.DeleteClip(clip.FilePath); }
+                catch { failures.Add(clip.FileName); }
+            }
+
+            if (failures.Count > 0)
+            {
+                MessageBox.Show(
+                    $"Could not delete {failures.Count} clip file(s):\n{string.Join("\n", failures)}",
+                    "Delete Session", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+
+            // Delete the session record (skip for the synthetic "Unsorted" group)
+            if (session.SessionId != Guid.Empty)
+                await _sessionRepository.DeleteAsync(session.SessionId);
+
+            // If we were viewing this session's clips, go back
+            if (SelectedSession == session)
+            {
+                SelectedSession = null;
+                IsSessionDetailView = false;
+            }
+
+            RefreshClips();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not delete session: {ex.Message}", "Delete Failed",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     partial void OnFilterGameChanged(string value) => RefreshClips();
     partial void OnSortModeChanged(ClipSortMode value) => RefreshClips();
 
@@ -306,10 +359,13 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
 
         if (SelectedClip == clip)
-        {
             SelectedClip = null;
-        }
-        RefreshClips();
+
+        // Remove from the live observable collection so the UI updates instantly
+        Clips.Remove(clip);
+
+        // Rebuild session groups in the background (updates counts, etc.)
+        LoadSessionGroups();
     }
 
     [RelayCommand]
@@ -417,7 +473,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             Process.Start(new ProcessStartInfo
             {
                 FileName = installerPath,
-                Arguments = "/VERYSILENT /NORESTART",
+                Arguments = "/SILENT /NORESTART",
                 UseShellExecute = true,
             });
 

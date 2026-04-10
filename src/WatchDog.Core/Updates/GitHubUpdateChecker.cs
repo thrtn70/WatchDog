@@ -15,6 +15,7 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
     private const string InstallerAssetSuffix = "-Setup.exe";
     private static readonly TimeSpan CheckTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan DownloadTimeout = TimeSpan.FromMinutes(5);
+    private const long MaxInstallerBytes = 512L * 1024 * 1024; // 500 MB
 
     private static readonly string[] AllowedHosts =
     [
@@ -165,6 +166,13 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
             {
                 await fileStream.WriteAsync(buffer.AsMemory(0, read), cts.Token);
                 bytesRead += read;
+
+                if (bytesRead > MaxInstallerBytes)
+                {
+                    _logger.LogWarning("Installer download exceeds maximum size ({Max} MB), aborting", MaxInstallerBytes / (1024 * 1024));
+                    try { File.Delete(tempPath); } catch { /* best-effort */ }
+                    return null;
+                }
 
                 if (totalBytes > 0)
                     progress?.Report((double)bytesRead / totalBytes);

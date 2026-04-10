@@ -79,7 +79,8 @@ public partial class HotkeyRecorderControl : UserControl
         if (_isRecording) return;
 
         _isRecording = true;
-        DisplayTextBlock.Text = "Press a key...";
+        // Set via the DP so the binding stays intact (direct TextBlock.Text = breaks it)
+        DisplayText = "Press a key...";
         DisplayTextBlock.Foreground = (Brush)FindResource("TextBrush");
         RecorderBorder.BorderBrush = (Brush)FindResource("AccentBrush");
         RecorderBorder.BorderThickness = new Thickness(2);

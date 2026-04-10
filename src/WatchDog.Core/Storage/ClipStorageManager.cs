@@ -163,6 +163,15 @@ public sealed class ClipStorageManager : IClipStorage
 
     public void DeleteClip(string filePath)
     {
+        // Path containment: only allow deleting files under the configured base directory
+        var fullPath = Path.GetFullPath(filePath);
+        var baseFull = Path.GetFullPath(_config.BasePath);
+        if (!fullPath.StartsWith(baseFull + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning("Blocked DeleteClip attempt outside base path: {Path}", filePath);
+            return;
+        }
+
         string? thumbnailPath;
         lock (_lock)
         {
