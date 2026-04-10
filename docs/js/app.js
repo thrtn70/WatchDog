@@ -10,13 +10,12 @@
 
   // ── URL Validation ───────────────────────────────────────
 
-  var ALLOWED_HOSTS = ['github.com', 'objects.githubusercontent.com'];
+  var ALLOWED_ORIGINS = ['https://github.com', 'https://objects.githubusercontent.com'];
 
   function isSafeDownloadUrl(url) {
     try {
       var parsed = new URL(url);
-      return parsed.protocol === 'https:' &&
-        ALLOWED_HOSTS.indexOf(parsed.hostname) !== -1;
+      return ALLOWED_ORIGINS.indexOf(parsed.origin) !== -1;
     } catch (e) {
       return false;
     }
@@ -53,15 +52,17 @@
           if (asset.name && asset.name.endsWith(ZIP_SUFFIX)) zipAsset = asset;
         });
 
-        // Download button — validate URL before assigning
-        var btn = document.getElementById('download-btn');
-        var btnText = document.getElementById('download-text');
-        if (btn && btnText) {
-          btnText.textContent = 'Download v' + version;
-          if (setupAsset && isSafeDownloadUrl(setupAsset.browser_download_url)) {
-            btn.href = setupAsset.browser_download_url;
+        // Download buttons — validate URL before assigning
+        [['download-btn', 'download-text'], ['download-btn-footer', 'download-text-footer']].forEach(function (pair) {
+          var btn = document.getElementById(pair[0]);
+          var btnText = document.getElementById(pair[1]);
+          if (btn && btnText) {
+            btnText.textContent = 'Download v' + version;
+            if (setupAsset && isSafeDownloadUrl(setupAsset.browser_download_url)) {
+              btn.href = setupAsset.browser_download_url;
+            }
           }
-        }
+        });
 
         // File size
         if (setupAsset && setupAsset.size) {
@@ -80,8 +81,11 @@
           });
         }
       })
-      .catch(function () {
-        // Silently fall back — generic release link already set in HTML
+      .catch(function (err) {
+        // Fall back to generic release link already set in HTML
+        if (typeof console !== 'undefined' && console.warn) {
+          console.warn('[WatchDog] Release fetch failed:', err);
+        }
       });
   }
 
@@ -101,13 +105,17 @@
         items.forEach(function (other) {
           other.classList.remove('open');
           var otherBtn = other.querySelector('.faq-q');
+          var otherPanel = other.querySelector('.faq-a');
           if (otherBtn) otherBtn.setAttribute('aria-expanded', 'false');
+          if (otherPanel) otherPanel.setAttribute('aria-hidden', 'true');
         });
 
         // Toggle clicked
         if (!wasOpen) {
           item.classList.add('open');
           btn.setAttribute('aria-expanded', 'true');
+          var panel = item.querySelector('.faq-a');
+          if (panel) panel.setAttribute('aria-hidden', 'false');
         }
       });
     });
@@ -116,7 +124,10 @@
   // ── Scroll Reveals ───────────────────────────────────────
 
   function initReveals() {
-    var els = document.querySelectorAll('.reveal');
+    // Skip feature-hero elements if scroll-driven animations are supported (CSS handles them)
+    var supportsScrollTimeline = CSS && CSS.supports && CSS.supports('animation-timeline', 'scroll()');
+    var selector = supportsScrollTimeline ? '.reveal:not(.feature-hero)' : '.reveal';
+    var els = document.querySelectorAll(selector);
     if (!els.length) return;
 
     // Respect reduced motion or missing IntersectionObserver
@@ -146,7 +157,23 @@
   function initCopyButtons() {
     var blocks = document.querySelectorAll('.setup-card pre');
     var COPY_LABEL = 'Copy';
-    var CHECK_SVG = '<svg class="copy-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+
+    function makeCheckIcon() {
+      var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'copy-check');
+      svg.setAttribute('width', '14');
+      svg.setAttribute('height', '14');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('fill', 'none');
+      svg.setAttribute('stroke', 'currentColor');
+      svg.setAttribute('stroke-width', '3');
+      svg.setAttribute('stroke-linecap', 'round');
+      svg.setAttribute('stroke-linejoin', 'round');
+      var poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+      poly.setAttribute('points', '20 6 9 17 4 12');
+      svg.appendChild(poly);
+      return svg;
+    }
 
     blocks.forEach(function (pre) {
       var btn = document.createElement('button');
@@ -157,7 +184,8 @@
       btn.addEventListener('click', function () {
         var text = pre.textContent;
         navigator.clipboard.writeText(text).then(function () {
-          btn.innerHTML = CHECK_SVG;
+          btn.textContent = '';
+          btn.appendChild(makeCheckIcon());
           btn.classList.add('copied');
           setTimeout(function () {
             btn.textContent = COPY_LABEL;
@@ -198,6 +226,32 @@
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
 
+    // Mobile nav toggle
+    var toggle = nav.querySelector('.nav-toggle');
+    var links = nav.querySelector('.site-nav__links');
+    if (toggle && links) {
+      toggle.addEventListener('click', function () {
+        var open = links.classList.toggle('open');
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+
+      // Close menu on link click
+      links.addEventListener('click', function (e) {
+        if (e.target.closest('a')) {
+          links.classList.remove('open');
+          toggle.setAttribute('aria-expanded', 'false');
+        }
+      });
+
+      // Close on outside click
+      document.addEventListener('click', function (e) {
+        if (!nav.contains(e.target)) {
+          links.classList.remove('open');
+          toggle.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+
     // Smooth scroll for anchor links
     nav.addEventListener('click', function (e) {
       var link = e.target.closest('a[href^="#"]');
@@ -236,19 +290,206 @@
 
     var observer = new IntersectionObserver(
       function (entries) {
+        // Find the topmost visible section across all entries
+        var visibleTargets = [];
         entries.forEach(function (entry) {
-          var match = sections.find(function (s) { return s.el === entry.target; });
-          if (!match) return;
-          if (entry.isIntersecting) {
-            navLinks.forEach(function (l) { l.classList.remove('active'); });
-            match.link.classList.add('active');
-          }
+          if (entry.isIntersecting) visibleTargets.push(entry.target);
         });
+        if (!visibleTargets.length) return;
+
+        var topmost = sections.find(function (s) {
+          return visibleTargets.indexOf(s.el) !== -1;
+        });
+        if (topmost) {
+          navLinks.forEach(function (l) { l.classList.remove('active'); });
+          topmost.link.classList.add('active');
+        }
       },
       { rootMargin: '-20% 0px -60% 0px' }
     );
 
     sections.forEach(function (s) { observer.observe(s.el); });
+  }
+
+  // ── Step Number Count-Up ─────────────────────────────────
+
+  function initStepCountUp() {
+    var nums = document.querySelectorAll('.step__num');
+    if (!nums.length || !('IntersectionObserver' in window)) return;
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        var el = entry.target;
+        var final = parseInt(el.textContent, 10);
+        if (isNaN(final)) return;
+
+        observer.unobserve(el);
+        var current = 0;
+        var duration = 400;
+        var start = performance.now();
+
+        function step(now) {
+          var elapsed = now - start;
+          var progress = Math.min(elapsed / duration, 1);
+          // Ease out quart
+          var eased = 1 - Math.pow(1 - progress, 4);
+          current = Math.round(eased * final);
+          el.textContent = current < 10 ? '0' + current : '' + current;
+          if (progress < 1) requestAnimationFrame(step);
+        }
+
+        requestAnimationFrame(step);
+      });
+    }, { threshold: 0.5 });
+
+    nums.forEach(function (el) { observer.observe(el); });
+  }
+
+  // ── AI Waveform Visualizer ───────────────────────────────
+
+  function initWaveform() {
+    var canvas = document.querySelector('.waveform-canvas');
+    if (!canvas) return;
+
+    // Skip for reduced motion
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      canvas.style.display = 'none';
+      return;
+    }
+
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    var dpr = window.devicePixelRatio || 1;
+    var w, h, bars;
+    var BAR_COUNT = 64;
+    var frameId = null;
+    var isVisible = false;
+
+    // State
+    var amplitudes = new Float32Array(BAR_COUNT);
+    var targets = new Float32Array(BAR_COUNT);
+    var spikeTimer = 0;
+    var spikeActive = false;
+    var spikePeak = 0;
+    var lastTime = 0;
+
+    function resize() {
+      var rect = canvas.parentElement.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        isVisible = false;
+        return;
+      }
+      w = rect.width;
+      h = rect.height;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function tick(time) {
+      if (!isVisible) return;
+
+      var dt = lastTime ? Math.min((time - lastTime) * 0.001, 0.05) : 0.016;
+      lastTime = time;
+      var t = time * 0.001;
+
+      // Generate ambient noise targets
+      for (var i = 0; i < BAR_COUNT; i++) {
+        var noise = Math.sin(t * 2.3 + i * 0.7) * 0.15 +
+                    Math.sin(t * 1.1 + i * 1.3) * 0.1 +
+                    Math.sin(t * 3.7 + i * 0.3) * 0.08;
+        targets[i] = 0.08 + Math.abs(noise);
+      }
+
+      // Spike events — every 4-7 seconds
+      spikeTimer -= dt;
+      if (spikeTimer <= 0 && !spikeActive) {
+        spikeActive = true;
+        spikePeak = 0.6 + Math.random() * 0.35;
+        spikeTimer = 4 + Math.random() * 3;
+      }
+
+      if (spikeActive) {
+        var center = Math.floor(BAR_COUNT * (0.3 + Math.random() * 0.4));
+        var spread = 6 + Math.floor(Math.random() * 8);
+        for (var j = -spread; j <= spread; j++) {
+          var idx = center + j;
+          if (idx >= 0 && idx < BAR_COUNT) {
+            var falloff = 1 - Math.abs(j) / (spread + 1);
+            targets[idx] = Math.max(targets[idx], spikePeak * falloff * falloff);
+          }
+        }
+        spikePeak *= 0.88;
+        if (spikePeak < 0.1) spikeActive = false;
+      }
+
+      // Lerp amplitudes toward targets
+      for (var k = 0; k < BAR_COUNT; k++) {
+        amplitudes[k] += (targets[k] - amplitudes[k]) * 0.18;
+      }
+
+      // Draw
+      ctx.clearRect(0, 0, w, h);
+      var barW = w / BAR_COUNT;
+      var gap = 1.5;
+
+      for (var b = 0; b < BAR_COUNT; b++) {
+        var barH = amplitudes[b] * h * 0.8;
+        var x = b * barW + gap;
+        var y = (h - barH) / 2;
+        var bw = barW - gap * 2;
+        if (bw < 1) bw = 1;
+
+        // Color: warm amber for spikes, teal for ambient
+        var intensity = amplitudes[b];
+        if (intensity > 0.35) {
+          // Warm amber for spikes — capped at 0.6 for readability
+          var alpha = Math.min(intensity * 1.2, 0.6);
+          ctx.fillStyle = 'rgba(217, 169, 78, ' + alpha + ')';
+        } else {
+          ctx.fillStyle = 'rgba(46, 196, 182, ' + (intensity * 1.8) + ')';
+        }
+
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(x, y, bw, barH, 1);
+        } else {
+          ctx.rect(x, y, bw, barH);
+        }
+        ctx.fill();
+      }
+
+      frameId = requestAnimationFrame(tick);
+    }
+
+    // Visibility observer — pause when off-screen
+    var observer = new IntersectionObserver(function (entries) {
+      isVisible = entries[0].isIntersecting;
+      if (isVisible) {
+        resize();
+        if (!frameId) frameId = requestAnimationFrame(tick);
+      } else if (frameId) {
+        cancelAnimationFrame(frameId);
+        frameId = null;
+      }
+    }, { threshold: 0.1 });
+
+    observer.observe(canvas.parentElement);
+    window.addEventListener('resize', function () { if (isVisible) resize(); }, { passive: true });
+
+    // Pause animation when tab is hidden to save CPU
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) {
+        if (frameId) { cancelAnimationFrame(frameId); frameId = null; }
+      } else if (isVisible && !frameId) {
+        lastTime = 0;
+        frameId = requestAnimationFrame(tick);
+      }
+    });
   }
 
   // ── Console Easter Egg ───────────────────────────────────
@@ -271,6 +512,8 @@
     initNav();
     initCopyButtons();
     initScrollSpy();
+    initStepCountUp();
+    initWaveform();
     initConsoleEasterEgg();
   });
 })();
