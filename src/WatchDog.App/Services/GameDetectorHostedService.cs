@@ -21,8 +21,10 @@ public sealed class GameDetectorHostedService : IHostedService
     private readonly IEventBus _eventBus;
     private readonly SessionManager _sessionManager;
     private readonly ISettingsService _settingsService;
-    private AppSettings _settings;
+    private volatile AppSettings _settings;
     private readonly ILogger<GameDetectorHostedService> _logger;
+    private readonly object _settingsLock = new();
+    private Controls.GameLaunchToast? _activeToast;
 
     public GameDetectorHostedService(
         IGameDetector gameDetector,
@@ -107,8 +109,12 @@ public sealed class GameDetectorHostedService : IHostedService
     {
         try
         {
-            var wasShouldCapture = ShouldHaveDesktopCapture(_settings);
-            _settings = newSettings;
+            bool wasShouldCapture;
+            lock (_settingsLock)
+            {
+                wasShouldCapture = ShouldHaveDesktopCapture(_settings);
+                _settings = newSettings;
+            }
             var nowShouldCapture = ShouldHaveDesktopCapture(newSettings);
 
             if (nowShouldCapture && !wasShouldCapture)
@@ -144,6 +150,23 @@ public sealed class GameDetectorHostedService : IHostedService
 
         try
         {
+            // Check for a saved per-game profile
+            var profile = _settings.GameProfiles
+                .FirstOrDefault(p => string.Equals(p.GameExecutableName, game.ExecutableName,
+                    StringComparison.OrdinalIgnoreCase));
+
+            if (profile is not null)
+            {
+                // Known game with saved profile — apply silently
+                _logger.LogInformation("Applying saved profile for {Game}: {Mode}",
+                    game.DisplayName, profile.Mode);
+            }
+            else
+            {
+                // New game — show toast on UI thread to let user choose mode
+                ShowGameLaunchToast(game);
+            }
+
             if (_settings.Recording.IsReplayBufferEnabled)
                 await _captureEngine.StartAsync(game);
 
@@ -156,6 +179,84 @@ public sealed class GameDetectorHostedService : IHostedService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to start capture for {Game}", game.DisplayName);
+        }
+    }
+
+    private void ShowGameLaunchToast(GameInfo game)
+    {
+        // InvokeAsync: non-blocking — don't stall the WMI/timer detection thread
+        System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
+        {
+            try
+            {
+                var highlightsAvailable = GenreClassification.SupportsHighlights(game.Genre);
+                var caveat = GenreClassification.GetHighlightCaveat(game.Genre);
+                var isAiFallback = highlightsAvailable && caveat is null;
+
+                // Close any existing toast before showing a new one
+                _activeToast?.Close();
+
+                var toast = new Controls.GameLaunchToast(game, highlightsAvailable, isAiFallback, caveat);
+                _activeToast = toast;
+                toast.Closed += (_, _) =>
+                {
+                    if (_activeToast == toast) _activeToast = null;
+                };
+                toast.ModeSelected += (mode, remember) =>
+                {
+                    _logger.LogInformation("User selected {Mode} for {Game} (remember={Remember})",
+                        mode, game.DisplayName, remember);
+
+                    if (remember)
+                    {
+                        SaveGameProfile(game, mode);
+                    }
+
+                    // TODO: Apply mode to the already-running capture session.
+                    // Currently the profile only takes effect on the next game launch.
+                    // Full runtime mode switching requires ObsCaptureEngine changes
+                    // (reconfigure encoder/buffer mid-session) — tracked for follow-up.
+                };
+                toast.Show();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to show game launch toast");
+            }
+        });
+    }
+
+    private void SaveGameProfile(GameInfo game, Settings.RecordingMode mode)
+    {
+        try
+        {
+            // Lock the read-modify-write cycle to prevent lost updates when
+            // OnSettingsChanged fires concurrently (e.g., user changes settings
+            // while a game-launch toast is resolving).
+            lock (_settingsLock)
+            {
+                var newProfile = new Settings.GameRecordingProfile
+                {
+                    GameExecutableName = game.ExecutableName,
+                    Mode = mode,
+                    AutoRecord = true,
+                };
+
+                var existingProfiles = _settings.GameProfiles.ToList();
+                existingProfiles.RemoveAll(p => string.Equals(p.GameExecutableName, game.ExecutableName,
+                    StringComparison.OrdinalIgnoreCase));
+                existingProfiles.Add(newProfile);
+
+                var updatedSettings = _settings with { GameProfiles = existingProfiles.AsReadOnly() };
+                _settingsService.Save(updatedSettings);
+                _settings = updatedSettings;
+            }
+
+            _logger.LogInformation("Saved profile for {Game}: {Mode}", game.DisplayName, mode);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save game profile for {Game}", game.DisplayName);
         }
     }
 

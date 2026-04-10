@@ -1,0 +1,56 @@
+<Window x:Class="WatchDog.App.Controls.GameLaunchToast"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        Width="340" SizeToContent="Height"
+        Background="Transparent">
+
+    <Border Background="{StaticResource BaseBrush}"
+            BorderBrush="{StaticResource Surface1Brush}"
+            BorderThickness="1" CornerRadius="8"
+            Padding="16,14"
+            Effect="{StaticResource FloatingPanelShadow}">
+        <StackPanel>
+            <!-- Game name -->
+            <TextBlock x:Name="GameNameText"
+                       FontFamily="{StaticResource DisplayFont}"
+                       FontSize="14" FontWeight="Bold"
+                       Foreground="{StaticResource TextBrush}"
+                       Margin="0,0,0,4"/>
+
+            <!-- Recommendation text -->
+            <TextBlock x:Name="RecommendationText"
+                       FontFamily="{StaticResource UIFont}"
+                       FontSize="12"
+                       Foreground="{StaticResource SubtextBrush}"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,12"/>
+
+            <!-- Mode buttons -->
+            <WrapPanel x:Name="ModeButtonsPanel" Margin="0,0,0,10">
+                <!-- Buttons added programmatically based on genre compatibility -->
+            </WrapPanel>
+
+            <!-- Remember checkbox + countdown -->
+            <DockPanel>
+                <TextBlock x:Name="CountdownText"
+                           DockPanel.Dock="Right"
+                           FontFamily="{StaticResource UIFont}"
+                           FontSize="11"
+                           Foreground="{StaticResource OverlayBrush}"
+                           VerticalAlignment="Center"/>
+                <CheckBox x:Name="RememberCheckBox"
+                          Content="Remember for this game"
+                          FontFamily="{StaticResource UIFont}"
+                          FontSize="11"
+                          Foreground="{StaticResource SubtextBrush}"
+                          VerticalAlignment="Center"
+                          IsChecked="True"/>
+            </DockPanel>
+        </StackPanel>
+    </Border>
+</Window>
