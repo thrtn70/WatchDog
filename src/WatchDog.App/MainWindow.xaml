@@ -215,7 +215,7 @@
                                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="{Binding GameName}" FontWeight="SemiBold" FontSize="13"
-                                                   Foreground="{StaticResource AccentBrush}"/>
+                                                   Foreground="{StaticResource TextBrush}"/>
                                         <TextBlock Text="{Binding StatusDisplay}" FontSize="10" FontWeight="Bold"
                                                    Foreground="{StaticResource RecordingBrush}" Margin="8,0,0,0"
                                                    VerticalAlignment="Center"/>
@@ -256,7 +256,7 @@
                             VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <TextBlock Text="{Binding SelectedSession.GameName}"
                                FontWeight="SemiBold" FontSize="14"
-                               Foreground="{StaticResource AccentBrush}"
+                               Foreground="{StaticResource TextBrush}"
                                VerticalAlignment="Center"/>
                     <TextBlock Text=" — " Foreground="{StaticResource MutedTextBrush}"
                                VerticalAlignment="Center" FontSize="12"/>
@@ -341,7 +341,7 @@
                                 <!-- Info -->
                                 <StackPanel Grid.Row="1" Margin="8,4,8,8">
                                     <TextBlock Text="{Binding GameName}" FontWeight="SemiBold" FontSize="11"
-                                               Foreground="{StaticResource AccentBrush}"
+                                               Foreground="{StaticResource TextBrush}"
                                                TextTrimming="CharacterEllipsis"/>
                                     <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
                                         <TextBlock Text="{Binding CreatedAtDisplay}" FontSize="11"
@@ -414,8 +414,8 @@
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding FileName}" FontSize="11" FontWeight="Medium"
                                                TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Text="{Binding GameName}" FontSize="11"
-                                               Foreground="{StaticResource AccentBrush}"
+                                    <TextBlock Text="{Binding GameName}" FontSize="11" FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextBrush}"
                                                TextTrimming="CharacterEllipsis"/>
                                 </StackPanel>
 
@@ -549,7 +549,7 @@
                                        FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/>
                             <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
                                 <TextBlock Text="{Binding DataContext.SelectedClip.GameName, RelativeSource={RelativeSource AncestorType=Window}}"
-                                           FontSize="11" Foreground="{StaticResource AccentBrush}"/>
+                                           FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
                                 <TextBlock Text=" · " Foreground="{StaticResource MutedTextBrush}" FontSize="11"/>
                                 <TextBlock Text="{Binding DataContext.SelectedClip.DurationDisplay, RelativeSource={RelativeSource AncestorType=Window}}"
                                            FontSize="11" Foreground="{StaticResource SubtextBrush}"/>

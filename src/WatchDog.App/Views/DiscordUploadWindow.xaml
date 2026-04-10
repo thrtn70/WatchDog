@@ -26,7 +26,7 @@
         <!-- File info -->
         <StackPanel Grid.Row="0" Margin="0,0,0,12">
             <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" FontSize="14"
-                       Foreground="{StaticResource AccentBrush}" TextTrimming="CharacterEllipsis"/>
+                       Foreground="{StaticResource TextBrush}" TextTrimming="CharacterEllipsis"/>
             <TextBlock Text="{Binding GameName}" FontSize="11"
                        Foreground="{StaticResource SubtextBrush}"/>
         </StackPanel>
