@@ -205,6 +205,9 @@
       if (target) {
         e.preventDefault();
         target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Move focus to the target section for keyboard navigation
+        target.setAttribute('tabindex', '-1');
+        target.focus({ preventScroll: true });
       } else if (link.getAttribute('href') === '#') {
         e.preventDefault();
         window.scrollTo({ top: 0, behavior: 'smooth' });
