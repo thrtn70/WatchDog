@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using WatchDog.Core.Capture;
 using WatchDog.Core.ClipEditor;
+using WatchDog.Core.Highlights;
 using WatchDog.Core.Events;
 using WatchDog.Core.Sessions;
 using WatchDog.Core.Settings;
@@ -38,6 +39,19 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty] private string _filterGame = "All Games";
     [ObservableProperty] private ObservableCollection<string> _gameNames = ["All Games"];
     [ObservableProperty] private ClipSortMode _sortMode = ClipSortMode.Newest;
+
+    // Search & filter (Phase 5)
+    private bool _suppressFilterRefresh;
+    [ObservableProperty] private string _searchText = string.Empty;
+    [ObservableProperty] private string _filterHighlightType = "All Types";
+    [ObservableProperty] private string _filterTag = "All Tags";
+    [ObservableProperty] private string _filterDuration = "Any Duration";
+    [ObservableProperty] private ObservableCollection<string> _availableTags = ["All Tags"];
+    [ObservableProperty] private ObservableCollection<string> _highlightTypes = ["All Types"];
+
+    // Batch selection (Phase 5)
+    [ObservableProperty] private int _selectedClipCount;
+    [ObservableProperty] private bool _isBatchMode;
 
     // Clip editor (owns playback, trim, timeline state)
     [ObservableProperty] private ClipEditorViewModel? _clipEditor;
@@ -185,21 +199,60 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             _ => _clipStorage.GetClipsByGame(FilterGame),
         };
 
+        // Apply additional filters (Phase 5)
+        IEnumerable<ClipMetadata> filtered = allClips;
+
+        // Text search (debounced by UI, applied here)
+        if (!string.IsNullOrWhiteSpace(SearchText))
+        {
+            var search = SearchText.Trim();
+            filtered = filtered.Where(c =>
+                c.FileName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                (c.GameName?.Contains(search, StringComparison.OrdinalIgnoreCase) == true) ||
+                c.Tags.Any(t => t.Contains(search, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        // Highlight type filter
+        if (FilterHighlightType != "All Types" && Enum.TryParse<HighlightType>(FilterHighlightType, out var ht))
+        {
+            filtered = filtered.Where(c => c.HighlightType == ht);
+        }
+
+        // Tag filter
+        if (FilterTag != "All Tags")
+        {
+            filtered = filtered.Where(c =>
+                c.Tags.Any(t => string.Equals(t, FilterTag, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        // Duration filter
+        filtered = FilterDuration switch
+        {
+            "Under 30s" => filtered.Where(c => c.Duration.TotalSeconds < 30),
+            "30s\u20132min" => filtered.Where(c => c.Duration.TotalSeconds >= 30 && c.Duration.TotalMinutes < 2),
+            "Over 2min" => filtered.Where(c => c.Duration.TotalMinutes >= 2),
+            _ => filtered,
+        };
+
         var sorted = SortMode switch
         {
-            ClipSortMode.Newest => allClips.OrderByDescending(c => c.CreatedAt),
-            ClipSortMode.Oldest => allClips.OrderBy(c => c.CreatedAt),
-            ClipSortMode.Largest => allClips.OrderByDescending(c => c.FileSizeBytes),
-            ClipSortMode.Longest => allClips.OrderByDescending(c => c.Duration),
-            ClipSortMode.Name => allClips.OrderBy(c => c.FileName, StringComparer.OrdinalIgnoreCase),
-            _ => allClips.OrderByDescending(c => c.CreatedAt),
+            ClipSortMode.Newest => filtered.OrderByDescending(c => c.CreatedAt),
+            ClipSortMode.Oldest => filtered.OrderBy(c => c.CreatedAt),
+            ClipSortMode.Largest => filtered.OrderByDescending(c => c.FileSizeBytes),
+            ClipSortMode.Longest => filtered.OrderByDescending(c => c.Duration),
+            ClipSortMode.Name => filtered.OrderBy(c => c.FileName, StringComparer.OrdinalIgnoreCase),
+            _ => filtered.OrderByDescending(c => c.CreatedAt),
         };
 
         Clips = new ObservableCollection<ClipItemViewModel>(
             sorted.Select(c => new ClipItemViewModel(c)));
 
-        // Update game filter list
-        var games = _clipStorage.GetAllClips()
+        // Reset batch selection
+        SelectedClipCount = 0;
+        IsBatchMode = false;
+
+        // Update game filter list (reuse allClips — avoid redundant storage read)
+        var games = allClips
             .Select(c => c.GameName ?? "Unknown")
             .Distinct()
             .OrderBy(g => g)
@@ -354,8 +407,25 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
     }
 
-    partial void OnFilterGameChanged(string value) => RefreshClips();
-    partial void OnSortModeChanged(ClipSortMode value) => RefreshClips();
+    partial void OnFilterGameChanged(string value) { if (!_suppressFilterRefresh) RefreshClips(); }
+    partial void OnSortModeChanged(ClipSortMode value) { if (!_suppressFilterRefresh) RefreshClips(); }
+    partial void OnSearchTextChanged(string value) { if (!_suppressFilterRefresh) RefreshClips(); }
+    partial void OnFilterHighlightTypeChanged(string value) { if (!_suppressFilterRefresh) RefreshClips(); }
+    partial void OnFilterTagChanged(string value) { if (!_suppressFilterRefresh) RefreshClips(); }
+    partial void OnFilterDurationChanged(string value) { if (!_suppressFilterRefresh) RefreshClips(); }
+
+    [RelayCommand]
+    private void ClearAllFilters()
+    {
+        _suppressFilterRefresh = true;
+        SearchText = string.Empty;
+        FilterGame = "All Games";
+        FilterHighlightType = "All Types";
+        FilterTag = "All Tags";
+        FilterDuration = "Any Duration";
+        _suppressFilterRefresh = false;
+        RefreshClips();
+    }
 
     partial void OnSelectedClipChanged(ClipItemViewModel? value)
     {
@@ -420,6 +490,94 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _clipStorage.ToggleFavorite(clip.FilePath);
         RefreshClips();
     }
+
+    // ── Batch Operations (Phase 5) ──────────────────────────────
+
+    [RelayCommand]
+    private void ToggleClipSelection(ClipItemViewModel clip)
+    {
+        clip.IsSelected = !clip.IsSelected;
+        SelectedClipCount = Clips.Count(c => c.IsSelected);
+        IsBatchMode = SelectedClipCount > 0;
+    }
+
+    [RelayCommand]
+    private void SelectAllClips()
+    {
+        foreach (var clip in Clips) clip.IsSelected = true;
+        SelectedClipCount = Clips.Count;
+        IsBatchMode = true;
+    }
+
+    [RelayCommand]
+    private void ClearSelection()
+    {
+        foreach (var clip in Clips) clip.IsSelected = false;
+        SelectedClipCount = 0;
+        IsBatchMode = false;
+    }
+
+    // Tag validation: alphanumeric, spaces, hyphens, dots, underscores, max 32 chars
+    private static readonly System.Text.RegularExpressions.Regex TagPattern =
+        new(@"^[\w\s\-\.]{1,32}$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    [RelayCommand]
+    private void BatchDeleteSelected()
+    {
+        var selected = Clips.Where(c => c.IsSelected).ToList();
+        if (selected.Count == 0) return;
+
+        var result = MessageBox.Show(
+            $"Delete {selected.Count} clip(s)? This cannot be undone.",
+            "Confirm Delete",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (result != MessageBoxResult.Yes) return;
+
+        var failures = new List<string>();
+        foreach (var clip in selected)
+        {
+            try { _clipStorage.DeleteClip(clip.FilePath); }
+            catch { failures.Add(clip.FileName); }
+        }
+
+        if (failures.Count > 0)
+        {
+            MessageBox.Show(
+                $"Could not delete {failures.Count} file(s):\n{string.Join("\n", failures)}",
+                "Batch Delete", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+
+        RefreshClips();
+    }
+
+    [RelayCommand]
+    private void BatchTagSelected(string tag)
+    {
+        if (string.IsNullOrWhiteSpace(tag)) return;
+
+        var trimmed = tag.Trim();
+        if (!TagPattern.IsMatch(trimmed)) return;
+
+        var selected = Clips.Where(c => c.IsSelected).ToList();
+        foreach (var clip in selected)
+        {
+            _clipStorage.AddTags(clip.FilePath, [trimmed]);
+        }
+
+        RefreshClips();
+    }
+
+    [RelayCommand]
+    private void AddTagToClip(ClipItemViewModel? clip)
+    {
+        // Placeholder — the actual tag input UI would call this with a tag string.
+        // For now this is wired from the clip card "+" button.
+        // Full implementation requires a tag picker popup (Phase 5 follow-up).
+    }
+
+    // ── Navigation ───────────────────────────────────────────
 
     [RelayCommand]
     private void OpenInExplorer(ClipItemViewModel? clip)
@@ -639,9 +797,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     }
 }
 
-public sealed class ClipItemViewModel
+public sealed class ClipItemViewModel : System.ComponentModel.INotifyPropertyChanged
 {
     private BitmapImage? _thumbnail;
+    private bool _isSelected;
+
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
 
     public ClipItemViewModel(ClipMetadata metadata)
     {
@@ -654,6 +815,9 @@ public sealed class ClipItemViewModel
         FileSizeBytes = metadata.FileSizeBytes;
         ThumbnailPath = metadata.ThumbnailPath;
         IsFavorite = metadata.IsFavorite;
+        Tags = metadata.Tags;
+        HighlightType = metadata.HighlightType;
+        HighlightSource = metadata.HighlightSource;
     }
 
     public ClipMetadata Metadata { get; }
@@ -666,6 +830,20 @@ public sealed class ClipItemViewModel
     public long FileSizeBytes { get; }
     public string? ThumbnailPath { get; }
     public bool IsFavorite { get; }
+    public IReadOnlyList<string> Tags { get; }
+    public HighlightType? HighlightType { get; }
+    public string? HighlightSource { get; }
+
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected == value) return;
+            _isSelected = value;
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(IsSelected)));
+        }
+    }
 
     public string DurationDisplay => Duration.TotalHours >= 1
         ? Duration.ToString(@"h\:mm\:ss")
@@ -677,6 +855,33 @@ public sealed class ClipItemViewModel
         >= 1024 * 1024 => $"{FileSizeBytes / (1024.0 * 1024.0):F1} MB",
         _ => $"{FileSizeBytes / 1024.0:F0} KB"
     };
+
+    /// <summary>Abbreviated highlight badge text for thumbnail overlay.</summary>
+    public string? HighlightBadgeText => HighlightType switch
+    {
+        Highlights.HighlightType.Kill => "K",
+        Highlights.HighlightType.Ace => "ACE",
+        Highlights.HighlightType.Multikill => "MK",
+        Highlights.HighlightType.RoundWin => "RW",
+        Highlights.HighlightType.RoundLoss => "RL",
+        Highlights.HighlightType.MatchWin => "W",
+        Highlights.HighlightType.MatchLoss => "L",
+        Highlights.HighlightType.Death => "D",
+        _ => null,
+    };
+
+    /// <summary>Badge color hex for thumbnail overlay.</summary>
+    public string HighlightBadgeColor => HighlightType switch
+    {
+        Highlights.HighlightType.Kill => "#D95555",
+        Highlights.HighlightType.Ace => "#D9B84C",
+        Highlights.HighlightType.Multikill => "#38BF7F",
+        Highlights.HighlightType.RoundWin => "#4C96D9",
+        Highlights.HighlightType.MatchWin => "#2EC4B6",
+        _ => "#4A5F6B",
+    };
+
+    public bool HasTags => Tags.Count > 0;
 
     public string CreatedAtDisplay
     {

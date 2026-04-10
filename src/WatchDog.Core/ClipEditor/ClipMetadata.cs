@@ -15,4 +15,10 @@ public sealed record ClipMetadata
     public HighlightType? HighlightType { get; init; }
     public Guid? SessionId { get; init; }
     public int? MatchNumber { get; init; }
+
+    /// <summary>User-assigned tags for clip organization (e.g., "montage", "funny", "clutch").</summary>
+    public IReadOnlyList<string> Tags { get; init; } = [];
+
+    /// <summary>Source of highlight detection: "native", "ai-audio", or "manual".</summary>
+    public string? HighlightSource { get; init; }
 }

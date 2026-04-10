@@ -15,4 +15,16 @@ public interface IClipStorage
     void DeleteClip(string filePath);
     void ToggleFavorite(string filePath);
     Task RunCleanupAsync(CancellationToken ct = default);
+
+    /// <summary>Add tags to a clip. Tags are deduplicated and case-insensitive.</summary>
+    void AddTags(string filePath, IEnumerable<string> tags);
+
+    /// <summary>Remove tags from a clip.</summary>
+    void RemoveTags(string filePath, IEnumerable<string> tags);
+
+    /// <summary>Get all unique tags used across all clips (for autocomplete).</summary>
+    IReadOnlySet<string> GetAllTags();
+
+    /// <summary>Get clips matching a specific tag.</summary>
+    IReadOnlyList<ClipMetadata> GetClipsByTag(string tag);
 }

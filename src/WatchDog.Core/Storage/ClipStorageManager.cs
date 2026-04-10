@@ -175,7 +175,8 @@ public sealed class ClipStorageManager : IClipStorage
         string? thumbnailPath;
         lock (_lock)
         {
-            var clip = _clips.FirstOrDefault(c => c.FilePath == filePath);
+            var clip = _clips.FirstOrDefault(c =>
+                string.Equals(c.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
             if (clip is null) return;
 
             thumbnailPath = clip.ThumbnailPath;
@@ -204,13 +205,88 @@ public sealed class ClipStorageManager : IClipStorage
     {
         lock (_lock)
         {
-            var idx = _clips.FindIndex(c => c.FilePath == filePath);
+            var idx = _clips.FindIndex(c =>
+                string.Equals(c.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
             if (idx < 0) return;
 
             _clips[idx] = _clips[idx] with { IsFavorite = !_clips[idx].IsFavorite };
         }
 
         SaveIndex();
+    }
+
+    public void AddTags(string filePath, IEnumerable<string> tags)
+    {
+        var validTags = tags
+            .Select(t => t.Trim())
+            .Where(t => t.Length > 0 && t.Length <= 32)
+            .ToList();
+
+        if (validTags.Count == 0) return;
+
+        lock (_lock)
+        {
+            var idx = _clips.FindIndex(c =>
+                string.Equals(c.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+            if (idx < 0) return;
+
+            var existing = _clips[idx].Tags.ToList();
+            foreach (var tag in validTags)
+            {
+                if (!existing.Contains(tag, StringComparer.OrdinalIgnoreCase))
+                    existing.Add(tag);
+            }
+
+            // Cap at 20 tags per clip
+            if (existing.Count > 20)
+                existing = existing.Take(20).ToList();
+
+            _clips[idx] = _clips[idx] with { Tags = existing.AsReadOnly() };
+        }
+
+        SaveIndex();
+    }
+
+    public void RemoveTags(string filePath, IEnumerable<string> tags)
+    {
+        var tagsToRemove = new HashSet<string>(tags, StringComparer.OrdinalIgnoreCase);
+
+        lock (_lock)
+        {
+            var idx = _clips.FindIndex(c =>
+                string.Equals(c.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+            if (idx < 0) return;
+
+            var filtered = _clips[idx].Tags
+                .Where(t => !tagsToRemove.Contains(t))
+                .ToList();
+
+            _clips[idx] = _clips[idx] with { Tags = filtered.AsReadOnly() };
+        }
+
+        SaveIndex();
+    }
+
+    public IReadOnlySet<string> GetAllTags()
+    {
+        lock (_lock)
+        {
+            return _clips
+                .SelectMany(c => c.Tags)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    public IReadOnlyList<ClipMetadata> GetClipsByTag(string tag)
+    {
+        lock (_lock)
+        {
+            return _clips
+                .Where(c => c.Tags.Any(t =>
+                    string.Equals(t, tag, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+        }
     }
 
     public async Task RunCleanupAsync(CancellationToken ct = default)
