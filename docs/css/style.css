@@ -4,7 +4,7 @@
    Type: Archivo (display) + Manrope (body)
    ═══════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;900&family=Manrope:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;900&family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap');
 
 /* ── Tokens ───────────────────────────────────────────────── */
 
@@ -53,6 +53,7 @@
   /* Type */
   --font-display: 'Archivo', system-ui, sans-serif;
   --font-body:    'Manrope', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', 'Courier New', monospace;
 
   /* Layout */
   --max-w: 1080px;
@@ -103,7 +104,7 @@ a:hover { color: var(--text-primary); }
 :focus:not(:focus-visible) { outline: none; }
 
 code {
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-mono);
   font-size: 0.85em;
   background: var(--code-bg);
   padding: 0.15em 0.4em;
@@ -335,7 +336,7 @@ code {
     transform 100ms;
   text-decoration: none;
 }
-.btn:active { transform: scale(0.97); }
+.btn:active { transform: scale(0.97); transition-duration: 100ms; transition-timing-function: var(--ease-out-expo); }
 
 .btn--primary {
   background: var(--accent);
@@ -536,7 +537,7 @@ code {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   padding: var(--space-md) var(--space-lg);
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-mono);
   font-size: 0.78rem;
   color: var(--accent);
   overflow-x: auto;
@@ -640,7 +641,7 @@ code {
 }
 
 .faq-chevron {
-  transition: transform var(--duration-med) var(--ease-out-expo);
+  transition: transform 200ms var(--ease-out-expo);
   color: var(--text-tertiary);
   flex-shrink: 0;
   margin-left: var(--space-lg);
