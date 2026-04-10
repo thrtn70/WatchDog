@@ -58,51 +58,75 @@
       <p class="section-label reveal">Capabilities</p>
       <h2 class="section-heading reveal">Everything you need to clip, edit, and share.</h2>
 
-      <div class="features-grid">
-        <div class="feature reveal reveal-stagger" style="--i:0">
-          <div class="feature__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
-          <div class="feature__title">Replay Buffer</div>
-          <div class="feature__desc">Press F9 to save the last 2 minutes instantly. Always rolling, zero setup.</div>
+      <!-- Hero features — the differentiators -->
+      <div class="features-hero">
+        <div class="feature-hero reveal reveal-stagger" style="--i:0">
+          <div class="feature-hero__icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+          <div class="feature-hero__body">
+            <h3 class="feature-hero__title">Replay Buffer</h3>
+            <p class="feature-hero__desc">Press F9 to save the last 2 minutes of gameplay instantly. The buffer runs continuously in the background with near-zero CPU impact. Never miss a moment.</p>
+          </div>
         </div>
-        <div class="feature reveal reveal-stagger" style="--i:1">
-          <div class="feature__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
-          <div class="feature__title">Highlight Detection</div>
-          <div class="feature__desc">Auto-clip kills, aces, and round wins for CS2, Valorant, OW2, and R6S.</div>
+        <div class="feature-hero reveal reveal-stagger" style="--i:1">
+          <div class="feature-hero__icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+          <div class="feature-hero__body">
+            <h3 class="feature-hero__title">Highlight Detection</h3>
+            <p class="feature-hero__desc">Kills, aces, round wins — auto-clipped the instant they happen. Supported for CS2, Valorant, Overwatch 2, and Rainbow Six Siege.</p>
+          </div>
         </div>
-        <div class="feature reveal reveal-stagger" style="--i:2">
-          <div class="feature__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
-          <div class="feature__title">Discord Sharing</div>
-          <div class="feature__desc">Upload clips via webhook with rich embeds. No bot required.</div>
+        <div class="feature-hero reveal reveal-stagger" style="--i:2">
+          <div class="feature-hero__icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+          <div class="feature-hero__body">
+            <h3 class="feature-hero__title">Discord Sharing</h3>
+            <p class="feature-hero__desc">Upload clips to any channel via webhook with rich embeds showing game, duration, and file size. No bot required — just paste and share.</p>
+          </div>
         </div>
-        <div class="feature reveal reveal-stagger" style="--i:3">
-          <div class="feature__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10"/></svg></div>
-          <div class="feature__title">Session Recording</div>
-          <div class="feature__desc">Record entire game sessions with automatic segment splitting.</div>
+      </div>
+
+      <!-- Supporting features — compact grid -->
+      <p class="section-label reveal" style="margin-top: var(--space-4xl)">Also included</p>
+      <div class="features-compact">
+        <div class="feature-sm reveal reveal-stagger" style="--i:0">
+          <div class="feature-sm__icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10"/></svg></div>
+          <div>
+            <h3 class="feature-sm__title">Session Recording</h3>
+            <p class="feature-sm__desc">Record entire sessions with auto-splitting.</p>
+          </div>
         </div>
-        <div class="feature reveal reveal-stagger" style="--i:4">
-          <div class="feature__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
-          <div class="feature__title">Clip Editor</div>
-          <div class="feature__desc">Trim with a visual timeline, thumbnail strip, and lossless FFmpeg export.</div>
+        <div class="feature-sm reveal reveal-stagger" style="--i:1">
+          <div class="feature-sm__icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+          <div>
+            <h3 class="feature-sm__title">Clip Editor</h3>
+            <p class="feature-sm__desc">Trim with timeline and lossless export.</p>
+          </div>
         </div>
-        <div class="feature reveal reveal-stagger" style="--i:5">
-          <div class="feature__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
-          <div class="feature__title">Game Detection</div>
-          <div class="feature__desc">Auto-detects 100+ games by process name. Starts and stops capture automatically.</div>
+        <div class="feature-sm reveal reveal-stagger" style="--i:2">
+          <div class="feature-sm__icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+          <div>
+            <h3 class="feature-sm__title">Game Detection</h3>
+            <p class="feature-sm__desc">100+ games recognized automatically.</p>
+          </div>
         </div>
-        <div class="feature reveal reveal-stagger" style="--i:6">
-          <div class="feature__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg></div>
-          <div class="feature__title">GPU Encoding</div>
-          <div class="feature__desc">NVENC H.264/HEVC/AV1, AMD AMF, and x264 CPU fallback.</div>
+        <div class="feature-sm reveal reveal-stagger" style="--i:3">
+          <div class="feature-sm__icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg></div>
+          <div>
+            <h3 class="feature-sm__title">GPU Encoding</h3>
+            <p class="feature-sm__desc">NVENC, AMD AMF, and x264 fallback.</p>
+          </div>
         </div>
-        <div class="feature reveal reveal-stagger" style="--i:7">
-          <div class="feature__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
-          <div class="feature__title">Storage Management</div>
-          <div class="feature__desc">Auto-delete old clips, configurable quota, per-game folders.</div>
+        <div class="feature-sm reveal reveal-stagger" style="--i:4">
+          <div class="feature-sm__icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+          <div>
+            <h3 class="feature-sm__title">Storage Management</h3>
+            <p class="feature-sm__desc">Auto-delete, quotas, per-game folders.</p>
+          </div>
         </div>
-        <div class="feature reveal reveal-stagger" style="--i:8">
-          <div class="feature__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg></div>
-          <div class="feature__title">System Tray</div>
-          <div class="feature__desc">Runs silently in the background. Start with Windows. Right-click for quick actions.</div>
+        <div class="feature-sm reveal reveal-stagger" style="--i:5">
+          <div class="feature-sm__icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg></div>
+          <div>
+            <h3 class="feature-sm__title">System Tray</h3>
+            <p class="feature-sm__desc">Runs silently. Start with Windows.</p>
+          </div>
         </div>
       </div>
     </div>
