@@ -46,33 +46,46 @@
   <!-- ═══ Hero ════════════════════════════════════════════════ -->
   <header class="hero" aria-label="WatchDog introduction">
     <div class="wrap">
-      <div class="hero__inner">
-        <img src="assets/watchdog-icon.png" alt="WatchDog icon" class="hero__icon reveal" style="--i:0">
-        <h1 class="hero__title reveal reveal-stagger" style="--i:1">Clip it. Trim it.<br>Share it.</h1>
-        <p class="hero__tagline reveal reveal-stagger" style="--i:2">WatchDog is a lightweight, open-source game clipper for Windows. It runs in the background, captures your best moments, and stays out of the way.</p>
+      <div class="hero__layout">
+        <div class="hero__inner">
+          <img src="assets/watchdog-icon.png" alt="WatchDog icon" class="hero__icon reveal" style="--i:0">
+          <h1 class="hero__title reveal reveal-stagger" style="--i:1">Clip it. Trim it.<br>Share it.</h1>
+          <p class="hero__tagline reveal reveal-stagger" style="--i:2">WatchDog is a lightweight, open-source game clipper for Windows. It runs in the background, captures your best moments, and stays out of the way.</p>
 
-        <div class="hero__actions reveal reveal-stagger" style="--i:3">
-          <a id="download-btn" class="btn btn--primary" href="https://github.com/thrtn70/WatchDog/releases/latest" target="_blank" rel="noopener">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            <span id="download-text">Download Latest</span>
-          </a>
-          <a id="portable-link" class="btn btn--ghost" href="https://github.com/thrtn70/WatchDog/releases/latest" target="_blank" rel="noopener">Portable ZIP</a>
+          <div class="hero__actions reveal reveal-stagger" style="--i:3">
+            <a id="download-btn" class="btn btn--primary" href="https://github.com/thrtn70/WatchDog/releases/latest" target="_blank" rel="noopener">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span id="download-text">Download Latest</span>
+            </a>
+            <a id="portable-link" class="btn btn--ghost" href="https://github.com/thrtn70/WatchDog/releases/latest" target="_blank" rel="noopener">Portable ZIP</a>
+          </div>
+
+          <div class="hero__meta reveal reveal-stagger" style="--i:4">
+            <span id="download-size"></span>
+            <span class="dot" id="size-dot" style="display:none" aria-hidden="true">&middot;</span>
+            <span>Windows 10/11 64-bit</span>
+            <span class="dot" aria-hidden="true">&middot;</span>
+            <span>No account required</span>
+          </div>
+
+          <div class="hero__badges reveal reveal-stagger" style="--i:5">
+            <span class="badge">.NET 9</span>
+            <span class="badge">OBS Studio</span>
+            <span class="badge">Open Source</span>
+            <span class="badge">GPL-2.0</span>
+          </div>
         </div>
 
-        <div class="hero__meta reveal reveal-stagger" style="--i:4">
-          <span id="download-size"></span>
-          <span class="dot" id="size-dot" style="display:none" aria-hidden="true">&middot;</span>
-          <span>Windows 10/11 64-bit</span>
-          <span class="dot" aria-hidden="true">&middot;</span>
-          <span>No account required</span>
-        </div>
-
-        <div class="hero__badges reveal reveal-stagger" style="--i:5">
-          <span class="badge">.NET 9</span>
-          <span class="badge">OBS Studio</span>
-          <span class="badge">Open Source</span>
-          <span class="badge">GPL-2.0</span>
-        </div>
+        <aside class="hero__games reveal reveal-stagger" style="--i:3" aria-label="Supported games">
+          <p class="hero__games-label">Auto-clips highlights for</p>
+          <div class="hero__games-list">
+            <span class="game-pill game-pill--cs2">CS2</span>
+            <span class="game-pill game-pill--val">Valorant</span>
+            <span class="game-pill game-pill--ow2">Overwatch 2</span>
+            <span class="game-pill game-pill--r6s">Siege</span>
+          </div>
+          <p class="hero__games-note">+ 100 more games detected automatically</p>
+        </aside>
       </div>
     </div>
   </header>

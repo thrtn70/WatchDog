@@ -255,10 +255,66 @@ code {
   padding: var(--space-5xl) 0 var(--space-4xl);
 }
 
+.hero__layout {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-4xl);
+  align-items: center;
+}
+
 .hero__inner {
   display: grid;
   gap: var(--space-xl);
   max-width: 680px;
+}
+
+/* ── Supported Games (hero right column) ──────────────────── */
+
+.hero__games {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-lg);
+}
+
+.hero__games-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.hero__games-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  justify-content: flex-end;
+  max-width: 240px;
+}
+
+.game-pill {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: var(--bg-raised);
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  transition: border-color var(--duration-fast) var(--ease-out-expo);
+}
+
+.game-pill--cs2  { border-color: oklch(55% 0.12 60); color: oklch(75% 0.10 60); }
+.game-pill--val  { border-color: oklch(55% 0.14 15); color: oklch(70% 0.12 15); }
+.game-pill--ow2  { border-color: oklch(55% 0.10 50); color: oklch(75% 0.08 50); }
+.game-pill--r6s  { border-color: oklch(55% 0.08 250); color: oklch(72% 0.06 250); }
+
+.hero__games-note {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  text-align: right;
 }
 
 .hero__icon {
@@ -763,6 +819,10 @@ code {
 @media (max-width: 768px) {
   .section { padding: var(--space-4xl) 0; }
   .hero { padding: var(--space-4xl) 0 var(--space-3xl); }
+  .hero__layout { grid-template-columns: 1fr; gap: var(--space-2xl); }
+  .hero__games { align-items: flex-start; }
+  .hero__games-list { justify-content: flex-start; }
+  .hero__games-note { text-align: left; }
 
   .features-compact { grid-template-columns: 1fr; }
   .feature-hero { flex-direction: column; gap: var(--space-lg); }
