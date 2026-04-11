@@ -92,7 +92,9 @@
     if (htmlUrl && isSafeDownloadUrl(htmlUrl)) {
       link.href = htmlUrl;
     } else {
-      link.href = 'https://github.com/thrtn70/WatchDog/releases/tag/' + prerelease.tag_name;
+      // Defensive: whitelist tag_name to alphanumeric + dots/dashes to prevent injection
+      var safeTag = /^[a-zA-Z0-9._-]+$/.test(prerelease.tag_name) ? prerelease.tag_name : '';
+      if (safeTag) link.href = 'https://github.com/thrtn70/WatchDog/releases/tag/' + safeTag;
     }
 
     // Release date
