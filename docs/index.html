@@ -28,6 +28,7 @@
 </head>
 <body>
 
+  <div class="scroll-progress" aria-hidden="true"></div>
   <a href="#main-content" class="skip-link">Skip to content</a>
 
   <!-- ═══ Nav ═════════════════════════════════════════════════ -->
@@ -384,6 +385,12 @@
       </div>
     </div>
   </footer>
+
+  <!-- ═══ Screenshot Lightbox ═════════════════════════════════ -->
+  <dialog class="lightbox" id="lightbox" aria-label="Screenshot preview">
+    <button class="lightbox__close" aria-label="Close preview">&times;</button>
+    <img class="lightbox__img" id="lightbox-img" src="" alt="">
+  </dialog>
 
   <script src="js/app.js" defer></script>
 </body>

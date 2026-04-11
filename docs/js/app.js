@@ -670,6 +670,54 @@
     });
   }
 
+  // ── Screenshot Lightbox ──────────────────────────────────
+
+  function initLightbox() {
+    var lightbox = document.getElementById('lightbox');
+    var lightboxImg = document.getElementById('lightbox-img');
+    if (!lightbox || !lightboxImg) return;
+
+    var screenshots = document.querySelectorAll('.screenshot');
+
+    screenshots.forEach(function (link) {
+      link.addEventListener('click', function (e) {
+        e.preventDefault();
+        var img = link.querySelector('img');
+        if (!img) return;
+
+        // Validate same-origin before assigning src
+        try {
+          var parsed = new URL(link.href);
+          if (parsed.origin !== window.location.origin) return;
+        } catch (err) { return; }
+
+        lightboxImg.src = link.href;
+        lightboxImg.alt = img.alt;
+        lightbox.showModal();
+        document.body.style.overflow = 'hidden';
+      });
+    });
+
+    function closeLightbox() {
+      if (lightbox.open) lightbox.close();
+      lightboxImg.src = '';
+      document.body.style.overflow = '';
+    }
+
+    // Close on backdrop click or close button
+    lightbox.addEventListener('click', function (e) {
+      if (e.target === lightbox || e.target.classList.contains('lightbox__close')) {
+        closeLightbox();
+      }
+    });
+
+    // Native <dialog> handles Escape automatically, but ensure cleanup runs
+    lightbox.addEventListener('close', function () {
+      lightboxImg.src = '';
+      document.body.style.overflow = '';
+    });
+  }
+
   // ── Console Easter Egg ───────────────────────────────────
 
   function initConsoleEasterEgg() {
@@ -693,6 +741,7 @@
     fetchReleasesList();
     initStepCountUp();
     initWaveform();
+    initLightbox();
     initConsoleEasterEgg();
   });
 })();
