@@ -8,7 +8,7 @@ namespace WatchDog.Core.Highlights;
 public sealed class HighlightDetectorRegistry
 {
     private readonly Dictionary<string, IHighlightDetector> _detectors;
-    private readonly IHighlightDetector? _audioFallback;
+    private volatile IHighlightDetector? _audioFallback;
     private readonly IEventBus _eventBus;
     private readonly ILogger<HighlightDetectorRegistry> _logger;
     private IHighlightDetector? _activeDetector;
