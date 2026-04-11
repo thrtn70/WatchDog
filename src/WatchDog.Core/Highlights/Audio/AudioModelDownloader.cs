@@ -13,10 +13,7 @@ public static class AudioModelDownloader
 
     private static readonly string[] AllowedHosts = ["essentia.upf.edu"];
 
-    // Expected SHA-256 of the model file. Set to null to skip verification
-    // (first download will log the hash for pinning). Once pinned, any CDN
-    // compromise or corruption is detected before the model is loaded.
-    private static readonly string? ExpectedSha256 = null; // TODO: pin after first successful download
+    private static readonly string? ExpectedSha256 = "9bc15ac91426e431527196ee6663de78dffcc7db53ac002d5afbda61429b456f";
 
     /// <summary>
     /// Ensures the ONNX model file exists at the given path.
