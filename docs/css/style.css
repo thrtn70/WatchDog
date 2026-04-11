@@ -155,6 +155,11 @@ a:hover { color: var(--text-primary); }
 }
 :focus:not(:focus-visible) { outline: none; }
 
+/* High-contrast focus ring on accent-colored elements */
+.btn--primary:focus-visible {
+  outline-color: var(--text-primary);
+}
+
 code {
   font-family: var(--font-mono);
   font-size: 0.85em;
@@ -1009,6 +1014,26 @@ code {
   position: relative;
 }
 
+/* Right-fade indicating scrollable overflow */
+.pre-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 40px;
+  background: linear-gradient(to right, transparent, var(--code-bg));
+  pointer-events: none;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  opacity: 0;
+  transition: opacity var(--duration-fast);
+}
+
+/* Show fade when pre is scrollable (JS adds this class) */
+.pre-wrapper--scrollable::after {
+  opacity: 1;
+}
+
 .copy-btn {
   position: absolute;
   top: var(--space-sm);
@@ -1386,6 +1411,50 @@ code {
 }
 
 /* ══════════════════════════════════════════════════════════
+   BACK TO TOP
+   ══════════════════════════════════════════════════════════ */
+
+.back-to-top {
+  position: fixed;
+  bottom: var(--space-2xl);
+  right: var(--space-2xl);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  z-index: 50;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity var(--duration-med) var(--ease-out-expo),
+    transform var(--duration-med) var(--ease-out-expo),
+    color var(--duration-fast) var(--ease-out-expo),
+    border-color var(--duration-fast) var(--ease-out-expo);
+}
+
+.back-to-top:not([hidden]) {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.back-to-top:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.back-to-top[hidden] { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .back-to-top { transition: none; }
+}
+
+/* ══════════════════════════════════════════════════════════
    SCREENSHOT LIGHTBOX
    ══════════════════════════════════════════════════════════ */
 
@@ -1537,6 +1606,14 @@ code {
   .steps { grid-template-columns: 1fr; gap: var(--space-2xl); }
 
   .hero__actions { flex-direction: column; align-items: flex-start; }
+
+  /* Copy button above code on mobile */
+  .pre-wrapper { display: flex; flex-direction: column-reverse; }
+  .copy-btn {
+    position: static;
+    align-self: flex-end;
+    margin-bottom: var(--space-xs);
+  }
 
   /* Touch targets — 44px minimum on mobile */
   .footer__inner { gap: var(--space-sm); }

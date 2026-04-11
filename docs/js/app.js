@@ -209,6 +209,11 @@
       pre.parentNode.insertBefore(wrapper, pre);
       wrapper.appendChild(pre);
       wrapper.appendChild(btn);
+
+      // Detect horizontal overflow and add scroll indicator
+      if (pre.scrollWidth > pre.clientWidth) {
+        wrapper.classList.add('pre-wrapper--scrollable');
+      }
     });
   }
 
@@ -407,6 +412,10 @@
         dlBtn.rel = 'noopener';
         dlBtn.textContent = 'Download ' + heroTag;
         heroHtml.appendChild(dlBtn);
+
+        // Clear static fallback before inserting API data
+        var fallback = document.getElementById('release-fallback');
+        if (fallback) fallback.remove();
 
         container.appendChild(heroHtml);
 
@@ -670,6 +679,25 @@
     });
   }
 
+  // ── Back to Top ─────────────────────────────────────────
+
+  function initBackToTop() {
+    var btn = document.getElementById('back-to-top');
+    var hero = document.querySelector('.hero');
+    if (!btn || !hero || !('IntersectionObserver' in window)) return;
+
+    var observer = new IntersectionObserver(function (entries) {
+      // Show button when hero exits viewport
+      btn.hidden = entries[0].isIntersecting;
+    }, { threshold: 0 });
+
+    observer.observe(hero);
+
+    btn.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
   // ── Screenshot Lightbox ──────────────────────────────────
 
   function initLightbox() {
@@ -742,6 +770,7 @@
     initStepCountUp();
     initWaveform();
     initLightbox();
+    initBackToTop();
     initConsoleEasterEgg();
   });
 })();

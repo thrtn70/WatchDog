@@ -270,7 +270,16 @@
       <h2 class="section-heading reveal">Download any version.</h2>
 
       <div class="releases" id="releases-list">
-        <!-- Populated by JS from GitHub Releases API -->
+        <!-- Static fallback — replaced by JS when GitHub API responds -->
+        <div class="release-hero release-hero--stable reveal" id="release-fallback">
+          <div class="release-hero__info">
+            <div class="release-hero__top">
+              <span class="release-badge release-badge--latest">Latest</span>
+              <span class="release-hero__version">v1.2.3</span>
+            </div>
+          </div>
+          <a class="btn btn--primary" href="https://github.com/thrtn70/WatchDog/releases/latest" target="_blank" rel="noopener">Download v1.2.3</a>
+        </div>
         <noscript>
           <p class="releases-fallback"><a href="https://github.com/thrtn70/WatchDog/releases" target="_blank" rel="noopener">View all releases on GitHub</a></p>
         </noscript>
@@ -387,6 +396,11 @@
   </footer>
 
   <!-- ═══ Screenshot Lightbox ═════════════════════════════════ -->
+  <!-- ═══ Back to Top ═════════════════════════════════════════ -->
+  <button class="back-to-top" id="back-to-top" aria-label="Back to top" hidden>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg>
+  </button>
+
   <dialog class="lightbox" id="lightbox" aria-label="Screenshot preview">
     <button class="lightbox__close" aria-label="Close preview">&times;</button>
     <img class="lightbox__img" id="lightbox-img" src="" alt="">
