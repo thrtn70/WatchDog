@@ -42,8 +42,9 @@ public sealed class DiscordWebhookService : IDiscordWebhookService
         if (string.IsNullOrWhiteSpace(settings.WebhookUrl))
             return new DiscordUploadResult(false, "No Discord webhook URL configured.");
 
-        // SSRF prevention: only allow Discord webhook hosts
+        // SSRF prevention: only allow HTTPS Discord webhook hosts
         if (!Uri.TryCreate(settings.WebhookUrl, UriKind.Absolute, out var webhookUri) ||
+            webhookUri.Scheme != Uri.UriSchemeHttps ||
             (webhookUri.Host != "discord.com" && webhookUri.Host != "discordapp.com"))
         {
             return new DiscordUploadResult(false, "Invalid or non-Discord webhook URL.");
@@ -115,6 +116,7 @@ public sealed class DiscordWebhookService : IDiscordWebhookService
     {
         if (string.IsNullOrWhiteSpace(webhookUrl)) return false;
         if (!Uri.TryCreate(webhookUrl, UriKind.Absolute, out var uri)) return false;
+        if (uri.Scheme != Uri.UriSchemeHttps) return false;
         if (uri.Host != "discord.com" && uri.Host != "discordapp.com") return false;
 
         try
