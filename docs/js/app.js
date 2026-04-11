@@ -78,10 +78,12 @@
     var preVersion = (prerelease.tag_name || '').replace(/^v/, '');
     if (!preVersion || preVersion === stableVersion) return;
 
-    var notice = document.getElementById('prerelease-notice');
+    var wrap = document.getElementById('prerelease-wrap');
     var text = document.getElementById('prerelease-text');
     var link = document.getElementById('prerelease-link');
-    if (!notice || !text || !link) return;
+    var dateEl = document.getElementById('prerelease-date');
+    var changelogEl = document.getElementById('prerelease-changelog');
+    if (!wrap || !text || !link) return;
 
     text.textContent = 'v' + preVersion + ' pre-release available';
 
@@ -93,7 +95,41 @@
       link.href = 'https://github.com/thrtn70/WatchDog/releases/tag/' + prerelease.tag_name;
     }
 
-    notice.style.display = 'flex';
+    // Release date
+    if (dateEl && prerelease.published_at) {
+      var d = new Date(prerelease.published_at);
+      dateEl.textContent = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    // Changelog teaser — first meaningful line from the release body
+    if (changelogEl && prerelease.body) {
+      var lines = prerelease.body.split('\n').filter(function (l) {
+        var trimmed = l.trim();
+        return trimmed.length > 10
+          && trimmed.charAt(0) !== '#'
+          && trimmed.charAt(0) !== '>'
+          && trimmed.charAt(0) !== '-'
+          && trimmed.indexOf('---') === -1
+          && trimmed.indexOf('**[') === -1;
+      });
+      var teaser = lines.length > 0 ? lines[0].trim() : '';
+      if (teaser.length > 100) teaser = teaser.substring(0, 97) + '...';
+      if (teaser) changelogEl.textContent = teaser;
+    }
+
+    wrap.style.display = 'block';
+
+    // Hover echo: when pre-release is hovered, glow the download button above
+    var heroInner = wrap.closest('.hero__inner');
+    var notice = document.getElementById('prerelease-notice');
+    if (heroInner && notice) {
+      notice.addEventListener('mouseenter', function () {
+        heroInner.setAttribute('data-prerelease-hover', '');
+      });
+      notice.addEventListener('mouseleave', function () {
+        heroInner.removeAttribute('data-prerelease-hover');
+      });
+    }
   }
 
   function fetchLatestRelease() {

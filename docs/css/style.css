@@ -610,12 +610,44 @@ code {
 
 .hero__meta .dot { opacity: 0.3; }
 
-/* ── Pre-release indicator ───────────────────────────────── */
+/* ── Pre-release indicator (overdrive) ────────────────────── */
+
+/* Animatable custom property for the circuit trace gradient position */
+@property --trace-pos {
+  syntax: '<percentage>';
+  initial-value: 0%;
+  inherits: false;
+}
+
+.hero__prerelease-wrap {
+  position: relative;
+  width: fit-content;
+  margin-top: var(--space-sm);
+}
+
+/* Circuit trace — thin line connecting download button to pre-release notice */
+.hero__prerelease-wrap::before {
+  content: '';
+  position: absolute;
+  left: 28px;
+  top: -12px;
+  width: 1px;
+  height: 12px;
+  background: linear-gradient(
+    to bottom,
+    oklch(75% 0.14 75 / 0) var(--trace-pos),
+    oklch(75% 0.14 75 / 0.5) var(--trace-pos),
+    oklch(75% 0.14 75 / 0) calc(var(--trace-pos) + 30%)
+  );
+  animation: trace-flow 2.4s ease-in-out infinite;
+}
+
+@keyframes trace-flow {
+  0%   { --trace-pos: -30%; }
+  100% { --trace-pos: 130%; }
+}
 
 .hero__prerelease {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
   font-family: var(--font-body);
   font-size: 0.78rem;
   font-weight: 500;
@@ -625,17 +657,85 @@ code {
   border: 1px solid oklch(75% 0.14 75 / 0.12);
   border-radius: var(--radius-sm);
   width: fit-content;
-  margin-top: calc(-1 * var(--space-sm));
   animation: prerelease-fade-in var(--duration-slow) var(--ease-out-expo) both;
+  transition:
+    background var(--duration-med) var(--ease-out-expo),
+    border-color var(--duration-med) var(--ease-out-expo);
+  cursor: default;
 }
 
+.hero__prerelease-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* Hover: expand to show release details */
+.hero__prerelease:hover {
+  background: oklch(75% 0.14 75 / 0.10);
+  border-color: oklch(75% 0.14 75 / 0.22);
+}
+
+/* Hover echo: when pre-release is hovered, the download button glows.
+   Applied via JS (data-prerelease-hover on parent) since DOM order
+   prevents upward CSS sibling selectors. */
+.hero__inner[data-prerelease-hover] .btn--primary {
+  box-shadow: 0 0 20px oklch(75% 0.14 75 / 0.15);
+  transition: box-shadow var(--duration-med) var(--ease-out-expo);
+}
+
+/* Heartbeat dot — double-pulse rhythm like a build status monitor */
 .hero__prerelease-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--warm);
   flex-shrink: 0;
-  animation: prerelease-pulse 2.5s ease-in-out infinite;
+  animation: heartbeat 2s ease-in-out infinite;
+  box-shadow: 0 0 4px oklch(75% 0.14 75 / 0.4);
+}
+
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  14%      { transform: scale(1.5); opacity: 1; }
+  28%      { transform: scale(1); opacity: 0.8; }
+  42%      { transform: scale(1.3); opacity: 1; }
+  56%      { transform: scale(1); opacity: 0.6; }
+}
+
+/* Release details — revealed on hover */
+.hero__prerelease-details {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--duration-med) var(--ease-out-expo);
+  overflow: hidden;
+}
+
+.hero__prerelease:hover .hero__prerelease-details {
+  grid-template-rows: 1fr;
+}
+
+.hero__prerelease-details-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.hero__prerelease-changelog {
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid oklch(75% 0.14 75 / 0.10);
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  line-height: 1.6;
+  max-width: 35ch;
+}
+
+.hero__prerelease-date {
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  opacity: 0.7;
+  margin-left: auto;
+  white-space: nowrap;
 }
 
 .hero__prerelease-link {
@@ -650,14 +750,15 @@ code {
   color: var(--text-primary);
 }
 
-@keyframes prerelease-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
+@keyframes prerelease-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes prerelease-fade-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) {
+  .hero__prerelease-dot { animation: none; }
+  .hero__prerelease-wrap::before { animation: none; opacity: 0.3; }
+  .hero__prerelease { animation: none; opacity: 1; }
 }
 
 .hero__badges {

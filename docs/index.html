@@ -70,11 +70,22 @@
           </div>
 
           <!-- Pre-release indicator — hidden by default, shown by JS when a newer pre-release exists -->
-          <div id="prerelease-notice" class="hero__prerelease" style="display:none" role="status">
-            <span class="hero__prerelease-dot" aria-hidden="true"></span>
-            <span id="prerelease-text"></span>
-            <a id="prerelease-link" href="#" target="_blank" rel="noopener"
-               class="hero__prerelease-link">Try it &rarr;</a>
+          <div id="prerelease-wrap" class="hero__prerelease-wrap" style="display:none">
+            <div id="prerelease-notice" class="hero__prerelease" role="status">
+              <div class="hero__prerelease-row">
+                <span class="hero__prerelease-dot" aria-hidden="true"></span>
+                <span id="prerelease-text"></span>
+                <a id="prerelease-link" href="#" target="_blank" rel="noopener"
+                   class="hero__prerelease-link">Try it &rarr;</a>
+                <span id="prerelease-date" class="hero__prerelease-date"></span>
+              </div>
+              <!-- Expandable changelog on hover -->
+              <div class="hero__prerelease-details">
+                <div class="hero__prerelease-details-inner">
+                  <p id="prerelease-changelog" class="hero__prerelease-changelog"></p>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="hero__meta reveal reveal-stagger" style="--i:4">
