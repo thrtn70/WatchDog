@@ -69,6 +69,14 @@
             <a id="portable-link" class="btn btn--ghost" href="https://github.com/thrtn70/WatchDog/releases/latest" target="_blank" rel="noopener">Portable ZIP</a>
           </div>
 
+          <!-- Pre-release indicator — hidden by default, shown by JS when a newer pre-release exists -->
+          <div id="prerelease-notice" class="hero__prerelease" style="display:none" role="status">
+            <span class="hero__prerelease-dot" aria-hidden="true"></span>
+            <span id="prerelease-text"></span>
+            <a id="prerelease-link" href="#" target="_blank" rel="noopener"
+               class="hero__prerelease-link">Try it &rarr;</a>
+          </div>
+
           <div class="hero__meta reveal reveal-stagger" style="--i:4">
             <span id="download-size"></span>
             <span class="dot" id="size-dot" style="display:none" aria-hidden="true">&middot;</span>

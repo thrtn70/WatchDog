@@ -610,6 +610,56 @@ code {
 
 .hero__meta .dot { opacity: 0.3; }
 
+/* ── Pre-release indicator ───────────────────────────────── */
+
+.hero__prerelease {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--warm-muted);
+  padding: var(--space-sm) var(--space-lg);
+  background: oklch(75% 0.14 75 / 0.06);
+  border: 1px solid oklch(75% 0.14 75 / 0.12);
+  border-radius: var(--radius-sm);
+  width: fit-content;
+  margin-top: calc(-1 * var(--space-sm));
+  animation: prerelease-fade-in var(--duration-slow) var(--ease-out-expo) both;
+}
+
+.hero__prerelease-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warm);
+  flex-shrink: 0;
+  animation: prerelease-pulse 2.5s ease-in-out infinite;
+}
+
+.hero__prerelease-link {
+  color: var(--warm);
+  font-weight: 600;
+  text-decoration: none;
+  margin-left: var(--space-xs);
+  transition: color var(--duration-fast) var(--ease-out-expo);
+}
+
+.hero__prerelease-link:hover {
+  color: var(--text-primary);
+}
+
+@keyframes prerelease-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@keyframes prerelease-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .hero__badges {
   display: flex;
   gap: var(--space-sm);

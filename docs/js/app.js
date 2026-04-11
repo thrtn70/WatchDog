@@ -23,66 +23,113 @@
 
   // ── GitHub Release Fetch ─────────────────────────────────
 
-  var RELEASES_URL = 'https://api.github.com/repos/thrtn70/WatchDog/releases/latest';
+  var RELEASES_LATEST_URL = 'https://api.github.com/repos/thrtn70/WatchDog/releases/latest';
+  var RELEASES_ALL_URL = 'https://api.github.com/repos/thrtn70/WatchDog/releases?per_page=5';
   var SETUP_SUFFIX = '-Setup.exe';
   var ZIP_SUFFIX = '-win-x64.zip';
 
+  function findAssets(release) {
+    var setupAsset = null;
+    var zipAsset = null;
+    (release.assets || []).forEach(function (asset) {
+      if (asset.name && asset.name.endsWith(SETUP_SUFFIX)) setupAsset = asset;
+      if (asset.name && asset.name.endsWith(ZIP_SUFFIX)) zipAsset = asset;
+    });
+    return { setup: setupAsset, zip: zipAsset };
+  }
+
+  function applyRelease(release) {
+    var version = (release.tag_name || '').replace(/^v/, '');
+    if (!version) return;
+
+    var assets = findAssets(release);
+
+    // Download buttons — validate URL before assigning
+    [['download-btn', 'download-text'], ['download-btn-footer', 'download-text-footer']].forEach(function (pair) {
+      var btn = document.getElementById(pair[0]);
+      var btnText = document.getElementById(pair[1]);
+      if (btn && btnText) {
+        btnText.textContent = 'Download v' + version;
+        if (assets.setup && isSafeDownloadUrl(assets.setup.browser_download_url)) {
+          btn.href = assets.setup.browser_download_url;
+        }
+      }
+    });
+
+    // File size
+    if (assets.setup && assets.setup.size) {
+      var sizeMb = (assets.setup.size / (1024 * 1024)).toFixed(0);
+      var sizeEl = document.getElementById('download-size');
+      var dotEl = document.getElementById('size-dot');
+      if (sizeEl) sizeEl.textContent = '~' + sizeMb + ' MB';
+      if (dotEl) dotEl.style.display = '';
+    }
+
+    // Portable links — validate URL before assigning
+    if (assets.zip && isSafeDownloadUrl(assets.zip.browser_download_url)) {
+      ['portable-link', 'portable-link-2'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.href = assets.zip.browser_download_url;
+      });
+    }
+  }
+
+  function showPrereleaseNotice(prerelease, stableVersion) {
+    var preVersion = (prerelease.tag_name || '').replace(/^v/, '');
+    if (!preVersion || preVersion === stableVersion) return;
+
+    var notice = document.getElementById('prerelease-notice');
+    var text = document.getElementById('prerelease-text');
+    var link = document.getElementById('prerelease-link');
+    if (!notice || !text || !link) return;
+
+    text.textContent = 'v' + preVersion + ' pre-release available';
+
+    // Link to the pre-release page on GitHub (not a direct download)
+    var htmlUrl = prerelease.html_url;
+    if (htmlUrl && isSafeDownloadUrl(htmlUrl)) {
+      link.href = htmlUrl;
+    } else {
+      link.href = 'https://github.com/thrtn70/WatchDog/releases/tag/' + prerelease.tag_name;
+    }
+
+    notice.style.display = 'flex';
+  }
+
   function fetchLatestRelease() {
-    fetch(RELEASES_URL, {
-      headers: { 'Accept': 'application/vnd.github+json' },
-    })
-      .then(function (res) {
-        if (!res.ok) {
-          // Consume the response body to free the connection
-          return res.text().then(function () { return null; });
-        }
-        return res.json();
+    var headers = { 'Accept': 'application/vnd.github+json' };
+
+    // Fetch both stable and all recent releases in parallel
+    Promise.all([
+      fetch(RELEASES_LATEST_URL, { headers: headers }).then(function (r) {
+        return r.ok ? r.json() : r.text().then(function () { return null; });
+      }),
+      fetch(RELEASES_ALL_URL, { headers: headers }).then(function (r) {
+        return r.ok ? r.json() : r.text().then(function () { return null; });
       })
-      .then(function (release) {
-        if (!release) return;
+    ])
+      .then(function (results) {
+        var stable = results[0];
+        var allReleases = results[1];
 
-        var version = (release.tag_name || '').replace(/^v/, '');
-        if (!version) return;
-
-        var setupAsset = null;
-        var zipAsset = null;
-
-        (release.assets || []).forEach(function (asset) {
-          if (asset.name && asset.name.endsWith(SETUP_SUFFIX)) setupAsset = asset;
-          if (asset.name && asset.name.endsWith(ZIP_SUFFIX)) zipAsset = asset;
-        });
-
-        // Download buttons — validate URL before assigning
-        [['download-btn', 'download-text'], ['download-btn-footer', 'download-text-footer']].forEach(function (pair) {
-          var btn = document.getElementById(pair[0]);
-          var btnText = document.getElementById(pair[1]);
-          if (btn && btnText) {
-            btnText.textContent = 'Download v' + version;
-            if (setupAsset && isSafeDownloadUrl(setupAsset.browser_download_url)) {
-              btn.href = setupAsset.browser_download_url;
-            }
-          }
-        });
-
-        // File size
-        if (setupAsset && setupAsset.size) {
-          var sizeMb = (setupAsset.size / (1024 * 1024)).toFixed(0);
-          var sizeEl = document.getElementById('download-size');
-          var dotEl = document.getElementById('size-dot');
-          if (sizeEl) sizeEl.textContent = '~' + sizeMb + ' MB';
-          if (dotEl) dotEl.style.display = '';
+        // Apply the stable release to download buttons
+        if (stable) {
+          applyRelease(stable);
         }
 
-        // Portable links — validate URL before assigning
-        if (zipAsset && isSafeDownloadUrl(zipAsset.browser_download_url)) {
-          ['portable-link', 'portable-link-2'].forEach(function (id) {
-            var el = document.getElementById(id);
-            if (el) el.href = zipAsset.browser_download_url;
+        // Check if there's a pre-release newer than stable
+        if (allReleases && Array.isArray(allReleases) && stable) {
+          var stableVersion = (stable.tag_name || '').replace(/^v/, '');
+          var prerelease = allReleases.find(function (r) {
+            return r.prerelease && !r.draft;
           });
+
+          if (prerelease) {
+            showPrereleaseNotice(prerelease, stableVersion);
+          }
         }
       })
       .catch(function (err) {
-        // Fall back to generic release link already set in HTML
         if (typeof console !== 'undefined' && console.warn) {
           console.warn('[WatchDog] Release fetch failed:', err);
         }
