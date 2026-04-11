@@ -351,7 +351,8 @@ public partial class App : Application
             var updateHttp = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
             return new Core.Updates.GitHubUpdateChecker(
                 updateHttp,
-                sp.GetRequiredService<ILoggerFactory>().CreateLogger<Core.Updates.GitHubUpdateChecker>());
+                sp.GetRequiredService<ILoggerFactory>().CreateLogger<Core.Updates.GitHubUpdateChecker>(),
+                sp.GetRequiredService<Core.Settings.ISettingsService>());
         });
         services.AddSingleton<Core.Discord.IDiscordWebhookService, Core.Discord.DiscordWebhookService>();
 

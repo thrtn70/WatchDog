@@ -18,6 +18,7 @@ public sealed record AppSettings
     public DiscordSettings Discord { get; init; } = new();
     public List<CustomGameEntry> CustomGames { get; init; } = [];
     public IReadOnlyList<GameRecordingProfile> GameProfiles { get; init; } = [];
+    public UpdateSettings Update { get; init; } = new();
     public bool DesktopCaptureEnabled { get; init; } = true;
     public bool StartWithWindows { get; init; } = false;
     public bool StartMinimized { get; init; } = true;
@@ -56,6 +57,15 @@ public sealed record StorageSettings
         "WatchDog");
     public int MaxStorageGb { get; init; } = 50;
     public int AutoDeleteDays { get; init; } = 30;
+}
+
+public sealed record UpdateSettings
+{
+    /// <summary>
+    /// ISO 8601 timestamp of the last seen pre-release asset.
+    /// Used to detect when CI pushes a new build to the same release.
+    /// </summary>
+    public string LastSeenAssetTimestamp { get; init; } = string.Empty;
 }
 
 public sealed record CustomGameEntry

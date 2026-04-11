@@ -5,4 +5,6 @@ public sealed record UpdateInfo(
     string LatestVersion,
     string DownloadUrl,
     string ReleaseNotesUrl,
-    bool IsUpdateAvailable);
+    bool IsUpdateAvailable,
+    DateTimeOffset? AssetUpdatedAt = null,
+    string? DisplayMessage = null);

@@ -97,6 +97,13 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _isUpdateDownloading;
     [ObservableProperty] private double _updateDownloadProgress;
 
+    public string UpdateBannerText =>
+        AvailableUpdate is null ? string.Empty
+        : AvailableUpdate.DisplayMessage ?? $"WatchDog {AvailableUpdate.LatestVersion} is available.";
+
+    partial void OnAvailableUpdateChanged(UpdateInfo? value) =>
+        OnPropertyChanged(nameof(UpdateBannerText));
+
     public MainWindowViewModel(
         IClipStorage clipStorage,
         IClipEditor clipEditor,
@@ -797,9 +804,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     private static string GetAppVersion()
     {
-        var version = System.Reflection.Assembly.GetEntryAssembly()
-            ?.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()
-            ?.InformationalVersion?.Split('+')[0];
+        var version = Core.Updates.BuildInfo.GetVersionString();
         return version is not null ? $"v{version}" : "v?.?.?";
     }
 

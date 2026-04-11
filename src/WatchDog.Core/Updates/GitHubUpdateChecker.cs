@@ -1,7 +1,7 @@
 using System.Net.Http.Headers;
-using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using WatchDog.Core.Settings;
 
 namespace WatchDog.Core.Updates;
 
@@ -9,13 +9,16 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
 {
     private readonly HttpClient _http;
     private readonly ILogger<GitHubUpdateChecker> _logger;
+    private readonly ISettingsService _settings;
+    private readonly Func<BuildChannel> _channelProvider;
     private readonly Func<Version?> _versionProvider;
 
-    private const string ReleasesApiUrl = "https://api.github.com/repos/thrtn70/WatchDog/releases/latest";
+    private const string StableApiUrl = "https://api.github.com/repos/thrtn70/WatchDog/releases/latest";
+    private const string ReleasesListUrl = "https://api.github.com/repos/thrtn70/WatchDog/releases?per_page=10";
     private const string InstallerAssetSuffix = "-Setup.exe";
     private static readonly TimeSpan CheckTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan DownloadTimeout = TimeSpan.FromMinutes(5);
-    private const long MaxInstallerBytes = 512L * 1024 * 1024; // 500 MB
+    private const long MaxInstallerBytes = 512L * 1024 * 1024;
 
     private static readonly string[] AllowedHosts =
     [
@@ -23,19 +26,36 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
         "objects.githubusercontent.com",
     ];
 
-    public GitHubUpdateChecker(HttpClient http, ILogger<GitHubUpdateChecker> logger)
-        : this(http, logger, GetCurrentVersion)
+    public GitHubUpdateChecker(HttpClient http, ILogger<GitHubUpdateChecker> logger, ISettingsService settings)
+        : this(http, logger, settings, BuildInfo.GetChannel, BuildInfo.GetParsedBaseVersion)
     {
     }
 
-    internal GitHubUpdateChecker(HttpClient http, ILogger<GitHubUpdateChecker> logger, Func<Version?> versionProvider)
+    internal GitHubUpdateChecker(
+        HttpClient http,
+        ILogger<GitHubUpdateChecker> logger,
+        ISettingsService settings,
+        Func<BuildChannel> channelProvider,
+        Func<Version?> versionProvider)
     {
         _http = http;
         _logger = logger;
+        _settings = settings;
+        _channelProvider = channelProvider;
         _versionProvider = versionProvider;
     }
 
     public async Task<UpdateInfo?> CheckForUpdateAsync(CancellationToken ct = default)
+    {
+        var channel = _channelProvider();
+        return channel == BuildChannel.PreRelease
+            ? await CheckPreReleaseUpdateAsync(ct)
+            : await CheckStableUpdateAsync(ct);
+    }
+
+    // ── Stable Update Path ─────────────────────────────────────
+
+    private async Task<UpdateInfo?> CheckStableUpdateAsync(CancellationToken ct)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(CheckTimeout);
@@ -49,24 +69,10 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
                 return null;
             }
 
-            using var request = new HttpRequestMessage(HttpMethod.Get, ReleasesApiUrl);
-            request.Headers.UserAgent.Add(new ProductInfoHeaderValue("WatchDog", currentVersion.ToString()));
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
+            using var doc = await FetchJsonAsync(StableApiUrl, currentVersion, cts.Token);
+            if (doc is null) return null;
 
-            using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token);
-
-            if ((int)response.StatusCode == 403)
-            {
-                _logger.LogWarning("GitHub API rate limited — skipping update check");
-                return null;
-            }
-
-            response.EnsureSuccessStatusCode();
-
-            var json = await response.Content.ReadAsStringAsync(cts.Token);
-            using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
-
             var tagName = root.GetProperty("tag_name").GetString();
             if (tagName is null) return null;
 
@@ -79,26 +85,7 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
 
             var isNewer = latestVersion > currentVersion;
             var htmlUrl = root.GetProperty("html_url").GetString() ?? "";
-
-            // Find the Setup.exe asset with a validated HTTPS URL on an allowed host
-            string? downloadUrl = null;
-            if (root.TryGetProperty("assets", out var assets))
-            {
-                foreach (var asset in assets.EnumerateArray())
-                {
-                    var name = asset.GetProperty("name").GetString();
-                    if (name is not null && name.EndsWith(InstallerAssetSuffix, StringComparison.OrdinalIgnoreCase))
-                    {
-                        var url = asset.GetProperty("browser_download_url").GetString();
-                        if (IsAllowedDownloadUrl(url))
-                            downloadUrl = url;
-                        else
-                            _logger.LogWarning("Rejected installer URL from untrusted host: {Host}",
-                                url is not null && Uri.TryCreate(url, UriKind.Absolute, out var rejected) ? rejected.Host : "null");
-                        break;
-                    }
-                }
-            }
+            var downloadUrl = FindInstallerAssetUrl(root);
 
             return new UpdateInfo(
                 CurrentVersion: currentVersion.ToString(),
@@ -107,34 +94,110 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
                 ReleaseNotesUrl: htmlUrl,
                 IsUpdateAvailable: isNewer && !string.IsNullOrEmpty(downloadUrl));
         }
-        catch (OperationCanceledException)
-        {
-            _logger.LogDebug("Update check timed out or cancelled");
-            return null;
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogWarning(ex, "Failed to check for updates (network error)");
-            return null;
-        }
-        catch (JsonException ex)
-        {
-            _logger.LogWarning(ex, "Failed to parse GitHub release response");
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Unexpected error during update check");
-            return null;
-        }
+        catch (OperationCanceledException) { _logger.LogDebug("Update check timed out or cancelled"); return null; }
+        catch (HttpRequestException ex) { _logger.LogWarning(ex, "Failed to check for updates (network error)"); return null; }
+        catch (JsonException ex) { _logger.LogWarning(ex, "Failed to parse GitHub release response"); return null; }
+        catch (Exception ex) { _logger.LogWarning(ex, "Unexpected error during update check"); return null; }
     }
+
+    // ── Pre-Release Update Path ────────────────────────────────
+
+    private async Task<UpdateInfo?> CheckPreReleaseUpdateAsync(CancellationToken ct)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(CheckTimeout);
+
+        try
+        {
+            var currentVersion = _versionProvider();
+            var baseVersionStr = BuildInfo.GetBaseVersion();
+            if (currentVersion is null || baseVersionStr is null)
+            {
+                _logger.LogWarning("Could not determine current app version for pre-release check");
+                return null;
+            }
+
+            using var doc = await FetchJsonAsync(ReleasesListUrl, currentVersion, cts.Token);
+            if (doc is null) return null;
+
+            var currentVersionStr = BuildInfo.GetVersionString() ?? currentVersion.ToString();
+            var storedTimestamp = _settings.Load().Update.LastSeenAssetTimestamp;
+
+            // Walk releases to find: (a) our pre-release tag, (b) any newer stable release
+            foreach (var release in doc.RootElement.EnumerateArray())
+            {
+                var tagName = release.GetProperty("tag_name").GetString();
+                if (tagName is null) continue;
+
+                var versionString = tagName.TrimStart('v');
+                var isPreRelease = release.TryGetProperty("prerelease", out var preProp) && preProp.GetBoolean();
+
+                // Case 1: A stable release with a higher version supersedes our pre-release
+                if (!isPreRelease && Version.TryParse(versionString, out var stableVersion) && stableVersion > currentVersion)
+                {
+                    var htmlUrl = release.GetProperty("html_url").GetString() ?? "";
+                    var downloadUrl = FindInstallerAssetUrl(release);
+                    if (!string.IsNullOrEmpty(downloadUrl))
+                    {
+                        _logger.LogInformation("Stable release v{Version} supersedes pre-release", stableVersion);
+                        return new UpdateInfo(
+                            CurrentVersion: currentVersionStr,
+                            LatestVersion: stableVersion.ToString(),
+                            DownloadUrl: downloadUrl,
+                            ReleaseNotesUrl: htmlUrl,
+                            IsUpdateAvailable: true,
+                            DisplayMessage: $"WatchDog v{stableVersion} (stable) is available.");
+                    }
+                }
+
+                // Case 2: Our pre-release tag — check if asset was updated
+                if (versionString.StartsWith(baseVersionStr, StringComparison.OrdinalIgnoreCase) && isPreRelease)
+                {
+                    var (assetUrl, assetUpdatedAt) = FindInstallerAssetWithTimestamp(release);
+                    if (assetUrl is null) continue;
+
+                    var htmlUrl = release.GetProperty("html_url").GetString() ?? "";
+                    var hasNewBuild = !string.IsNullOrEmpty(storedTimestamp)
+                        && DateTimeOffset.TryParse(assetUpdatedAt, out var assetDt)
+                        && DateTimeOffset.TryParse(storedTimestamp, out var storedDt)
+                        && assetDt > storedDt;
+
+                    // Persist current timestamp: on first run (silent seed) or when a new build is found
+                    // (so the next check after install won't re-trigger the same notification)
+                    if (assetUpdatedAt is not null && (string.IsNullOrEmpty(storedTimestamp) || hasNewBuild))
+                    {
+                        PersistAssetTimestamp(assetUpdatedAt);
+                    }
+
+                    var parsedTimestamp = DateTimeOffset.TryParse(assetUpdatedAt, out var dt) ? dt : (DateTimeOffset?)null;
+
+                    return new UpdateInfo(
+                        CurrentVersion: currentVersionStr,
+                        LatestVersion: tagName,
+                        DownloadUrl: assetUrl,
+                        ReleaseNotesUrl: htmlUrl,
+                        IsUpdateAvailable: hasNewBuild,
+                        AssetUpdatedAt: parsedTimestamp,
+                        DisplayMessage: hasNewBuild ? "New CI build available." : null);
+                }
+            }
+
+            _logger.LogDebug("No matching release found for pre-release base version {Base}", baseVersionStr);
+            return null;
+        }
+        catch (OperationCanceledException) { _logger.LogDebug("Pre-release update check timed out or cancelled"); return null; }
+        catch (HttpRequestException ex) { _logger.LogWarning(ex, "Failed to check for pre-release updates (network error)"); return null; }
+        catch (JsonException ex) { _logger.LogWarning(ex, "Failed to parse GitHub releases response"); return null; }
+        catch (Exception ex) { _logger.LogWarning(ex, "Unexpected error during pre-release update check"); return null; }
+    }
+
+    // ── Download ───────────────────────────────────────────────
 
     public async Task<string?> DownloadInstallerAsync(
         string downloadUrl,
         IProgress<double>? progress = null,
         CancellationToken ct = default)
     {
-        // Defense-in-depth: re-validate URL before downloading
         if (!IsAllowedDownloadUrl(downloadUrl))
         {
             _logger.LogWarning("Blocked download from untrusted URL");
@@ -146,7 +209,6 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
 
         try
         {
-            // Use a unique temp file to avoid TOCTOU races
             var tempDir = Path.Combine(Path.GetTempPath(), "WatchDog-Update");
             Directory.CreateDirectory(tempDir);
             var tempPath = Path.Combine(tempDir, $"WatchDog-Setup-{Guid.NewGuid():N}.exe");
@@ -178,7 +240,6 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
                     progress?.Report((double)bytesRead / totalBytes);
             }
 
-            // Verify the download produced a non-empty file
             if (bytesRead == 0)
             {
                 _logger.LogWarning("Downloaded installer is empty");
@@ -190,27 +251,82 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
             _logger.LogInformation("Installer downloaded: {Path} ({Size:F1} MB)", tempPath, bytesRead / (1024.0 * 1024.0));
             return tempPath;
         }
-        catch (OperationCanceledException)
-        {
-            _logger.LogDebug("Installer download timed out or cancelled");
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to download installer");
-            return null;
-        }
+        catch (OperationCanceledException) { _logger.LogDebug("Installer download timed out or cancelled"); return null; }
+        catch (Exception ex) { _logger.LogWarning(ex, "Failed to download installer"); return null; }
     }
 
-    internal static Version? GetCurrentVersion()
+    /// <summary>Persist the asset timestamp so the next check can detect newer builds.</summary>
+    private void PersistAssetTimestamp(string timestamp)
     {
-        var infoVersion = Assembly.GetEntryAssembly()
-            ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-            ?.InformationalVersion;
+        var current = _settings.Load();
+        _settings.Save(current with
+        {
+            Update = current.Update with { LastSeenAssetTimestamp = timestamp }
+        });
+    }
 
-        // InformationalVersion may have +commitHash suffix; strip it
-        var clean = infoVersion?.Split('+')[0];
-        return Version.TryParse(clean, out var v) ? v : null;
+    // ── Helpers ─────────────────────────────────────────────────
+
+    private async Task<JsonDocument?> FetchJsonAsync(string url, Version currentVersion, CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.UserAgent.Add(new ProductInfoHeaderValue("WatchDog", currentVersion.ToString()));
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
+
+        using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+
+        if ((int)response.StatusCode == 403)
+        {
+            _logger.LogWarning("GitHub API rate limited — skipping update check");
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        var json = await response.Content.ReadAsStringAsync(ct);
+        return JsonDocument.Parse(json);
+    }
+
+    private string? FindInstallerAssetUrl(JsonElement release)
+    {
+        if (!release.TryGetProperty("assets", out var assets)) return null;
+
+        foreach (var asset in assets.EnumerateArray())
+        {
+            var name = asset.GetProperty("name").GetString();
+            if (name is not null && name.EndsWith(InstallerAssetSuffix, StringComparison.OrdinalIgnoreCase))
+            {
+                var url = asset.GetProperty("browser_download_url").GetString();
+                if (IsAllowedDownloadUrl(url)) return url;
+
+                _logger.LogWarning("Rejected installer URL from untrusted host: {Host}",
+                    url is not null && Uri.TryCreate(url, UriKind.Absolute, out var rejected) ? rejected.Host : "null");
+                break;
+            }
+        }
+
+        return null;
+    }
+
+    private (string? Url, string? UpdatedAt) FindInstallerAssetWithTimestamp(JsonElement release)
+    {
+        if (!release.TryGetProperty("assets", out var assets)) return (null, null);
+
+        foreach (var asset in assets.EnumerateArray())
+        {
+            var name = asset.GetProperty("name").GetString();
+            if (name is not null && name.EndsWith(InstallerAssetSuffix, StringComparison.OrdinalIgnoreCase))
+            {
+                var url = asset.GetProperty("browser_download_url").GetString();
+                var updatedAt = asset.TryGetProperty("updated_at", out var ts) ? ts.GetString() : null;
+
+                if (IsAllowedDownloadUrl(url)) return (url, updatedAt);
+
+                _logger.LogWarning("Rejected installer URL from untrusted host");
+                break;
+            }
+        }
+
+        return (null, null);
     }
 
     private static bool IsAllowedDownloadUrl(string? url)

@@ -172,11 +172,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="12"
-                           Foreground="{StaticResource TextBrush}">
-                    <Run Text="WatchDog" FontWeight="SemiBold"/>
-                    <Run Text="{Binding AvailableUpdate.LatestVersion, Mode=OneWay}"/>
-                    <Run Text="is available."/>
-                </TextBlock>
+                           Foreground="{StaticResource TextBrush}"
+                           Text="{Binding UpdateBannerText, Mode=OneWay}"/>
                 <Button Grid.Column="1" Content="Install Update"
                         Command="{Binding InstallUpdateCommand}"
                         Margin="8,0" Padding="12,4"

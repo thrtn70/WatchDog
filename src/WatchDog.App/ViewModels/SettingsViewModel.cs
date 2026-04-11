@@ -341,7 +341,8 @@ public partial class SettingsViewModel : ObservableObject
             }
             else if (result.IsUpdateAvailable)
             {
-                UpdateStatusText = $"Update available: v{result.LatestVersion}. Close settings and use the update banner to install.";
+                var message = result.DisplayMessage ?? $"Update available: v{result.LatestVersion}.";
+                UpdateStatusText = $"{message} Close settings and use the update banner to install.";
             }
             else if (Version.TryParse(result.LatestVersion, out var latest)
                      && Version.TryParse(result.CurrentVersion, out var current)
@@ -352,7 +353,8 @@ public partial class SettingsViewModel : ObservableObject
             }
             else
             {
-                UpdateStatusText = $"You're on the latest version ({result.CurrentVersion}).";
+                var suffix = Core.Updates.BuildInfo.IsPreRelease() ? "latest CI build" : "latest version";
+                UpdateStatusText = $"You're on the {suffix} ({result.CurrentVersion}).";
             }
         }
         catch
@@ -367,9 +369,7 @@ public partial class SettingsViewModel : ObservableObject
 
     private static string GetAppVersion()
     {
-        var version = Assembly.GetEntryAssembly()
-            ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-            ?.InformationalVersion?.Split('+')[0];
+        var version = Core.Updates.BuildInfo.GetVersionString();
         return version is not null ? $"v{version}" : "v?.?.?";
     }
 }
