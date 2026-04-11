@@ -94,7 +94,7 @@ public sealed class SessionRecordingHostedService : IHostedService, IDisposable
 
         if (!resolvedOutput.StartsWith(resolvedBase, StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogWarning("Refusing unsafe session sub-path traversal traversal: {Path}, using secure base path", resolvedOutput);
+            _logger.LogWarning("Refusing unsafe session path traversal: {Path}, using secure base path", resolvedOutput);
             outputDir = Path.Combine(_settings.Storage.SavePath, "Sessions");
         }
 
