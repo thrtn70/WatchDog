@@ -1044,6 +1044,169 @@ code {
 }
 
 /* ══════════════════════════════════════════════════════════
+   RELEASES
+   ══════════════════════════════════════════════════════════ */
+
+.releases {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-width: 680px;
+}
+
+/* Hero release card — latest or pre-release */
+.release-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xl);
+  padding: var(--space-xl) var(--space-2xl);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--bg-raised);
+  margin-bottom: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.release-hero--prerelease {
+  border-color: var(--warm-muted);
+}
+
+.release-hero--stable {
+  border-color: oklch(60% 0.10 180);
+}
+
+.release-hero__info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.release-hero__top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.release-hero__version {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.release-hero__date {
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+}
+
+.release-badge {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 3px;
+  line-height: 1.4;
+}
+
+.release-badge--prerelease {
+  background: var(--warm);
+  color: var(--bg-deep);
+}
+
+.release-badge--latest {
+  background: var(--accent);
+  color: var(--bg-deep);
+}
+
+.release-hero .btn--primary {
+  flex-shrink: 0;
+}
+
+/* Compact release rows */
+.release-compact-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.release-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-xl);
+  background: var(--bg-raised);
+  transition: background var(--duration-fast) var(--ease-out-expo);
+}
+
+.release-row:not(:last-child) {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.release-row:hover {
+  background: var(--bg-elevated);
+}
+
+.release-row__info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.release-row__version {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.release-row__date {
+  font-size: 0.78rem;
+  color: var(--text-tertiary);
+}
+
+.release-row__dl {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  transition:
+    color var(--duration-fast) var(--ease-out-expo),
+    background var(--duration-fast) var(--ease-out-expo);
+  flex-shrink: 0;
+}
+
+.release-row__dl:hover {
+  color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.releases-fallback {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.releases-footer {
+  margin-top: var(--space-xl);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+  .release-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
    FAQ
    ══════════════════════════════════════════════════════════ */
 

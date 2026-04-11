@@ -311,6 +311,184 @@
     sections.forEach(function (s) { observer.observe(s.el); });
   }
 
+  // ── Releases Section ─────────────────────────────────────
+
+  var RELEASES_LIST_URL = 'https://api.github.com/repos/thrtn70/WatchDog/releases?per_page=6';
+
+  function formatDate(dateStr) {
+    var d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+  }
+
+  function getSetupUrl(release) {
+    var asset = null;
+    (release.assets || []).forEach(function (a) {
+      if (!asset && a.name && a.name.endsWith(SETUP_SUFFIX)) asset = a;
+    });
+    if (asset && isSafeDownloadUrl(asset.browser_download_url)) {
+      return asset.browser_download_url;
+    }
+    // Fallback to release page — validate even though GitHub API is trusted
+    return isSafeDownloadUrl(release.html_url) ? release.html_url : 'https://github.com/thrtn70/WatchDog/releases';
+  }
+
+  function fetchReleasesList() {
+    var container = document.getElementById('releases-list');
+    if (!container) return;
+
+    fetch(RELEASES_LIST_URL, {
+      headers: { 'Accept': 'application/vnd.github+json' },
+    })
+      .then(function (res) {
+        if (!res.ok) return res.text().then(function () { return null; });
+        return res.json();
+      })
+      .then(function (releases) {
+        if (!releases || !releases.length) return;
+
+        // Filter out drafts — they have incomplete assets and placeholder tags
+        var published = releases.filter(function (r) { return !r.draft; });
+        if (!published.length) return;
+
+        var hero = published[0];
+        var rest = published.slice(1);
+
+        // Find the first stable release for the "Latest" badge
+        var firstStableIdx = -1;
+        if (hero.prerelease) {
+          for (var i = 0; i < rest.length; i++) {
+            if (!rest[i].prerelease && !rest[i].draft) {
+              firstStableIdx = i;
+              break;
+            }
+          }
+        }
+
+        // Build hero card
+        var isPrerelease = hero.prerelease;
+        var heroTag = hero.tag_name || '';
+        var heroDate = hero.published_at ? formatDate(hero.published_at) : '';
+        var heroUrl = getSetupUrl(hero);
+
+        var heroHtml = document.createElement('div');
+        heroHtml.className = 'release-hero reveal ' + (isPrerelease ? 'release-hero--prerelease' : 'release-hero--stable');
+
+        var infoDiv = document.createElement('div');
+        infoDiv.className = 'release-hero__info';
+
+        var topDiv = document.createElement('div');
+        topDiv.className = 'release-hero__top';
+
+        var badge = document.createElement('span');
+        badge.className = 'release-badge ' + (isPrerelease ? 'release-badge--prerelease' : 'release-badge--latest');
+        badge.textContent = isPrerelease ? 'Pre-release' : 'Latest';
+        topDiv.appendChild(badge);
+
+        var version = document.createElement('span');
+        version.className = 'release-hero__version';
+        version.textContent = heroTag;
+        topDiv.appendChild(version);
+
+        infoDiv.appendChild(topDiv);
+
+        var date = document.createElement('span');
+        date.className = 'release-hero__date';
+        date.textContent = heroDate;
+        infoDiv.appendChild(date);
+
+        heroHtml.appendChild(infoDiv);
+
+        var dlBtn = document.createElement('a');
+        dlBtn.className = 'btn btn--primary';
+        dlBtn.href = heroUrl;
+        dlBtn.target = '_blank';
+        dlBtn.rel = 'noopener';
+        dlBtn.textContent = 'Download ' + heroTag;
+        heroHtml.appendChild(dlBtn);
+
+        container.appendChild(heroHtml);
+
+        // Build compact rows
+        if (rest.length) {
+          var list = document.createElement('div');
+          list.className = 'release-compact-list reveal';
+
+          rest.forEach(function (rel, idx) {
+            var row = document.createElement('div');
+            row.className = 'release-row';
+
+            var rowInfo = document.createElement('div');
+            rowInfo.className = 'release-row__info';
+
+            // Badge for first stable release when hero is pre-release
+            if (idx === firstStableIdx) {
+              var stableBadge = document.createElement('span');
+              stableBadge.className = 'release-badge release-badge--latest';
+              stableBadge.textContent = 'Latest';
+              rowInfo.appendChild(stableBadge);
+            }
+
+            var rowVersion = document.createElement('span');
+            rowVersion.className = 'release-row__version';
+            rowVersion.textContent = rel.tag_name || '';
+            rowInfo.appendChild(rowVersion);
+
+            var rowDate = document.createElement('span');
+            rowDate.className = 'release-row__date';
+            rowDate.textContent = rel.published_at ? formatDate(rel.published_at) : '';
+            rowInfo.appendChild(rowDate);
+
+            row.appendChild(rowInfo);
+
+            var dlLink = document.createElement('a');
+            dlLink.className = 'release-row__dl';
+            dlLink.href = getSetupUrl(rel);
+            dlLink.target = '_blank';
+            dlLink.rel = 'noopener';
+            dlLink.setAttribute('aria-label', 'Download ' + (rel.tag_name || ''));
+
+            var dlSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            dlSvg.setAttribute('width', '16');
+            dlSvg.setAttribute('height', '16');
+            dlSvg.setAttribute('viewBox', '0 0 24 24');
+            dlSvg.setAttribute('fill', 'none');
+            dlSvg.setAttribute('stroke', 'currentColor');
+            dlSvg.setAttribute('stroke-width', '2');
+            dlSvg.setAttribute('stroke-linecap', 'round');
+            dlSvg.setAttribute('stroke-linejoin', 'round');
+            dlSvg.setAttribute('aria-hidden', 'true');
+            var path1 = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+            path1.setAttribute('points', '7 10 12 15 17 10');
+            var path2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            path2.setAttribute('x1', '12');
+            path2.setAttribute('y1', '15');
+            path2.setAttribute('x2', '12');
+            path2.setAttribute('y2', '3');
+            dlSvg.appendChild(path1);
+            dlSvg.appendChild(path2);
+            dlLink.appendChild(dlSvg);
+
+            row.appendChild(dlLink);
+            list.appendChild(row);
+          });
+
+          container.appendChild(list);
+        }
+
+        // Trigger reveals on dynamically added elements
+        container.querySelectorAll('.reveal').forEach(function (el) {
+          el.classList.add('visible');
+        });
+      })
+      .catch(function (err) {
+        if (typeof console !== 'undefined' && console.warn) {
+          console.warn('[WatchDog] Releases fetch failed:', err);
+        }
+      });
+  }
+
   // ── Step Number Count-Up ─────────────────────────────────
 
   function initStepCountUp() {
@@ -512,6 +690,7 @@
     initNav();
     initCopyButtons();
     initScrollSpy();
+    fetchReleasesList();
     initStepCountUp();
     initWaveform();
     initConsoleEasterEgg();
