@@ -1,3 +1,4 @@
+using System.IO;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using WatchDog.Core.Highlights;
