@@ -11,8 +11,8 @@
 </p>
 
 <p align="center">
+  <a href="https://thrtn70.github.io/WatchDog/"><img src="https://img.shields.io/badge/Website-thrtn70.github.io%2FWatchDog-2EC4B6?logo=github" alt="Website"/></a>
   <img src="https://img.shields.io/badge/.NET-9.0-blue?logo=dotnet" alt=".NET 9"/>
-  <img src="https://img.shields.io/badge/WPF-Windows-blue?logo=windows" alt="WPF"/>
   <img src="https://img.shields.io/badge/OBS-31.0-purple?logo=obsstudio" alt="OBS"/>
   <img src="https://img.shields.io/badge/license-GPL--2.0-green" alt="License"/>
   <img src="https://img.shields.io/github/v/release/thrtn70/WatchDog?label=latest" alt="Release"/>
@@ -50,6 +50,8 @@ Think of it as **Outplayed / Medal without the bloat** — and also without the 
 ---
 
 ## Installation
+
+> **See the [WatchDog website](https://thrtn70.github.io/WatchDog/) for screenshots, feature overview, and setup guides.**
 
 ### Download (Recommended)
 
