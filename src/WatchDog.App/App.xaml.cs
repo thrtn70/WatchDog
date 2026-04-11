@@ -385,7 +385,8 @@ public partial class App : Application
 
         // AI audio highlight detector — universal fallback for all other games.
         // Auto-downloads YAMNet ONNX model on first launch if not present.
-        services.AddSingleton(sp =>
+        // Uses IHighlightDetector registration directly to avoid nullable DI warnings.
+        services.AddSingleton<IHighlightDetector>(sp =>
         {
             // Use %LOCALAPPDATA%/WatchDog/Models — AppContext.BaseDirectory (Program Files)
             // is read-only for non-admin processes and causes Access Denied on write.
@@ -404,32 +405,23 @@ public partial class App : Application
                 if (!downloaded)
                 {
                     logger.LogWarning("ONNX model unavailable — AI audio highlights disabled");
-                    return (AudioClassifier?)null;
+                    return new NoOpHighlightDetector();
                 }
             }
 
             try
             {
-                return new AudioClassifier(modelPath, sp.GetRequiredService<ILoggerFactory>()
+                var classifier = new AudioClassifier(modelPath, sp.GetRequiredService<ILoggerFactory>()
                     .CreateLogger<AudioClassifier>());
+                return new AudioHighlightDetector(
+                    classifier,
+                    sp.GetRequiredService<ILoggerFactory>().CreateLogger<AudioHighlightDetector>());
             }
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "Failed to load ONNX model — AI audio highlights disabled");
-                return (AudioClassifier?)null;
-            }
-        });
-        services.AddSingleton<IHighlightDetector>(sp =>
-        {
-            var classifier = sp.GetRequiredService<AudioClassifier?>();
-            if (classifier is null)
-            {
-                // Return a no-op detector that never fires highlights
                 return new NoOpHighlightDetector();
             }
-            return new AudioHighlightDetector(
-                classifier,
-                sp.GetRequiredService<ILoggerFactory>().CreateLogger<AudioHighlightDetector>());
         });
 
         services.AddSingleton<HighlightDetectorRegistry>();
