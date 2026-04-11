@@ -383,46 +383,9 @@ public partial class App : Application
         services.AddSingleton<IHighlightDetector, ValorantHighlightDetector>();
         services.AddSingleton<IHighlightDetector, Ow2HighlightDetector>();
 
-        // AI audio highlight detector — universal fallback for all other games.
-        // Auto-downloads YAMNet ONNX model on first launch if not present.
-        // Uses IHighlightDetector registration directly to avoid nullable DI warnings.
-        services.AddSingleton<IHighlightDetector>(sp =>
-        {
-            // Use %LOCALAPPDATA%/WatchDog/Models — AppContext.BaseDirectory (Program Files)
-            // is read-only for non-admin processes and causes Access Denied on write.
-            var modelPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "WatchDog", "Models", "yamnet.onnx");
-            var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("App");
-
-            // Download model if missing (blocking on startup — typically ~14MB, <10s).
-            // 30-second timeout prevents indefinite hang on CDN stall.
-            if (!File.Exists(modelPath))
-            {
-                using var downloadCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-                var downloaded = AudioModelDownloader.EnsureModelAsync(modelPath, logger, downloadCts.Token)
-                    .GetAwaiter().GetResult();
-                if (!downloaded)
-                {
-                    logger.LogWarning("ONNX model unavailable — AI audio highlights disabled");
-                    return new NoOpHighlightDetector();
-                }
-            }
-
-            try
-            {
-                var classifier = new AudioClassifier(modelPath, sp.GetRequiredService<ILoggerFactory>()
-                    .CreateLogger<AudioClassifier>());
-                return new AudioHighlightDetector(
-                    classifier,
-                    sp.GetRequiredService<ILoggerFactory>().CreateLogger<AudioHighlightDetector>());
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Failed to load ONNX model — AI audio highlights disabled");
-                return new NoOpHighlightDetector();
-            }
-        });
+        // AI audio highlight detector — starts as NoOp, upgraded to real detector
+        // in the background once the ONNX model is downloaded (non-blocking).
+        services.AddSingleton<IHighlightDetector>(new NoOpHighlightDetector());
 
         services.AddSingleton<HighlightDetectorRegistry>();
 
@@ -431,5 +394,6 @@ public partial class App : Application
         services.AddHostedService<HotkeyListenerHostedService>();
         services.AddHostedService<SessionRecordingHostedService>();
         services.AddHostedService<HighlightClipService>();
+        services.AddHostedService<AudioModelLoaderService>();
     }
 }

@@ -21,6 +21,16 @@ public sealed class HighlightDetectorRegistry
     public bool HasDedicatedDetector(string executableName)
         => _detectors.ContainsKey(executableName);
 
+    /// <summary>
+    /// Sets (or upgrades) the audio fallback detector at runtime.
+    /// Called by AudioModelLoaderService after the ONNX model downloads in the background.
+    /// </summary>
+    public void SetAudioFallback(IHighlightDetector detector)
+    {
+        _audioFallback = detector;
+        _logger.LogInformation("AI audio fallback detector activated");
+    }
+
     public HighlightDetectorRegistry(
         IEnumerable<IHighlightDetector> detectors,
         IEventBus eventBus,
