@@ -65,7 +65,7 @@ public partial class App : Application
         try
         {
             // Recover orphaned sessions BEFORE starting hosted services —
-            // GameDetectorHostedService creates a new desktop session on start,
+            // CaptureSourceManager creates a new desktop session on start,
             // and RecoverOrphanedSessions would incorrectly mark it as Crashed.
             var sessionManager = _host.Services.GetRequiredService<SessionManager>();
             await sessionManager.RecoverOrphanedSessionsAsync();
@@ -239,6 +239,16 @@ public partial class App : Application
         saveItem.Click += async (_, _) => await vm.SaveClipCommand.ExecuteAsync(null);
         menu.Items.Add(saveItem);
 
+        // Manual window capture
+        var captureItem = new System.Windows.Controls.MenuItem { Header = "Capture Window...", Style = menuItemStyle };
+        captureItem.Click += (_, _) =>
+        {
+            var manualVm = Services.GetRequiredService<ManualCaptureViewModel>();
+            var picker = new Controls.WindowPickerPopup(manualVm);
+            picker.ShowNearTray();
+        };
+        menu.Items.Add(captureItem);
+
         menu.Items.Add(new System.Windows.Controls.Separator { Style = separatorStyle });
 
         var settingsItem = new System.Windows.Controls.MenuItem { Header = "Settings", Style = menuItemStyle };
@@ -391,10 +401,14 @@ public partial class App : Application
         services.AddSingleton<HighlightDetectorRegistry>();
 
         // Hosted services (background workers)
-        services.AddHostedService<GameDetectorHostedService>();
+        services.AddSingleton<CaptureSourceManager>();
+        services.AddHostedService(sp => sp.GetRequiredService<CaptureSourceManager>());
         services.AddHostedService<HotkeyListenerHostedService>();
         services.AddHostedService<SessionRecordingHostedService>();
         services.AddHostedService<HighlightClipService>();
         services.AddHostedService<AudioModelLoaderService>();
+
+        // Manual capture UI — singleton so IsManualCaptureActive state persists across tray menu opens
+        services.AddSingleton<ManualCaptureViewModel>();
     }
 }

@@ -17,6 +17,13 @@ public interface ICaptureEngine : IDisposable
 
     Task StartDesktopCaptureAsync(CancellationToken ct = default);
     Task StartAsync(GameInfo game, CancellationToken ct = default);
+
+    /// <summary>
+    /// Starts capturing a specific window by its capture source metadata.
+    /// Falls back to monitor capture if window capture fails.
+    /// </summary>
+    Task StartWindowCaptureAsync(CaptureSource source, CancellationToken ct = default);
+
     Task SwitchToDesktopCaptureAsync(CancellationToken ct = default);
     Task StopAsync(CancellationToken ct = default);
     Task<string?> SaveReplayAsync(CancellationToken ct = default);

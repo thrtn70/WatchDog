@@ -85,6 +85,8 @@ public sealed class GameDatabase
             "steam.exe", "steamwebhelper.exe", "epicgameslauncher.exe",
             "unrealcefsubprocess.exe", "origin.exe", "eadesktop.exe",
             "battle.net.exe", "riotclientservices.exe", "riotclientux.exe",
+            "leagueclient.exe", "leagueclientux.exe",
+            "ubisoftconnect.exe", "upc.exe", "goggalaxy.exe",
             "overwolf.exe", "outplayed.exe", "spotify.exe", "obs64.exe",
             "devenv.exe", "rider64.exe", "idea64.exe", "windowsterminal.exe",
             "powershell.exe", "cmd.exe", "taskmgr.exe", "searchhost.exe",
@@ -141,7 +143,7 @@ public sealed class GameDatabase
 
         // MOBA
         AddGame("league of legends.exe", "League of Legends", GameGenre.MOBA);
-        AddGame("leagueclient.exe", "League of Legends", GameGenre.MOBA);
+        // leagueclient.exe is the launcher — blacklisted, not a game entry
         AddGame("dota2.exe", "Dota 2", GameGenre.MOBA);
         AddGame("smite.exe", "SMITE", GameGenre.MOBA);
 

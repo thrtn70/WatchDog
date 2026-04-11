@@ -146,6 +146,53 @@ public sealed class ObsCaptureEngine : ICaptureEngine
         }
     }
 
+    public async Task StartWindowCaptureAsync(CaptureSource source, CancellationToken ct = default)
+    {
+        await _stateLock.WaitAsync(ct);
+        try
+        {
+            var gameInfo = source.ToGameInfo();
+            CurrentGame = gameInfo;
+            _logger.LogInformation("Starting window capture for {Window} ({Exe}, PID {Pid})",
+                source.DisplayName, source.ExecutableName, source.ProcessId);
+
+            if (State == CaptureState.Buffering)
+            {
+                // Already running — switch sources to window capture
+                StopReplayBuffer();
+                SetupWindowCaptureSources(source);
+                StartReplayBuffer(source.DisplayName);
+                IsDesktopCapture = false;
+                _logger.LogInformation("Switched to window capture for {Window}", source.DisplayName);
+            }
+            else
+            {
+                // Cold start
+                if (!TransitionState(CaptureState.Initializing))
+                    return;
+
+                EnsureObsInitialized();
+                SetupWindowCaptureSources(source);
+                StartReplayBuffer(source.DisplayName);
+
+                IsDesktopCapture = false;
+                TransitionState(CaptureState.Buffering);
+                _logger.LogInformation("Window capture started for {Window}", source.DisplayName);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to start window capture for {Window}", source.DisplayName);
+            Error?.Invoke($"Failed to start window capture: {ex.Message}");
+            await FullCleanupAsync();
+            TransitionState(CaptureState.Idle);
+        }
+        finally
+        {
+            _stateLock.Release();
+        }
+    }
+
     public async Task SwitchToDesktopCaptureAsync(CancellationToken ct = default)
     {
         await _stateLock.WaitAsync(ct);
@@ -239,7 +286,7 @@ public sealed class ObsCaptureEngine : ICaptureEngine
     public void EnsureInitialized()
     {
         // Acquire the state lock to prevent concurrent initialization races
-        // (e.g., GameDetectorHostedService calling this while OnGameStarted
+        // (e.g., CaptureSourceManager calling this while OnGameStarted
         // fires on a background thread and enters StartAsync).
         _stateLock.Wait();
         try
@@ -368,6 +415,49 @@ public sealed class ObsCaptureEngine : ICaptureEngine
 
         _scene.SetAsProgram();
         _logger.LogInformation("Desktop capture sources created");
+    }
+
+    private void SetupWindowCaptureSources(CaptureSource source)
+    {
+        DisposeSceneSources();
+
+        _scene = Obs.Scenes.Create("WatchDog Scene");
+
+        // Use game capture in specific-window mode targeting the selected executable.
+        // OBS identifies windows by a "title:class:exe" triple split on ':'.
+        // Strip colons from all components to prevent field-boundary confusion
+        // (e.g., "Sekiro: Shadows Die Twice" would shift the class/exe fields).
+        var safeTitle = source.DisplayName.Replace(":", "");
+        var safeClass = (source.WindowClass ?? "*").Replace(":", "");
+        var safeExe = source.ExecutableName.Replace(":", "");
+        _gameCapture = new GameCapture("Window Capture", GameCapture.CaptureMode.SpecificWindow);
+        _gameCapture.SetWindow($"{safeTitle}:{safeClass}:{safeExe}");
+        _gameCapture.SetAntiCheatHook(false); // Not a game — no anti-cheat hook needed
+        _gameCapture.SetCaptureCursor(true);
+
+        _gameCapture.Hooked += gc =>
+        {
+            _logger.LogInformation("Window capture hooked: {Exe}", gc.HookedExecutable);
+            _displaySceneItem?.SetVisible(false);
+        };
+        _gameCapture.Unhooked += _ =>
+        {
+            _logger.LogWarning("Window capture unhooked — showing fallback monitor capture");
+            _displaySceneItem?.SetVisible(true);
+        };
+
+        _gameSceneItem = _scene.AddSource(_gameCapture);
+        StretchToCanvas(_gameSceneItem);
+
+        // Fallback monitor capture — visible until window capture hooks
+        _displayCapture = CreateMonitorCapture(Config.MonitorIndex);
+        _displayCapture.SetCaptureMethod(MonitorCaptureMethod.WindowsGraphicsCapture);
+        _displaySceneItem = _scene.AddSource(_displayCapture);
+        StretchToCanvas(_displaySceneItem);
+
+        _scene.SetAsProgram();
+        _logger.LogInformation("Window capture sources created for {Window} ({Exe})",
+            source.DisplayName, source.ExecutableName);
     }
 
     private void SetupGameSources(GameInfo game)
