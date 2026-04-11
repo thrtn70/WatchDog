@@ -39,11 +39,11 @@
   --warm-muted:   oklch(60% 0.10 75);
 
   /* Warm alpha variants (pre-release indicator, tags, badges) */
-  --warm-6:   var(--warm-6);
-  --warm-10:  var(--warm-10);
-  --warm-12:  var(--warm-12);
-  --warm-15:  var(--warm-15);
-  --warm-22:  var(--warm-22);
+  --warm-6:   oklch(75% 0.14 75 / 0.06);
+  --warm-10:  oklch(75% 0.14 75 / 0.10);
+  --warm-12:  oklch(75% 0.14 75 / 0.12);
+  --warm-15:  oklch(75% 0.14 75 / 0.15);
+  --warm-22:  oklch(75% 0.14 75 / 0.22);
   --warm-40:  oklch(75% 0.14 75 / 0.40);
 
   /* Semantic */
