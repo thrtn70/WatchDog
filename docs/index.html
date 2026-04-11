@@ -59,7 +59,7 @@
         <div class="hero__inner">
           <picture class="hero__icon reveal" style="--i:0"><source srcset="assets/watchdog-icon.webp" type="image/webp"><img src="assets/watchdog-icon.png" alt="WatchDog icon" width="64" height="64"></picture>
           <h1 class="hero__title reveal reveal-stagger" style="--i:1">Clip it. Trim it.<br>Share it.</h1>
-          <p class="hero__tagline reveal reveal-stagger" style="--i:2">WatchDog is a lightweight, open-source game clipper for Windows. It runs in the background, captures your best moments, and stays out of the way.</p>
+          <p class="hero__tagline reveal reveal-stagger" style="--i:2">AI detects your kills, aces, and clutch plays — then clips them automatically. Lightweight, open-source, and runs silently from the system tray.</p>
 
           <div class="hero__actions reveal reveal-stagger" style="--i:3">
             <a id="download-btn" class="btn btn--primary" href="https://github.com/thrtn70/WatchDog/releases/latest" target="_blank" rel="noopener">
@@ -122,7 +122,7 @@
   <section class="section section--alt" id="features" aria-label="Features">
     <div class="wrap">
       <p class="section-label reveal">Capabilities</p>
-      <h2 class="section-heading reveal">Everything you need to clip, edit, and share.</h2>
+      <h2 class="section-heading section-heading--primary reveal">Everything you need to clip, edit, and share.</h2>
 
       <!-- Hero features — the differentiators -->
       <div class="features-hero">
@@ -189,7 +189,7 @@
   <section class="section" id="screenshots" aria-label="App screenshots">
     <div class="wrap">
       <p class="section-label reveal">See it in action</p>
-      <h2 class="section-heading reveal">Built for the way you play.</h2>
+      <h2 class="section-heading section-heading--primary reveal">Built for the way you play.</h2>
 
       <div class="screenshots">
         <a href="assets/screenshot-library.png" target="_blank" rel="noopener noreferrer" class="screenshot screenshot--hero reveal" aria-label="View clip library screenshot full size">
@@ -242,39 +242,6 @@
         Prefer no installer? Download the <a id="portable-link-2" href="https://github.com/thrtn70/WatchDog/releases/latest" target="_blank" rel="noopener">Portable ZIP</a> and run <code>WatchDog.App.exe</code> directly.
         WatchDog checks for updates on launch — you'll see a banner when a new version is available.
       </p>
-    </div>
-  </section>
-
-  <!-- ═══ Game Setup ══════════════════════════════════════════ -->
-  <section class="section section--alt" id="setup" aria-label="Game setup instructions">
-    <div class="wrap">
-      <p class="section-label reveal">Configuration</p>
-      <h2 class="section-heading reveal">Most games work automatically.</h2>
-      <p class="section-desc reveal">A few need a quick config step.</p>
-
-      <div class="setup-grid">
-        <div class="setup-card reveal">
-          <div class="setup-card__title">CS2 (Counter-Strike 2)</div>
-          <p class="setup-card__text">CS2 requires a Game State Integration config file so WatchDog can detect kills, rounds, and aces. Copy the template to your CS2 config directory:</p>
-          <pre>Copy-Item cfg\gamestate_integration_watchdog.cfg "C:\Program Files (x86)\Steam\steamapps\common\Counter-Strike Global Offensive\game\csgo\cfg\"</pre>
-          <p class="setup-card__text">Restart CS2 after placing the file.</p>
-        </div>
-
-        <div class="setup-auto reveal">
-          <span class="setup-auto__check" aria-hidden="true">&#10003;</span>
-          <p class="setup-auto__text"><strong>Valorant, Overwatch 2, and Rainbow Six Siege</strong> work automatically — no setup required. WatchDog reads game logs and the Riot Client lockfile to detect events.</p>
-        </div>
-
-        <div class="setup-card reveal">
-          <div class="setup-card__title">Discord Sharing</div>
-          <p class="setup-card__text">Share clips to any Discord channel via webhook:</p>
-          <p class="setup-card__text">
-            1. In Discord: <strong>Server Settings &rarr; Integrations &rarr; Webhooks &rarr; New Webhook &rarr; Copy URL</strong><br>
-            2. In WatchDog: <strong>Settings &rarr; Discord &rarr; Paste webhook URL &rarr; Save</strong><br>
-            3. Right-click any clip &rarr; <strong>"Share to Discord"</strong>
-          </p>
-        </div>
-      </div>
     </div>
   </section>
 
@@ -371,6 +338,39 @@
           <div class="faq-a" aria-hidden="true" id="faq-panel-5" role="region" aria-labelledby="faq-btn-5"><div class="faq-a__inner">
             <div class="faq-a__content">Set up a webhook URL in <strong>Settings &gt; Discord</strong> first. In Discord, go to <strong>Server Settings &rarr; Integrations &rarr; Webhooks &rarr; New Webhook</strong>, copy the URL, and paste it into WatchDog. Then right-click any clip and select <strong>"Share to Discord."</strong></div>
           </div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Game Setup (post-decision docs — after FAQ) ═════════ -->
+  <section class="section section--alt" id="setup" aria-label="Game setup instructions">
+    <div class="wrap">
+      <p class="section-label reveal">Configuration</p>
+      <h2 class="section-heading reveal">Most games work automatically.</h2>
+      <p class="section-desc reveal">A few need a quick config step.</p>
+
+      <div class="setup-grid">
+        <div class="setup-card reveal">
+          <div class="setup-card__title">CS2 (Counter-Strike 2)</div>
+          <p class="setup-card__text">CS2 requires a Game State Integration config file so WatchDog can detect kills, rounds, and aces. Copy the template to your CS2 config directory:</p>
+          <pre>Copy-Item cfg\gamestate_integration_watchdog.cfg "C:\Program Files (x86)\Steam\steamapps\common\Counter-Strike Global Offensive\game\csgo\cfg\"</pre>
+          <p class="setup-card__text">Restart CS2 after placing the file.</p>
+        </div>
+
+        <div class="setup-auto reveal">
+          <span class="setup-auto__check" aria-hidden="true">&#10003;</span>
+          <p class="setup-auto__text"><strong>Valorant, Overwatch 2, and Rainbow Six Siege</strong> work automatically — no setup required. WatchDog reads game logs and the Riot Client lockfile to detect events.</p>
+        </div>
+
+        <div class="setup-card reveal">
+          <div class="setup-card__title">Discord Sharing</div>
+          <p class="setup-card__text">Share clips to any Discord channel via webhook:</p>
+          <p class="setup-card__text">
+            1. In Discord: <strong>Server Settings &rarr; Integrations &rarr; Webhooks &rarr; New Webhook &rarr; Copy URL</strong><br>
+            2. In WatchDog: <strong>Settings &rarr; Discord &rarr; Paste webhook URL &rarr; Save</strong><br>
+            3. Right-click any clip &rarr; <strong>"Share to Discord"</strong>
+          </p>
         </div>
       </div>
     </div>
