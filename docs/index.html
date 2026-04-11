@@ -94,11 +94,7 @@
             <span>Windows 10/11 64-bit</span>
             <span class="dot" aria-hidden="true">&middot;</span>
             <span>No account required</span>
-          </div>
-
-          <div class="hero__badges reveal reveal-stagger" style="--i:5">
-            <span class="badge">.NET 9</span>
-            <span class="badge">OBS Studio</span>
+            <span class="dot" aria-hidden="true">&middot;</span>
             <span class="badge">Open Source</span>
             <span class="badge">GPL-2.0</span>
           </div>
@@ -107,10 +103,10 @@
         <aside class="hero__games reveal reveal-stagger" style="--i:3" aria-label="Supported games">
           <p class="hero__games-label">Native highlight detection</p>
           <div class="hero__games-list">
-            <span class="game-pill game-pill--cs2">CS2</span>
-            <span class="game-pill game-pill--val">Valorant</span>
-            <span class="game-pill game-pill--ow2">Overwatch 2</span>
-            <span class="game-pill game-pill--r6s">Siege</span>
+            <a href="#setup" class="game-pill game-pill--cs2">CS2</a>
+            <a href="#setup" class="game-pill game-pill--val">Valorant</a>
+            <a href="#setup" class="game-pill game-pill--ow2">Overwatch 2</a>
+            <a href="#setup" class="game-pill game-pill--r6s">Siege</a>
           </div>
           <p class="hero__games-label" style="margin-top: var(--space-md)">AI audio detection</p>
           <div class="hero__games-list">
@@ -197,7 +193,7 @@
 
       <div class="screenshots">
         <a href="assets/screenshot-library.png" target="_blank" rel="noopener noreferrer" class="screenshot screenshot--hero reveal" aria-label="View clip library screenshot full size">
-          <picture><source srcset="assets/screenshot-library.webp" type="image/webp"><img src="assets/screenshot-library.png" alt="WatchDog clip library showing thumbnail grid, clip editor with timeline, audio mixer, and performance overlay" loading="lazy" width="1296" height="868"></picture>
+          <picture><source srcset="assets/screenshot-library.webp" type="image/webp"><img src="assets/screenshot-library.png" alt="WatchDog clip library showing thumbnail grid, clip editor with timeline, audio mixer, and performance overlay" loading="eager" fetchpriority="high" width="1296" height="868"></picture>
           <span class="screenshot__caption">Clip Library — browse, preview, and edit your clips</span>
         </a>
         <div class="screenshot-row">
@@ -409,7 +405,7 @@
         <span class="footer__dot" aria-hidden="true">&middot;</span>
         <span>Built with OBS Studio &amp; FFmpeg</span>
         <span class="footer__dot" aria-hidden="true">&middot;</span>
-        <span>&copy; 2025&ndash;2026 thrtn70</span>
+        <span>&copy; 2025&ndash;<span id="copyright-year">2026</span> thrtn70</span>
       </div>
     </div>
   </footer>

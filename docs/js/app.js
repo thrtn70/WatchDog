@@ -832,6 +832,8 @@
   // ── Console Easter Egg ───────────────────────────────────
 
   function initConsoleEasterEgg() {
+    if (window.__watchdog_console_init) return;
+    window.__watchdog_console_init = true;
     if (typeof console === 'undefined' || !console.log) return;
     console.log(
       '%c WatchDog ',
@@ -855,5 +857,9 @@
     initLightbox();
     initBackToTop();
     initConsoleEasterEgg();
+
+    // Auto-update copyright year
+    var yearEl = document.getElementById('copyright-year');
+    if (yearEl) yearEl.textContent = new Date().getFullYear().toString();
   });
 })();

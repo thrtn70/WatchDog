@@ -525,6 +525,8 @@ code {
   max-width: 240px;
 }
 
+a.game-pill { text-decoration: none; cursor: pointer; }
+
 .game-pill {
   --pill-glow: 180; /* fallback to teal hue */
   font-family: var(--font-display);
@@ -761,11 +763,17 @@ code {
   .hero__prerelease { animation: none; opacity: 1; }
 }
 
+/* Badges now inline within .hero__meta row — kept for backwards compatibility */
 .hero__badges {
   display: flex;
   gap: var(--space-sm);
   flex-wrap: wrap;
   margin-top: var(--space-lg);
+}
+
+/* When badges appear inside meta row, tighten spacing */
+.hero__meta .badge {
+  margin-left: var(--space-xs);
 }
 
 .badge {
