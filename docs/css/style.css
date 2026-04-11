@@ -30,10 +30,21 @@
   --accent:         oklch(72% 0.14 180);
   --accent-hover:   oklch(62% 0.12 180);
   --accent-subtle:  oklch(72% 0.14 180 / 0.12);
+  --accent-15:      oklch(72% 0.14 180 / 0.15);
+  --accent-20:      oklch(72% 0.14 180 / 0.20);
+  --accent-30:      oklch(72% 0.14 180 / 0.30);
 
   /* Warm accent — amber counterpoint */
   --warm:         oklch(75% 0.14 75);
   --warm-muted:   oklch(60% 0.10 75);
+
+  /* Warm alpha variants (pre-release indicator, tags, badges) */
+  --warm-6:   var(--warm-6);
+  --warm-10:  var(--warm-10);
+  --warm-12:  var(--warm-12);
+  --warm-15:  var(--warm-15);
+  --warm-22:  var(--warm-22);
+  --warm-40:  oklch(75% 0.14 75 / 0.40);
 
   /* Semantic */
   --success: oklch(68% 0.15 155);
@@ -179,6 +190,8 @@ code {
 
 .section {
   padding: var(--space-5xl) 0;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 600px;
 }
 
 .section--alt {
@@ -319,7 +332,7 @@ code {
 }
 
 .site-nav.scrolled {
-  background: oklch(8% 0.015 195 / 0.85);
+  background: color-mix(in oklch, var(--bg-deep), transparent 15%);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -429,8 +442,11 @@ code {
   .site-nav__links.open { display: flex; }
 
   .site-nav__links a {
-    padding: var(--space-sm) var(--space-xl);
+    padding: var(--space-md) var(--space-xl);
     font-size: 0.85rem;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
   }
 
   .site-nav__links a:hover {
@@ -661,8 +677,8 @@ a.game-pill { text-decoration: none; cursor: pointer; }
   font-weight: 500;
   color: var(--warm-muted);
   padding: var(--space-sm) var(--space-lg);
-  background: oklch(75% 0.14 75 / 0.06);
-  border: 1px solid oklch(75% 0.14 75 / 0.12);
+  background: var(--warm-6);
+  border: 1px solid var(--warm-12);
   border-radius: var(--radius-sm);
   width: fit-content;
   animation: prerelease-fade-in var(--duration-slow) var(--ease-out-expo) both;
@@ -680,15 +696,15 @@ a.game-pill { text-decoration: none; cursor: pointer; }
 
 /* Hover: expand to show release details */
 .hero__prerelease:hover {
-  background: oklch(75% 0.14 75 / 0.10);
-  border-color: oklch(75% 0.14 75 / 0.22);
+  background: var(--warm-10);
+  border-color: var(--warm-22);
 }
 
 /* Hover echo: when pre-release is hovered, the download button glows.
    Applied via JS (data-prerelease-hover on parent) since DOM order
    prevents upward CSS sibling selectors. */
 .hero__inner[data-prerelease-hover] .btn--primary {
-  box-shadow: 0 0 20px oklch(75% 0.14 75 / 0.15);
+  box-shadow: 0 0 20px var(--warm-15);
   transition: box-shadow var(--duration-med) var(--ease-out-expo);
 }
 
@@ -700,7 +716,7 @@ a.game-pill { text-decoration: none; cursor: pointer; }
   background: var(--warm);
   flex-shrink: 0;
   animation: heartbeat 2s ease-in-out infinite;
-  box-shadow: 0 0 4px oklch(75% 0.14 75 / 0.4);
+  box-shadow: 0 0 4px var(--warm-40);
 }
 
 @keyframes heartbeat {
@@ -731,7 +747,7 @@ a.game-pill { text-decoration: none; cursor: pointer; }
 .hero__prerelease-changelog {
   margin-top: var(--space-sm);
   padding-top: var(--space-sm);
-  border-top: 1px solid oklch(75% 0.14 75 / 0.10);
+  border-top: 1px solid var(--warm-10);
   font-size: 0.72rem;
   color: var(--text-tertiary);
   line-height: 1.6;
@@ -785,12 +801,12 @@ a.game-pill { text-decoration: none; cursor: pointer; }
 .badge {
   font-family: var(--font-body);
   font-weight: 600;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   letter-spacing: 0.04em;
   padding: var(--space-xs) var(--space-md);
   border: 1px solid var(--border-subtle);
   border-radius: 999px;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   transition:
     border-color var(--duration-fast) var(--ease-out-expo),
     color var(--duration-fast) var(--ease-out-expo);
@@ -843,17 +859,17 @@ a.game-pill { text-decoration: none; cursor: pointer; }
   color: var(--bg-deep);
   padding: var(--space-md) var(--space-xl);
   font-size: 0.95rem;
-  box-shadow: 0 2px 8px oklch(72% 0.14 180 / 0.2);
+  box-shadow: 0 2px 8px var(--accent-20);
 }
 .btn--primary:hover {
   background: var(--accent-hover);
   color: var(--bg-deep);
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px oklch(72% 0.14 180 / 0.3);
+  box-shadow: 0 4px 16px var(--accent-30);
 }
 .btn--primary:active {
   transform: translateY(1px) scale(0.98);
-  box-shadow: 0 1px 4px oklch(72% 0.14 180 / 0.15);
+  box-shadow: 0 1px 4px var(--accent-15);
   transition-duration: 80ms;
 }
 
@@ -952,7 +968,7 @@ a.game-pill { text-decoration: none; cursor: pointer; }
 }
 
 .feature-hero__icon--ai {
-  background: oklch(75% 0.14 75 / 0.12);
+  background: var(--warm-12);
   color: var(--warm);
 }
 
@@ -1294,7 +1310,7 @@ a.game-pill { text-decoration: none; cursor: pointer; }
 }
 
 .release-hero--stable {
-  border-color: oklch(60% 0.10 180);
+  border-color: var(--accent-hover);
 }
 
 .release-hero__info {
@@ -1395,8 +1411,8 @@ a.game-pill { text-decoration: none; cursor: pointer; }
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-sm);
   color: var(--text-tertiary);
   transition:
@@ -1583,8 +1599,8 @@ a.game-pill { text-decoration: none; cursor: pointer; }
   position: fixed;
   bottom: var(--space-2xl);
   right: var(--space-2xl);
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1642,7 +1658,7 @@ a.game-pill { text-decoration: none; cursor: pointer; }
 }
 
 .lightbox::backdrop {
-  background: oklch(5% 0.01 195 / 0.9);
+  background: color-mix(in oklch, var(--bg-deep), transparent 10%);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
