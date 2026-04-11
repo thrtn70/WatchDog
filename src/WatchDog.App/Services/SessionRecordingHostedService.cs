@@ -87,6 +87,17 @@ public sealed class SessionRecordingHostedService : IHostedService, IDisposable
             safeName,
             "Sessions");
 
+        // Verify resolved path is strictly underneath the bounded base directory.
+        var resolvedBase = Path.GetFullPath(_settings.Storage.SavePath)
+            .TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        var resolvedOutput = Path.GetFullPath(outputDir);
+
+        if (!resolvedOutput.StartsWith(resolvedBase, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning("Refusing unsafe session path traversal: {Path}, using secure base path", resolvedOutput);
+            outputDir = Path.Combine(_settings.Storage.SavePath, "Sessions");
+        }
+
         try
         {
             await _recorder.StartAsync(outputDir, e.Game);
