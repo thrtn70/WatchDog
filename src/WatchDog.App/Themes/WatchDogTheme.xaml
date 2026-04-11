@@ -788,7 +788,9 @@
         <Setter Property="BorderBrush" Value="{StaticResource Surface1Brush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="0,4"/>
-        <Setter Property="HasDropShadow" Value="True"/>
+        <!-- Disable system drop-shadow chrome to prevent white strip behind the popup;
+             the custom FloatingPanelShadow Effect on the inner Border provides the shadow instead. -->
+        <Setter Property="HasDropShadow" Value="False"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ContextMenu">
@@ -797,8 +799,11 @@
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="6"
                             Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True"
                             Effect="{StaticResource FloatingPanelShadow}">
-                        <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                        <StackPanel IsItemsHost="True"
+                                    Margin="0"
+                                    KeyboardNavigation.DirectionalNavigation="Cycle"/>
                     </Border>
                 </ControlTemplate>
             </Setter.Value>

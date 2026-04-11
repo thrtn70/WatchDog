@@ -58,7 +58,8 @@ public sealed class GameDetectorHostedService : IHostedService
         // running when WatchDog launches, OnGameStarted fires immediately and
         // needs OBS ready. Without this, a race condition causes:
         // "OBS is not initialized. Call Obs.Initialize() first."
-        if (_settings.Recording.IsReplayBufferEnabled)
+        // OBS must be initialized for ANY recording mode (replay buffer, highlights, or session recording).
+        if (_settings.Recording.IsReplayBufferEnabled || _settings.Recording.IsSessionRecordingEnabled)
         {
             try
             {

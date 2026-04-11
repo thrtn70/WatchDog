@@ -10,8 +10,10 @@ public sealed class ObsSessionRecorder : ISessionRecorder
 {
     private readonly ILogger<ObsSessionRecorder> _logger;
     private readonly SessionRecordingConfig _config;
-    private readonly VideoEncoder _videoEncoder;
-    private readonly AudioEncoder _audioEncoder;
+    private readonly int _videoBitrate;
+    private readonly int _audioBitrate;
+    private VideoEncoder? _videoEncoder;
+    private AudioEncoder? _audioEncoder;
 
     private RecordingOutput? _recordingOutput;
     private Timer? _segmentTimer;
@@ -32,59 +34,72 @@ public sealed class ObsSessionRecorder : ISessionRecorder
 
     public ObsSessionRecorder(
         SessionRecordingConfig config,
-        VideoEncoder videoEncoder,
-        AudioEncoder audioEncoder,
+        int videoBitrate,
+        int audioBitrate,
         ILogger<ObsSessionRecorder> logger)
     {
         _config = config;
-        _videoEncoder = videoEncoder;
-        _audioEncoder = audioEncoder;
+        _videoBitrate = videoBitrate;
+        _audioBitrate = audioBitrate;
         _logger = logger;
     }
 
-    public Task StartAsync(string outputDirectory, GameInfo? game, CancellationToken ct = default)
+    public async Task StartAsync(string outputDirectory, GameInfo? game, CancellationToken ct = default)
     {
-        if (IsRecording)
+        await _lock.WaitAsync(ct);
+        try
         {
-            _logger.LogWarning("Session recording already in progress");
-            return Task.CompletedTask;
+            if (IsRecording)
+            {
+                _logger.LogWarning("Session recording already in progress");
+                return;
+            }
+
+            // Create OBS encoders lazily on first recording start — OBS must be initialized
+            // by the capture engine before encoder creation succeeds.
+            _videoEncoder ??= VideoEncoder.CreateX264(
+                name: "Session x264", bitrate: _videoBitrate, preset: "veryfast");
+            _audioEncoder ??= AudioEncoder.CreateAac(bitrate: _audioBitrate);
+
+            _outputDirectory = outputDirectory;
+            _currentGame = game;
+            _segmentIndex = 0;
+            _elapsed.Restart();
+
+            Directory.CreateDirectory(outputDirectory);
+            if (!StartSegment())
+            {
+                _elapsed.Stop();
+                return;
+            }
+
+            // Segment splitting timer
+            if (_config.SegmentDurationMinutes > 0)
+            {
+                _segmentTimer = new Timer(
+                    _ => SplitSegmentSafe(),
+                    null,
+                    TimeSpan.FromMinutes(_config.SegmentDurationMinutes),
+                    TimeSpan.FromMinutes(_config.SegmentDurationMinutes));
+            }
+
+            // Max duration timer (auto-stop)
+            if (_config.MaxDurationMinutes > 0)
+            {
+                _maxDurationTimer = new Timer(
+                    _ => StopSafe(),
+                    null,
+                    TimeSpan.FromMinutes(_config.MaxDurationMinutes),
+                    Timeout.InfiniteTimeSpan);
+            }
+
+            IsRecording = true;
+            _logger.LogInformation("Session recording started: {Output}", CurrentOutputPath);
         }
-
-        _outputDirectory = outputDirectory;
-        _currentGame = game;
-        _segmentIndex = 0;
-        _elapsed.Restart();
-
-        Directory.CreateDirectory(outputDirectory);
-        if (!StartSegment())
+        finally
         {
-            _elapsed.Stop();
-            return Task.CompletedTask;
+            _lock.Release();
         }
-
-        // Segment splitting timer
-        if (_config.SegmentDurationMinutes > 0)
-        {
-            _segmentTimer = new Timer(
-                _ => SplitSegmentSafe(),
-                null,
-                TimeSpan.FromMinutes(_config.SegmentDurationMinutes),
-                TimeSpan.FromMinutes(_config.SegmentDurationMinutes));
-        }
-
-        // Max duration timer (auto-stop)
-        if (_config.MaxDurationMinutes > 0)
-        {
-            _maxDurationTimer = new Timer(
-                _ => StopSafe(),
-                null,
-                TimeSpan.FromMinutes(_config.MaxDurationMinutes),
-                Timeout.InfiniteTimeSpan);
-        }
-
-        IsRecording = true;
-        _logger.LogInformation("Session recording started: {Output}", CurrentOutputPath);
-        return Task.CompletedTask;
     }
 
     public Task StopAsync(CancellationToken ct = default)

@@ -4,7 +4,6 @@ using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using ObsKit.NET.Encoders;
 using WatchDog.Core.Capture;
 using WatchDog.Core.Events;
 using WatchDog.Core.GameDetection;
@@ -292,10 +291,11 @@ public partial class App : Application
 
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
             var captureConfig = sp.GetRequiredService<CaptureConfig>();
+            // Encoder creation is deferred to StartAsync() — OBS must be initialized first.
             return new ObsSessionRecorder(
                 config,
-                VideoEncoder.CreateX264(name: "Session x264", bitrate: captureConfig.Bitrate, preset: "veryfast"),
-                AudioEncoder.CreateAac(bitrate: captureConfig.AudioBitrate),
+                captureConfig.Bitrate,
+                captureConfig.AudioBitrate,
                 loggerFactory.CreateLogger<ObsSessionRecorder>());
         });
 
