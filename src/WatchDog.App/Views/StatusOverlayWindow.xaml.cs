@@ -67,6 +67,25 @@ public partial class StatusOverlayWindow : Window
         DragMove();
     }
 
+    private void Window_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is ViewModels.StatusOverlayViewModel vm)
+        {
+            vm.ToggleMode();
+
+            // Re-clamp position after mode switch changes the window width
+            Dispatcher.InvokeAsync(() =>
+            {
+                UpdateLayout();
+                var workArea = SystemParameters.WorkArea;
+                if (Left + ActualWidth > workArea.Right)
+                    Left = workArea.Right - ActualWidth - 12;
+                if (Left < workArea.Left)
+                    Left = workArea.Left + 12;
+            }, System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+    }
+
     private void SetClickThrough(bool enable)
     {
         var hwnd = new WindowInteropHelper(this).Handle;

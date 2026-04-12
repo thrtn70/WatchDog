@@ -14,7 +14,7 @@
                         ToolTip="Mute/unmute desktop audio"/>
                 <Slider Grid.Column="1" Minimum="0" Maximum="1"
                         Value="{Binding DesktopVolume, Mode=TwoWay}"
-                        VerticalAlignment="Center" Margin="6,0"
+                        VerticalAlignment="Center" Margin="8,0"
                         IsEnabled="{Binding IsDesktopUnmuted}"/>
                 <TextBlock Grid.Column="2" Text="{Binding DesktopVolumePercent}"
                            Width="36" TextAlignment="Right" VerticalAlignment="Center"
@@ -33,7 +33,7 @@
                         ToolTip="Mute/unmute microphone"/>
                 <Slider Grid.Column="1" Minimum="0" Maximum="1"
                         Value="{Binding MicVolume, Mode=TwoWay}"
-                        VerticalAlignment="Center" Margin="6,0"
+                        VerticalAlignment="Center" Margin="8,0"
                         IsEnabled="{Binding IsMicUnmuted}"/>
                 <TextBlock Grid.Column="2" Text="{Binding MicVolumePercent}"
                            Width="36" TextAlignment="Right" VerticalAlignment="Center"

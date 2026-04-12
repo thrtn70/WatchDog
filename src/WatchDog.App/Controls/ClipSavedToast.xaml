@@ -8,8 +8,7 @@
             BorderBrush="{StaticResource SuccessBrush}" BorderThickness="1"
             Padding="12,10" Margin="8" MaxWidth="320">
         <Border.Effect>
-            <DropShadowEffect BlurRadius="16" ShadowDepth="4" Opacity="0.5"
-                              Color="{StaticResource CrustColor}"/>
+            <StaticResource ResourceKey="FloatingPanelShadow"/>
         </Border.Effect>
         <StackPanel>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">

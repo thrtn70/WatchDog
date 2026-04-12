@@ -35,7 +35,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#0AFFFFFF"/>
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource SubtleHoverBrush}"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
@@ -123,9 +123,9 @@
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                        <TextBlock Text="Quality (CQP):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="Quality (CQP):" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="Constant quality parameter. Lower = better quality, larger files. Recommended: 18-23 for NVENC, 20-28 for x264."/>
                         <TextBox Text="{Binding Quality}" Width="48" PreviewTextInput="NumericOnly_PreviewTextInput"/>
-                        <TextBlock Text="Bitrate (kbps):" VerticalAlignment="Center" Margin="16,0,8,0"/>
+                        <TextBlock Text="Bitrate (kbps):" VerticalAlignment="Center" Margin="16,0,8,0" ToolTip="Target bitrate in kilobits per second. Higher = better quality, larger files. Recommended: 6000-20000 for 1080p."/>
                         <TextBox Text="{Binding Bitrate}" Width="64" PreviewTextInput="NumericOnly_PreviewTextInput"/>
                     </StackPanel>
 
@@ -140,11 +140,11 @@
                     <TextBlock Text="ReplayBufferOnly: instant clips via hotkey. SessionRecording: full match files. Both: runs both."
                                TextWrapping="Wrap" Foreground="{StaticResource SubtextBrush}" Margin="0,0,0,8" FontSize="11"/>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <TextBlock Text="Segment Duration (min):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="Segment Duration (min):" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="Split session recordings into chunks of this length. Prevents single massive files. 0 = no splitting."/>
                         <TextBox Text="{Binding SegmentDurationMinutes}" Width="48" PreviewTextInput="NumericOnly_PreviewTextInput"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Max Duration (min, 0=unlimited):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="Max Duration (min, 0=unlimited):" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="Auto-stop recording after this many minutes. 0 = record until the game exits."/>
                         <TextBox Text="{Binding MaxDurationMinutes}" Width="48" PreviewTextInput="NumericOnly_PreviewTextInput"/>
                     </StackPanel>
                 </StackPanel>
@@ -198,11 +198,11 @@
                     <!-- Replay Buffer -->
                     <TextBlock Text="Replay Buffer" FontWeight="SemiBold" Margin="0,0,0,8"/>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <TextBlock Text="Buffer Duration (seconds):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="Buffer Duration (seconds):" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="How many seconds of gameplay to keep in memory. When you press the hotkey, the last N seconds are saved as a clip."/>
                         <TextBox Text="{Binding BufferSeconds}" Width="56"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                        <TextBlock Text="Max Buffer Size (MB):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="Max Buffer Size (MB):" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="Maximum memory used by the replay buffer. Higher = longer buffer at higher quality settings."/>
                         <TextBox Text="{Binding BufferMaxSizeMb}" Width="56"/>
                     </StackPanel>
 
@@ -214,9 +214,9 @@
                         <Button Content="Browse" Command="{Binding BrowseSavePathCommand}" Margin="8,0,0,0"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Max Storage (GB):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="Max Storage (GB):" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="When total clips exceed this size, the oldest non-favorited clips are automatically deleted."/>
                         <TextBox Text="{Binding MaxStorageGb}" Width="48"/>
-                        <TextBlock Text="Auto-delete after (days):" VerticalAlignment="Center" Margin="16,0,8,0"/>
+                        <TextBlock Text="Auto-delete after (days):" VerticalAlignment="Center" Margin="16,0,8,0" ToolTip="Clips older than this many days are automatically deleted (favorited clips are kept). 0 = never auto-delete by age."/>
                         <TextBox Text="{Binding AutoDeleteDays}" Width="48"/>
                     </StackPanel>
                 </StackPanel>
@@ -231,11 +231,11 @@
                                TextWrapping="Wrap" Foreground="{StaticResource SubtextBrush}" Margin="0,0,0,12" FontSize="11"/>
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <TextBlock Text="Post-event delay (seconds):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="Post-event delay (seconds):" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="Wait this many seconds after a highlight event before saving the clip. Captures the aftermath (kill feed, scoreboard)."/>
                         <TextBox Text="{Binding HighlightDelaySeconds}" Width="48"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                        <TextBlock Text="Cooldown between clips (seconds):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="Cooldown between clips (seconds):" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="Minimum time between auto-saved highlight clips. Prevents spam during rapid multi-kills."/>
                         <TextBox Text="{Binding HighlightCooldownSeconds}" Width="48"/>
                     </StackPanel>
 

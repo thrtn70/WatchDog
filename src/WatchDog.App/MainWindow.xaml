@@ -51,7 +51,7 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Padding" Value="8,4"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Surface1Brush}"/>
             <Setter Property="BorderThickness" Value="0,0,0,1"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
@@ -81,7 +81,7 @@
                     <ColumnDefinition Width="Auto"/>       <!-- Separator -->
                     <ColumnDefinition Width="8"/>           <!-- Spacer -->
                     <ColumnDefinition Width="Auto"/>       <!-- Game filter -->
-                    <ColumnDefinition Width="6"/>           <!-- Spacer -->
+                    <ColumnDefinition Width="8"/>           <!-- Spacer -->
                     <ColumnDefinition Width="Auto"/>       <!-- Sort -->
                     <ColumnDefinition Width="*"/>           <!-- Center: status -->
                     <ColumnDefinition Width="Auto"/>       <!-- Settings -->
