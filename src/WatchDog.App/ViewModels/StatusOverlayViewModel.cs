@@ -20,6 +20,12 @@ public partial class StatusOverlayViewModel : ObservableObject, IDisposable
     private readonly IDisposable _gameDetectedSub;
     private readonly IDisposable _gameExitedSub;
     private readonly IDisposable _clipSavedSub;
+    private volatile bool _disposed;
+
+    private static readonly System.Windows.Media.SolidColorBrush IdleBrush = MakeBrush("#4A5F6B");
+    private static readonly System.Windows.Media.SolidColorBrush BufferingBrush = MakeBrush("#38BF7F");
+    private static readonly System.Windows.Media.SolidColorBrush SavingBrush = MakeBrush("#D9B84C");
+    private static readonly System.Windows.Media.SolidColorBrush InitBrush = MakeBrush("#4C96D9");
 
     // Compact mode (minimal dot + short status)
     [ObservableProperty]
@@ -36,11 +42,11 @@ public partial class StatusOverlayViewModel : ObservableObject, IDisposable
     private string _statusLabel = "Idle";
 
     [ObservableProperty]
-    private System.Windows.Media.Brush _statusLabelBrush = MakeBrush("#4A5F6B");
+    private System.Windows.Media.Brush _statusLabelBrush = IdleBrush;
 
     // Shared
     [ObservableProperty]
-    private System.Windows.Media.Brush _indicatorBrush = MakeBrush("#4A5F6B");
+    private System.Windows.Media.Brush _indicatorBrush = IdleBrush;
 
     [ObservableProperty]
     private bool _isRecording;
@@ -50,28 +56,32 @@ public partial class StatusOverlayViewModel : ObservableObject, IDisposable
 
     public bool IsExpandedMode => !IsCompactMode;
 
+    partial void OnIsCompactModeChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsExpandedMode));
+    }
+
     public StatusOverlayViewModel(ICaptureEngine captureEngine, IEventBus eventBus, IClipStorage clipStorage)
     {
         _captureEngine = captureEngine;
         _clipStorage = clipStorage;
 
         _stateHandler = state =>
-            Application.Current?.Dispatcher.Invoke(() => UpdateStatus(state));
+            Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() => UpdateStatus(state)));
         captureEngine.StateChanged += _stateHandler;
 
         _gameDetectedSub = eventBus.Subscribe<GameDetectedEvent>(e =>
-            Application.Current?.Dispatcher.Invoke(() => UpdateStatus(_captureEngine.State)));
+            Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() => UpdateStatus(_captureEngine.State))));
         _gameExitedSub = eventBus.Subscribe<GameExitedEvent>(e =>
-            Application.Current?.Dispatcher.Invoke(() => UpdateStatus(_captureEngine.State)));
+            Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() => UpdateStatus(_captureEngine.State))));
         _clipSavedSub = eventBus.Subscribe<ClipSavedEvent>(e =>
-            Application.Current?.Dispatcher.Invoke(UpdateClipCount));
+            Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(UpdateClipCount)));
     }
 
     /// <summary>Toggle between compact and expanded overlay modes.</summary>
     public void ToggleMode()
     {
         IsCompactMode = !IsCompactMode;
-        OnPropertyChanged(nameof(IsExpandedMode));
     }
 
     private void UpdateStatus(CaptureState state)
@@ -89,37 +99,37 @@ public partial class StatusOverlayViewModel : ObservableObject, IDisposable
                 StatusLine = "IDLE · No game";
                 GameName = "No game";
                 StatusLabel = "Idle";
-                IndicatorBrush = MakeBrush("#4A5F6B");
-                StatusLabelBrush = MakeBrush("#4A5F6B");
+                IndicatorBrush = IdleBrush;
+                StatusLabelBrush = IdleBrush;
                 IsRecording = false;
                 break;
             case CaptureState.Buffering:
                 var highlightText = isDesktop ? "No highlights" : "Highlights \u2713";
                 StatusLine = $"BUF · {displayName} · {highlightText}";
                 StatusLabel = "Buffering";
-                IndicatorBrush = MakeBrush("#38BF7F");
-                StatusLabelBrush = MakeBrush("#38BF7F");
+                IndicatorBrush = BufferingBrush;
+                StatusLabelBrush = BufferingBrush;
                 IsRecording = true;
                 break;
             case CaptureState.Saving:
                 StatusLine = $"SAVE · {gameName}";
                 StatusLabel = "Saving...";
-                IndicatorBrush = MakeBrush("#D9B84C");
-                StatusLabelBrush = MakeBrush("#D9B84C");
+                IndicatorBrush = SavingBrush;
+                StatusLabelBrush = SavingBrush;
                 IsRecording = true;
                 break;
             case CaptureState.Initializing:
                 StatusLine = "INIT...";
                 StatusLabel = "Starting";
-                IndicatorBrush = MakeBrush("#4C96D9");
-                StatusLabelBrush = MakeBrush("#4C96D9");
+                IndicatorBrush = InitBrush;
+                StatusLabelBrush = InitBrush;
                 IsRecording = false;
                 break;
             case CaptureState.Stopping:
                 StatusLine = "STOP...";
                 StatusLabel = "Stopping";
-                IndicatorBrush = MakeBrush("#4A5F6B");
-                StatusLabelBrush = MakeBrush("#4A5F6B");
+                IndicatorBrush = IdleBrush;
+                StatusLabelBrush = IdleBrush;
                 IsRecording = false;
                 break;
         }
@@ -137,6 +147,13 @@ public partial class StatusOverlayViewModel : ObservableObject, IDisposable
         ClipCountText = count == 1 ? "1 clip" : $"{count} clips";
     }
 
+    private void PostToUi(Action action)
+    {
+        if (_disposed) return;
+        try { action(); }
+        catch (Exception ex) { System.Diagnostics.Trace.TraceError($"StatusOverlay: {ex.Message}"); }
+    }
+
     private static System.Windows.Media.SolidColorBrush MakeBrush(string hex)
     {
         var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex);
@@ -147,6 +164,7 @@ public partial class StatusOverlayViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _disposed = true;
         _captureEngine.StateChanged -= _stateHandler;
         _gameDetectedSub.Dispose();
         _gameExitedSub.Dispose();

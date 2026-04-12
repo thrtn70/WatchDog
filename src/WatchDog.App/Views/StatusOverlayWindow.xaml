@@ -27,10 +27,10 @@
             <!-- Status indicator dot with pulse animation when recording -->
             <Ellipse x:Name="StatusDot" Width="10" Height="10"
                      VerticalAlignment="Center"
-                     Margin="0,0,8,0"
-                     Fill="{Binding IndicatorBrush}">
+                     Margin="0,0,8,0">
                 <Ellipse.Style>
                     <Style TargetType="Ellipse">
+                        <Setter Property="Fill" Value="{Binding IndicatorBrush}"/>
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsRecording}" Value="True">
                                 <DataTrigger.EnterActions>
