@@ -208,27 +208,26 @@ public sealed class CaptureSourceManager : IHostedService
 
     private async void OnGameStarted(GameInfo game)
     {
-        // Suppress auto-detection while manual capture is active
-        if (IsManualCaptureActive)
-        {
-            _logger.LogInformation("Game detected: {Game} — suppressed (manual capture active)", game.DisplayName);
-            return;
-        }
-
-        // Deduplication: same executable within merge window = same session
-        if (ActiveSource is not null &&
-            string.Equals(ActiveSource.ExecutableName, game.ExecutableName, StringComparison.OrdinalIgnoreCase) &&
-            DateTimeOffset.UtcNow - ActiveSource.InitiatedAt < MergeWindow)
-        {
-            _logger.LogInformation("Game detected: {Game} — deduplicated (same exe within {Window}s merge window)",
-                game.DisplayName, MergeWindow.TotalSeconds);
-            return;
-        }
-
-        _logger.LogInformation("Game detected: {Game} — starting capture", game.DisplayName);
-
         try
         {
+            // Suppress auto-detection while manual capture is active
+            if (IsManualCaptureActive)
+            {
+                _logger.LogInformation("Game detected: {Game} — suppressed (manual capture active)", game.DisplayName);
+                return;
+            }
+
+            // Deduplication: same executable within merge window = same session
+            if (ActiveSource is not null &&
+                string.Equals(ActiveSource.ExecutableName, game.ExecutableName, StringComparison.OrdinalIgnoreCase) &&
+                DateTimeOffset.UtcNow - ActiveSource.InitiatedAt < MergeWindow)
+            {
+                _logger.LogInformation("Game detected: {Game} — deduplicated (same exe within {Window}s merge window)",
+                    game.DisplayName, MergeWindow.TotalSeconds);
+                return;
+            }
+
+            _logger.LogInformation("Game detected: {Game} — starting capture", game.DisplayName);
             // Check for a saved per-game profile
             var profile = _settings.GameProfiles
                 .FirstOrDefault(p => string.Equals(p.GameExecutableName, game.ExecutableName,

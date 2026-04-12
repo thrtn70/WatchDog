@@ -83,13 +83,13 @@ public static partial class WindowEnumerator
     private static partial uint GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
 
     [LibraryImport("user32.dll", EntryPoint = "GetWindowTextW", SetLastError = true)]
-    private static partial int GetWindowText(IntPtr hWnd, [Out] char[] lpString, int nMaxCount);
+    private static unsafe partial int GetWindowText(IntPtr hWnd, char* lpString, int nMaxCount);
 
     [LibraryImport("user32.dll", EntryPoint = "GetWindowTextLengthW", SetLastError = true)]
     private static partial int GetWindowTextLength(IntPtr hWnd);
 
     [LibraryImport("user32.dll", EntryPoint = "GetClassNameW", SetLastError = true)]
-    private static partial int GetClassName(IntPtr hWnd, [Out] char[] lpClassName, int nMaxCount);
+    private static unsafe partial int GetClassName(IntPtr hWnd, char* lpClassName, int nMaxCount);
 
     // DwmGetWindowAttribute — detect cloaked windows
     private const int DWMWA_CLOAKED = 14;
@@ -99,20 +99,22 @@ public static partial class WindowEnumerator
 
     // ── Helpers ──────────────────────────────────────────────────────────
 
-    private static string? GetWindowTitle(IntPtr hWnd)
+    private static unsafe string? GetWindowTitle(IntPtr hWnd)
     {
         var length = GetWindowTextLength(hWnd);
         if (length <= 0) return null;
 
-        var buffer = new char[length + 1];
-        var result = GetWindowText(hWnd, buffer, buffer.Length);
+        var bufLen = length + 1;
+        char* buffer = stackalloc char[bufLen];
+        var result = GetWindowText(hWnd, buffer, bufLen);
         return result > 0 ? new string(buffer, 0, result) : null;
     }
 
-    private static string? GetWindowClassName(IntPtr hWnd)
+    private static unsafe string? GetWindowClassName(IntPtr hWnd)
     {
-        var buffer = new char[256];
-        var result = GetClassName(hWnd, buffer, buffer.Length);
+        const int maxLen = 256;
+        char* buffer = stackalloc char[maxLen];
+        var result = GetClassName(hWnd, buffer, maxLen);
         return result > 0 ? new string(buffer, 0, result) : null;
     }
 

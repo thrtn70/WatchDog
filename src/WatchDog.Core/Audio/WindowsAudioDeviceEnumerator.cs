@@ -28,14 +28,18 @@ public sealed class WindowsAudioDeviceEnumerator : IAudioDeviceEnumerator
             using var searcher = new ManagementObjectSearcher(
                 "SELECT * FROM Win32_SoundDevice WHERE Status = 'OK'");
 
-            foreach (var obj in searcher.Get())
+            using var collection = searcher.Get();
+            foreach (var obj in collection)
             {
-                var name = obj["Name"]?.ToString();
-                var deviceId = obj["DeviceID"]?.ToString();
-
-                if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(deviceId))
+                using (obj)
                 {
-                    devices.Add(new AudioDeviceInfo(deviceId, name, false));
+                    var name = obj["Name"]?.ToString();
+                    var deviceId = obj["DeviceID"]?.ToString();
+
+                    if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(deviceId))
+                    {
+                        devices.Add(new AudioDeviceInfo(deviceId, name, false));
+                    }
                 }
             }
         }
