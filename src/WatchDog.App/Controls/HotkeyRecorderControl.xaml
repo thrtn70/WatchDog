@@ -5,15 +5,12 @@
              IsTabStop="True">
     <Border x:Name="RecorderBorder"
             Background="{StaticResource SurfaceBrush}"
+            BorderBrush="{StaticResource Surface1Brush}"
             BorderThickness="1"
             CornerRadius="4"
             Padding="8,4"
             Cursor="Hand"
             MouseLeftButtonDown="OnBorderClick">
-        <!-- Local brush instance to avoid animating shared theme resources -->
-        <Border.BorderBrush>
-            <SolidColorBrush x:Name="BorderColor" Color="{StaticResource Surface1Color}"/>
-        </Border.BorderBrush>
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
             <TextBlock x:Name="DisplayTextBlock"
                        Text="{Binding DisplayText, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -26,24 +23,7 @@
                        x:Name="HintText"/>
         </StackPanel>
     </Border>
-    <UserControl.Triggers>
-        <EventTrigger RoutedEvent="GotKeyboardFocus">
-            <BeginStoryboard>
-                <Storyboard>
-                    <ColorAnimation Storyboard.TargetName="BorderColor"
-                                    Storyboard.TargetProperty="Color"
-                                    To="{StaticResource AccentColor}" Duration="0:0:0.15"/>
-                </Storyboard>
-            </BeginStoryboard>
-        </EventTrigger>
-        <EventTrigger RoutedEvent="LostKeyboardFocus">
-            <BeginStoryboard>
-                <Storyboard>
-                    <ColorAnimation Storyboard.TargetName="BorderColor"
-                                    Storyboard.TargetProperty="Color"
-                                    To="{StaticResource Surface1Color}" Duration="0:0:0.15"/>
-                </Storyboard>
-            </BeginStoryboard>
-        </EventTrigger>
-    </UserControl.Triggers>
+    <!-- Focus state (AccentBrush border) is managed by code-behind
+         in EnterRecordingMode/ExitRecordingMode to avoid animating
+         frozen shared theme brush instances. -->
 </UserControl>
