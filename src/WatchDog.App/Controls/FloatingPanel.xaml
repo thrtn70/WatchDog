@@ -28,7 +28,7 @@
 
                     <TextBlock Grid.Column="0"
                                Text="{Binding Title, ElementName=Root}"
-                               Foreground="{StaticResource SubtextBrush}"
+                               Foreground="{StaticResource TextBrush}"
                                FontSize="11" FontWeight="SemiBold"
                                VerticalAlignment="Center"/>
 

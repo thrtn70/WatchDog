@@ -46,7 +46,7 @@
                     <StackPanel Grid.Column="2">
                         <TextBlock Text="Remaining" Style="{StaticResource Caption}"/>
                         <TextBlock Text="{Binding RemainingDisplay}" Style="{StaticResource StatNumber}"
-                                   Foreground="{StaticResource GreenBrush}"/>
+                                   Foreground="{StaticResource SuccessBrush}"/>
                     </StackPanel>
                 </Grid>
             </StackPanel>

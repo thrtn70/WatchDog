@@ -14,10 +14,10 @@
         <StackPanel>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                 <TextBlock Text="&#x2714;" FontSize="14"
-                           Foreground="{StaticResource GreenBrush}" VerticalAlignment="Center"
+                           Foreground="{StaticResource SuccessBrush}" VerticalAlignment="Center"
                            Margin="0,0,6,0"/>
                 <TextBlock Text="Clip Saved" FontWeight="SemiBold" FontSize="13"
-                           Foreground="{StaticResource GreenBrush}"/>
+                           Foreground="{StaticResource SuccessBrush}"/>
             </StackPanel>
             <TextBlock x:Name="ClipNameText" FontSize="12"
                        Foreground="{StaticResource TextBrush}"

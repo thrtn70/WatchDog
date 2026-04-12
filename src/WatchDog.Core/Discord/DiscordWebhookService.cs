@@ -17,7 +17,7 @@ public sealed class DiscordWebhookService : IDiscordWebhookService
     private readonly ILogger<DiscordWebhookService> _logger;
 
     private const int ChunkSize = 81920; // 80KB chunks for progress reporting
-    private const int AccentColor = 0x89B4FA; // Catppuccin Mocha blue
+    private const int AccentColor = 0x89B4FA; // WatchDog embed accent (light blue)
 
     public DiscordWebhookService(
         HttpClient httpClient,

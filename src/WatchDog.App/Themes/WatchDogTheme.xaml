@@ -52,13 +52,10 @@
     <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource WarningColor}"/>
     <SolidColorBrush x:Key="InfoBrush" Color="{StaticResource InfoColor}"/>
 
-    <!-- Backwards-compat aliases (old Catppuccin names still referenced in views) -->
-    <SolidColorBrush x:Key="GreenBrush" Color="{StaticResource SuccessColor}"/>
-    <SolidColorBrush x:Key="RedBrush" Color="{StaticResource DangerColor}"/>
-    <SolidColorBrush x:Key="YellowBrush" Color="{StaticResource WarningColor}"/>
-    <SolidColorBrush x:Key="PeachBrush" Color="{StaticResource RecordingColor}"/>
-    <SolidColorBrush x:Key="MauveBrush" Color="#7B6BA4"/>
-    <SolidColorBrush x:Key="LavenderBrush" Color="#8CA0C4"/>
+    <!-- Interactive state overlays (hover, press, subtle highlight) -->
+    <SolidColorBrush x:Key="HoverOverlayBrush" Color="#14FFFFFF"/>
+    <SolidColorBrush x:Key="PressOverlayBrush" Color="#22FFFFFF"/>
+    <SolidColorBrush x:Key="SubtleHoverBrush" Color="#08FFFFFF"/>
 
     <!-- Semi-transparent overlays (timeline exclusion zones, badges, shimmers) -->
     <SolidColorBrush x:Key="TimelineExclusionBrush" Color="#AA0A1114"/>
@@ -160,18 +157,12 @@
                         <ScrollViewer x:Name="PART_ContentHost"/>
                     </Border>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsFocused" Value="True">
-                            <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
-                        </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource Surface2Brush}"/>
                         </Trigger>
-                        <MultiTrigger>
-                            <MultiTrigger.Conditions>
-                                <Condition Property="IsFocused" Value="True"/>
-                            </MultiTrigger.Conditions>
+                        <Trigger Property="IsFocused" Value="True">
                             <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
-                        </MultiTrigger>
+                        </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
@@ -251,11 +242,11 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="#14FFFFFF"/>
+                            <Setter TargetName="border" Property="Background" Value="{StaticResource HoverOverlayBrush}"/>
                             <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="#22FFFFFF"/>
+                            <Setter TargetName="border" Property="Background" Value="{StaticResource PressOverlayBrush}"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.35"/>
@@ -290,11 +281,11 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="#14FFFFFF"/>
+                            <Setter TargetName="border" Property="Background" Value="{StaticResource HoverOverlayBrush}"/>
                             <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="#22FFFFFF"/>
+                            <Setter TargetName="border" Property="Background" Value="{StaticResource PressOverlayBrush}"/>
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
@@ -335,7 +326,7 @@
                             <Setter TargetName="border" Property="Background" Value="#122EC4B6"/>
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="#14FFFFFF"/>
+                            <Setter TargetName="border" Property="Background" Value="{StaticResource HoverOverlayBrush}"/>
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
@@ -595,11 +586,14 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="#08FFFFFF"/>
+                            <Setter TargetName="border" Property="Background" Value="{StaticResource SubtleHoverBrush}"/>
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
                             <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
                             <Setter TargetName="border" Property="Background" Value="#0E2EC4B6"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

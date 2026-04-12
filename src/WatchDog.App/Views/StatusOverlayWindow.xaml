@@ -11,16 +11,17 @@
         Background="Transparent"
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
 
-    <Border Background="#D9131D22"
-            BorderBrush="#33FFFFFF"
+    <Border Background="{StaticResource BaseBrush}"
+            BorderBrush="{StaticResource Surface1Brush}"
             BorderThickness="1"
             CornerRadius="6"
+            Opacity="0.9"
             Padding="10,6">
         <StackPanel Orientation="Horizontal">
             <!-- Status indicator dot -->
-            <Ellipse Width="7" Height="7"
+            <Ellipse Width="10" Height="10"
                      VerticalAlignment="Center"
-                     Margin="0,0,7,0"
+                     Margin="0,0,8,0"
                      Fill="{Binding IndicatorBrush}"/>
 
             <!-- Status text -->
@@ -28,7 +29,7 @@
                        FontFamily="{StaticResource UIFont}"
                        FontSize="11"
                        FontWeight="Medium"
-                       Foreground="#B8C5CF"
+                       Foreground="{StaticResource TextBrush}"
                        VerticalAlignment="Center"/>
         </StackPanel>
     </Border>

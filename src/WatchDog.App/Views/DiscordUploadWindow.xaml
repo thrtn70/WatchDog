@@ -49,7 +49,7 @@
                     <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding Succeeded}" Value="True">
-                            <Setter Property="Foreground" Value="{StaticResource GreenBrush}"/>
+                            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
                         </DataTrigger>
                         <MultiDataTrigger>
                             <MultiDataTrigger.Conditions>
@@ -65,7 +65,7 @@
 
         <!-- File size warning -->
         <TextBlock Grid.Row="3" Text="{Binding FileSizeWarning}" TextWrapping="Wrap"
-                   Foreground="{StaticResource YellowBrush}" FontSize="11" Margin="0,0,0,4">
+                   Foreground="{StaticResource WarningBrush}" FontSize="11" Margin="0,0,0,4">
             <TextBlock.Style>
                 <Style TargetType="TextBlock">
                     <Setter Property="Visibility" Value="Visible"/>
