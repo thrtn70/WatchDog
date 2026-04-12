@@ -200,5 +200,6 @@ public sealed class HighlightClipService : IHostedService, IDisposable
         _gameDetectedSub?.Dispose();
         _gameExitedSub?.Dispose();
         _cts?.Dispose();
+        _saveLock.Dispose();
     }
 }

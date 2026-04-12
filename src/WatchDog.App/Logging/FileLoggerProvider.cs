@@ -45,6 +45,7 @@ public sealed class FileLoggerProvider : ILoggerProvider
             if (today != _currentDate)
             {
                 _writer?.Dispose();
+                _writer = null;
                 var logPath = Path.Combine(_logDirectory, $"tikrclipr-{today}.log");
                 _writer = new StreamWriter(logPath, append: true) { AutoFlush = true };
                 _currentDate = today;
