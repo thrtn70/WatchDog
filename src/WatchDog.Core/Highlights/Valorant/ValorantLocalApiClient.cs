@@ -120,7 +120,7 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
     {
         try
         {
-            var response = await _httpClient.GetAsync(
+            using var response = await _httpClient.GetAsync(
                 $"https://127.0.0.1:{_port}/chat/v4/presences", ct);
 
             if (response.IsSuccessStatusCode)
@@ -185,7 +185,8 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
         try
         {
             _webSocket = new ClientWebSocket();
-            _webSocket.Options.RemoteCertificateValidationCallback = (_, _, _, _) => true;
+            _webSocket.Options.RemoteCertificateValidationCallback = (message, _, _, errors) =>
+                message.RequestUri?.Host is "127.0.0.1" or "localhost" || errors == SslPolicyErrors.None;
 
             var credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes($"riot:{_password}"));
             _webSocket.Options.SetRequestHeader("Authorization", $"Basic {credentials}");

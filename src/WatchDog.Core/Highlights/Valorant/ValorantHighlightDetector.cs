@@ -61,6 +61,7 @@ public sealed class ValorantHighlightDetector : IHighlightDetector
     public async ValueTask DisposeAsync()
     {
         await DisposeClientAsync();
+        _sharedHttpClient.Dispose();
     }
 
     private void OnMessageReceived(string json)

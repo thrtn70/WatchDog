@@ -154,8 +154,8 @@ public sealed partial class FFmpegClipEditor : IClipEditor
         await Task.WhenAll(stdoutTask, stderrTask);
         await process.WaitForExitAsync(ct);
 
-        var stdout = stdoutTask.Result;
-        var stderr = stderrTask.Result;
+        var stdout = await stdoutTask;
+        var stderr = await stderrTask;
 
         if (process.ExitCode != 0)
         {
