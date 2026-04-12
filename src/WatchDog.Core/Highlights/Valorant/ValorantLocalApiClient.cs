@@ -120,7 +120,7 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
     {
         try
         {
-            var response = await _httpClient.GetAsync(
+            using var response = await _httpClient.GetAsync(
                 $"https://127.0.0.1:{_port}/chat/v4/presences", ct);
 
             if (response.IsSuccessStatusCode)
