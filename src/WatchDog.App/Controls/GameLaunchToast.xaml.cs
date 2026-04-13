@@ -14,8 +14,10 @@ namespace WatchDog.App.Controls;
 /// </summary>
 public partial class GameLaunchToast : Window
 {
+    private const int AutoDismissSeconds = 15;
+    private const int FadeOutMs = 300;
     private readonly DispatcherTimer _countdownTimer;
-    private int _secondsRemaining = 15;
+    private int _secondsRemaining = AutoDismissSeconds;
     private GameRecordingMode _selectedMode = GameRecordingMode.ReplayBuffer;
     private bool _eventFired;
 
@@ -73,7 +75,7 @@ public partial class GameLaunchToast : Window
         var btn = new Button
         {
             Content = label,
-            Padding = new Thickness(12, 6, 12, 6),
+            Padding = new Thickness(12, 8, 12, 8),
             Margin = new Thickness(0, 0, 8, 0),
             FontFamily = (FontFamily)FindResource("UIFont"),
             FontSize = 12,
@@ -117,7 +119,7 @@ public partial class GameLaunchToast : Window
     private void FadeOutAndClose()
     {
         _countdownTimer.Stop();
-        var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(300));
+        var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(FadeOutMs));
         fadeOut.Completed += (_, _) => Close();
         BeginAnimation(OpacityProperty, fadeOut);
     }

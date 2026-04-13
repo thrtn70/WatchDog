@@ -6,6 +6,8 @@ namespace WatchDog.App.Controls;
 
 public partial class ClipSavedToast : Window
 {
+    private const int AutoCloseSeconds = 3;
+    private const int FadeOutMs = 300;
     private readonly DispatcherTimer _closeTimer;
 
     public ClipSavedToast(string clipName, string? gameName)
@@ -21,7 +23,7 @@ public partial class ClipSavedToast : Window
         Top = workArea.Bottom - 100;
 
         // Auto-close after 3 seconds
-        _closeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+        _closeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(AutoCloseSeconds) };
         _closeTimer.Tick += (_, _) => FadeOutAndClose();
         _closeTimer.Start();
     }
@@ -29,7 +31,7 @@ public partial class ClipSavedToast : Window
     private void FadeOutAndClose()
     {
         _closeTimer.Stop();
-        var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(300));
+        var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(FadeOutMs));
         fadeOut.Completed += (_, _) => Close();
         BeginAnimation(OpacityProperty, fadeOut);
     }

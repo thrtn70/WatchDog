@@ -21,6 +21,7 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
     private readonly IDisposable _gameDetectedSub;
     private readonly IDisposable _gameExitedSub;
     private readonly Action<CaptureState> _captureStateHandler;
+    private const int SavingIconRevertMs = 3000;
     private System.Threading.Timer? _savingRevertTimer;
     private volatile bool _disposed;
 
@@ -154,7 +155,7 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
                         if (_captureEngine.State == CaptureState.Buffering)
                             IconSource = BufferingIconPath;
                     }));
-                }, null, 3000, Timeout.Infinite);
+                }, null, SavingIconRevertMs, Timeout.Infinite);
                 break;
             case CaptureState.Stopping:
                 StatusText = "WatchDog - Stopping...";
