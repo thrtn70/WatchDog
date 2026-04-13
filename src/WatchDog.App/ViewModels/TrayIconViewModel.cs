@@ -22,6 +22,7 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
     private readonly IDisposable _gameExitedSub;
     private readonly Action<CaptureState> _captureStateHandler;
     private System.Threading.Timer? _savingRevertTimer;
+    private volatile bool _disposed;
 
     // Icon file paths (set by App.xaml.cs after TrayIconGenerator runs)
     public string IdleIconPath { get; set; } = "/Resources/Icons/tray-idle.ico";
@@ -64,7 +65,7 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
         // Do NOT also subscribe to BufferStateChangedEvent — both fire on every
         // state change, causing UpdateState to run twice per transition.
         _captureStateHandler = state =>
-            Application.Current?.Dispatcher.Invoke(() => UpdateState(state));
+            Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() => UpdateState(state)));
         captureEngine.StateChanged += _captureStateHandler;
     }
 
@@ -148,11 +149,11 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
                 // Revert to buffering icon after 3 seconds
                 _savingRevertTimer = new System.Threading.Timer(_ =>
                 {
-                    Application.Current?.Dispatcher.Invoke(() =>
+                    Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() =>
                     {
                         if (_captureEngine.State == CaptureState.Buffering)
                             IconSource = BufferingIconPath;
-                    });
+                    }));
                 }, null, 3000, Timeout.Infinite);
                 break;
             case CaptureState.Stopping:
@@ -164,25 +165,25 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
 
     private void OnGameDetected(GameDetectedEvent e)
     {
-        Application.Current?.Dispatcher.Invoke(() =>
+        Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() =>
         {
             CurrentGameText = $"{e.Game.DisplayName}";
-        });
+        }));
     }
 
     private void OnGameExited(GameExitedEvent e)
     {
-        Application.Current?.Dispatcher.Invoke(() =>
+        Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() =>
         {
             CurrentGameText = "No game detected";
-        });
+        }));
     }
 
     private void OnClipSaved(ClipSavedEvent e)
     {
         var fileName = Path.GetFileName(e.FilePath);
         var gameName = e.Game?.DisplayName;
-        Application.Current?.Dispatcher.Invoke(() =>
+        Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() =>
         {
             StatusText = $"WatchDog - Clip saved: {fileName}";
 
@@ -198,32 +199,40 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
             {
                 // Toast is non-critical — swallow errors
             }
-        });
+        }));
     }
 
 
 
     private void OnSessionStarted(SessionRecordingStartedEvent e)
     {
-        Application.Current?.Dispatcher.Invoke(() =>
+        Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() =>
         {
             IsSessionRecording = true;
             var game = e.Game?.DisplayName ?? "Desktop";
             StatusText = $"WatchDog - Recording session: {game}";
-        });
+        }));
     }
 
     private void OnSessionStopped(SessionRecordingStoppedEvent e)
     {
-        Application.Current?.Dispatcher.Invoke(() =>
+        Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() =>
         {
             IsSessionRecording = false;
             UpdateState(_captureEngine.State);
-        });
+        }));
+    }
+
+    private void PostToUi(Action action)
+    {
+        if (_disposed) return;
+        try { action(); }
+        catch (Exception ex) { System.Diagnostics.Trace.TraceError($"TrayIcon: {ex.Message}"); }
     }
 
     public void Dispose()
     {
+        _disposed = true;
         _savingRevertTimer?.Dispose();
         _captureEngine.StateChanged -= _captureStateHandler;
         _clipSavedSub.Dispose();

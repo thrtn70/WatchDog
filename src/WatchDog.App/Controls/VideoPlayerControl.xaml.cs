@@ -213,6 +213,7 @@ public partial class VideoPlayerControl : UserControl
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         _positionTimer.Stop();
+        _positionTimer.Tick -= OnPositionTimerTick;
         Player.Stop();
         Player.Source = null;
     }

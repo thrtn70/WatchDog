@@ -30,9 +30,10 @@ public partial class DiscordUploadViewModel : ObservableObject
         FileName = metadata.FileName;
         GameName = metadata.GameName ?? "Unknown";
         IsUploading = true;
-        _cts?.Cancel();
-        _cts?.Dispose();
+        var oldCts = _cts;
         _cts = new CancellationTokenSource();
+        oldCts?.Cancel();
+        oldCts?.Dispose();
 
         // Warn about file size (Discord default limit is 25MB)
         const long maxDefaultSize = 25 * 1024 * 1024;

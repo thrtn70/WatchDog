@@ -78,7 +78,7 @@ public sealed class HotkeyListenerHostedService : IHostedService
 
         var newHotkey = settings.Hotkey;
 
-        Application.Current?.Dispatcher.Invoke(() =>
+        Application.Current?.Dispatcher.InvokeAsync(() =>
         {
             _hotkeyService.Unregister(SaveClipHotkeyId);
             _hotkeyService.Unregister(ToggleRecordingHotkeyId);

@@ -28,6 +28,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly int _maxStorageGb;
     private readonly IDisposable _clipSavedSub;
     private readonly Action<CaptureState> _stateChangedHandler;
+    private volatile bool _disposed;
 
     // Session-grouped view
     [ObservableProperty] private ObservableCollection<SessionGroupViewModel> _sessionGroups = [];
@@ -140,14 +141,14 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
                 try
                 {
-                    await Application.Current!.Dispatcher.InvokeAsync(RefreshClips);
+                    await Application.Current!.Dispatcher.InvokeAsync(() => PostToUi(RefreshClips));
                 }
                 catch { /* refresh failure is non-fatal */ }
             });
         });
 
         _stateChangedHandler = state =>
-            Application.Current?.Dispatcher.Invoke(() => UpdateCaptureStatus(state));
+            Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() => UpdateCaptureStatus(state)));
         captureEngine.StateChanged += _stateChangedHandler;
 
         InitializeStatusBarBrushes();
@@ -189,11 +190,11 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 catch { /* scan failure is non-fatal */ }
                 finally
                 {
-                    Application.Current?.Dispatcher.Invoke(() =>
+                    Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() =>
                     {
                         IsScanning = false;
                         RefreshClips();
-                    });
+                    }));
                 }
             });
         }
@@ -286,7 +287,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 var sessions = await _sessionRepository.GetRecentAsync(100);
                 var allClips = _clipStorage.GetAllClips();
                 Application.Current?.Dispatcher.InvokeAsync(() =>
-                    BuildSessionGroups(sessions, allClips, filterGame));
+                    PostToUi(() => BuildSessionGroups(sessions, allClips, filterGame)));
             }
             catch (Exception ex)
             {
@@ -779,7 +780,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             {
                 FileName = resolvedInstaller,
                 UseShellExecute = true,
-                ArgumentList = { "/SILENT", "/NORESTART" },
+                Arguments = "/SILENT /NORESTART",
             });
 
             Application.Current.Shutdown(0);
@@ -808,8 +809,16 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         return version is not null ? $"v{version}" : "v?.?.?";
     }
 
+    private void PostToUi(Action action)
+    {
+        if (_disposed) return;
+        try { action(); }
+        catch (Exception ex) { Debug.WriteLine($"MainWindow: {ex.Message}"); }
+    }
+
     public void Dispose()
     {
+        _disposed = true;
         _captureEngine.StateChanged -= _stateChangedHandler;
         _clipSavedSub.Dispose();
     }
