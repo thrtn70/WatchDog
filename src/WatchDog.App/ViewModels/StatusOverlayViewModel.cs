@@ -1,5 +1,6 @@
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
+using WatchDog.App.Themes;
 using WatchDog.Core.Capture;
 using WatchDog.Core.Events;
 using WatchDog.Core.Storage;
@@ -22,10 +23,10 @@ public partial class StatusOverlayViewModel : ObservableObject, IDisposable
     private readonly IDisposable _clipSavedSub;
     private volatile bool _disposed;
 
-    private static readonly System.Windows.Media.SolidColorBrush IdleBrush = MakeBrush("#4A5F6B");
-    private static readonly System.Windows.Media.SolidColorBrush BufferingBrush = MakeBrush("#38BF7F");
-    private static readonly System.Windows.Media.SolidColorBrush SavingBrush = MakeBrush("#D9B84C");
-    private static readonly System.Windows.Media.SolidColorBrush InitBrush = MakeBrush("#4C96D9");
+    private static readonly System.Windows.Media.SolidColorBrush IdleBrush = ThemeColors.MakeBrush(ThemeColors.Overlay);
+    private static readonly System.Windows.Media.SolidColorBrush BufferingBrush = ThemeColors.MakeBrush(ThemeColors.Success);
+    private static readonly System.Windows.Media.SolidColorBrush SavingBrush = ThemeColors.MakeBrush(ThemeColors.Warning);
+    private static readonly System.Windows.Media.SolidColorBrush InitBrush = ThemeColors.MakeBrush(ThemeColors.Info);
 
     // Compact mode (minimal dot + short status)
     [ObservableProperty]
@@ -154,13 +155,6 @@ public partial class StatusOverlayViewModel : ObservableObject, IDisposable
         catch (Exception ex) { System.Diagnostics.Trace.TraceError($"StatusOverlay: {ex.Message}"); }
     }
 
-    private static System.Windows.Media.SolidColorBrush MakeBrush(string hex)
-    {
-        var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex);
-        var brush = new System.Windows.Media.SolidColorBrush(color);
-        brush.Freeze();
-        return brush;
-    }
 
     public void Dispose()
     {

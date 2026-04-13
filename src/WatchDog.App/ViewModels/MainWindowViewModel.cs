@@ -900,12 +900,12 @@ public sealed class ClipItemViewModel : System.ComponentModel.INotifyPropertyCha
     /// <summary>Badge color hex for thumbnail overlay.</summary>
     public string HighlightBadgeColor => HighlightType switch
     {
-        WatchDog.Core.Highlights.HighlightType.Kill => "#D95555",
-        WatchDog.Core.Highlights.HighlightType.Ace => "#D9B84C",
-        WatchDog.Core.Highlights.HighlightType.Multikill => "#38BF7F",
-        WatchDog.Core.Highlights.HighlightType.RoundWin => "#4C96D9",
-        WatchDog.Core.Highlights.HighlightType.MatchWin => "#2EC4B6",
-        _ => "#4A5F6B",
+        WatchDog.Core.Highlights.HighlightType.Kill => Themes.ThemeColors.Danger,
+        WatchDog.Core.Highlights.HighlightType.Ace => Themes.ThemeColors.Warning,
+        WatchDog.Core.Highlights.HighlightType.Multikill => Themes.ThemeColors.Success,
+        WatchDog.Core.Highlights.HighlightType.RoundWin => Themes.ThemeColors.Info,
+        WatchDog.Core.Highlights.HighlightType.MatchWin => Themes.ThemeColors.Accent,
+        _ => Themes.ThemeColors.Overlay,
     };
 
     public bool HasTags => Tags.Count > 0;

@@ -21,7 +21,7 @@
     <Color x:Key="SurfaceColor">#1B2830</Color>
     <Color x:Key="Surface1Color">#25353E</Color>
     <Color x:Key="Surface2Color">#31434E</Color>
-    <Color x:Key="OverlayColor">#4A5F6B</Color>
+    <Color x:Key="OverlayColor">#6E889A</Color>
     <Color x:Key="MutedTextColor">#8A9EAA</Color>
     <Color x:Key="TextColor">#D1DCE2</Color>
     <Color x:Key="SubtextColor">#7E939E</Color>
@@ -46,6 +46,8 @@
     <SolidColorBrush x:Key="SubtextBrush" Color="{StaticResource SubtextColor}"/>
     <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
     <SolidColorBrush x:Key="AccentMutedBrush" Color="{StaticResource AccentMutedColor}"/>
+    <SolidColorBrush x:Key="AccentSubtleBrush" Color="#1A2EC4B6"/>
+    <SolidColorBrush x:Key="AccentFaintBrush" Color="#0D2EC4B6"/>
     <SolidColorBrush x:Key="RecordingBrush" Color="{StaticResource RecordingColor}"/>
     <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}"/>
     <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}"/>
