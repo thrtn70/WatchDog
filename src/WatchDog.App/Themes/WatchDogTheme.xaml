@@ -13,6 +13,7 @@
     <!-- ── Fonts ──────────────────────────────────────────────────────── -->
     <FontFamily x:Key="DisplayFont">pack://application:,,,/Resources/Fonts/#Archivo</FontFamily>
     <FontFamily x:Key="UIFont">pack://application:,,,/Resources/Fonts/#Barlow</FontFamily>
+    <FontFamily x:Key="IconFont">Segoe MDL2 Assets</FontFamily>
 
     <!-- ── Colors ─────────────────────────────────────────────────────── -->
     <Color x:Key="CrustColor">#0A1114</Color>
@@ -265,7 +266,7 @@
 
     <!-- Icon Button — compact, for toolbar icons -->
     <Style x:Key="IconButton" TargetType="Button">
-        <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+        <Setter Property="FontFamily" Value="{StaticResource IconFont}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{StaticResource SubtextBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
@@ -305,7 +306,7 @@
 
     <!-- Toggle Button — for view mode switching -->
     <Style x:Key="ToggleIconButton" TargetType="ToggleButton">
-        <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+        <Setter Property="FontFamily" Value="{StaticResource IconFont}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>

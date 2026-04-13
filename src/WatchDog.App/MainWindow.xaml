@@ -180,7 +180,7 @@
                         Command="{Binding InstallUpdateCommand}"
                         Margin="8,0" Padding="12,4"
                         Style="{StaticResource ActionButton}"/>
-                <Button Grid.Column="2" Content="&#xE711;" FontFamily="Segoe MDL2 Assets"
+                <Button Grid.Column="2" Content="&#xE711;" FontFamily="{StaticResource IconFont}"
                         Command="{Binding DismissUpdateCommand}"
                         Style="{StaticResource IconButton}" FontSize="10"
                         ToolTip="Dismiss"
@@ -278,7 +278,7 @@
 
                                 <!-- Drill-in chevron -->
                                 <TextBlock Grid.Column="2" Text="&#xE76C;"
-                                           FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                           FontFamily="{StaticResource IconFont}" FontSize="12"
                                            Foreground="{StaticResource MutedTextBrush}"
                                            VerticalAlignment="Center"/>
                             </Grid>
@@ -376,7 +376,7 @@
                                                    FontWeight="Medium" Foreground="{StaticResource TextBrush}"/>
                                     </Border>
                                     <!-- Favorite star -->
-                                    <TextBlock Text="&#xE735;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                    <TextBlock Text="&#xE735;" FontFamily="{StaticResource IconFont}" FontSize="13"
                                                Foreground="{StaticResource WarningBrush}"
                                                HorizontalAlignment="Left" VerticalAlignment="Top" Margin="4"
                                                Visibility="{Binding IsFavorite, Converter={StaticResource BoolToVis}}"/>
@@ -488,7 +488,7 @@
             <StackPanel Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Center"
                         IsHitTestVisible="False"
                         Visibility="{Binding IsScanning, Converter={StaticResource BoolToVis}}">
-                <TextBlock Text="&#xE895;" FontFamily="Segoe MDL2 Assets" FontSize="25"
+                <TextBlock Text="&#xE895;" FontFamily="{StaticResource IconFont}" FontSize="25"
                            Foreground="{StaticResource SubtextBrush}"
                            HorizontalAlignment="Center" Margin="0,0,0,12"/>
                 <TextBlock Text="Scanning clips..." FontSize="14" FontWeight="SemiBold"
@@ -565,7 +565,7 @@
                                 </Style.Triggers>
                             </Style>
                         </StackPanel.Style>
-                        <TextBlock Text="&#xE714;" FontFamily="Segoe MDL2 Assets" FontSize="25"
+                        <TextBlock Text="&#xE714;" FontFamily="{StaticResource IconFont}" FontSize="25"
                                    Foreground="{StaticResource Surface2Brush}"
                                    HorizontalAlignment="Center" Margin="0,0,0,12"/>
                         <TextBlock Text="Select a clip to preview"
