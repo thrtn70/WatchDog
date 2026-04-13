@@ -664,7 +664,7 @@
     <!-- ── Separator ──────────────────────────────────────────────────── -->
     <Style TargetType="Separator">
         <Setter Property="Background" Value="{StaticResource Surface1Brush}"/>
-        <Setter Property="Margin" Value="4,3"/>
+        <Setter Property="Margin" Value="4"/>
         <Setter Property="Height" Value="1"/>
     </Style>
 
@@ -791,6 +791,8 @@
         <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
         <Setter Property="FontFamily" Value="{StaticResource UIFont}"/>
         <Setter Property="FontSize" Value="13"/>
+        <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+        <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
         <Setter Property="BorderBrush" Value="{StaticResource Surface1Brush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="0,4"/>

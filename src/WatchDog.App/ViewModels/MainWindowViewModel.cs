@@ -139,12 +139,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 }
                 catch { /* already indexed or missing file */ }
 
-                try
-                {
-                    await (Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(RefreshClips))
-                          ?? Task.CompletedTask);
-                }
-                catch { /* refresh failure is non-fatal */ }
+                Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(RefreshClips));
             });
         });
 
@@ -444,7 +439,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         if (value is not null)
         {
             ClipEditor = CreateClipEditor();
-            _ = ClipEditor.LoadClipAsync(value.FilePath, value.GameName);
+            _ = ClipEditor.LoadClipAsync(value.FilePath, value.GameName)
+                .ContinueWith(t =>
+                {
+                    if (t.IsFaulted)
+                        System.Diagnostics.Trace.TraceError($"Clip load failed: {t.Exception?.InnerException?.Message}");
+                }, TaskContinuationOptions.OnlyOnFaulted);
         }
         else
         {

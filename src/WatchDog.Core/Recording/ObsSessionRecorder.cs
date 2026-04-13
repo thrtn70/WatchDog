@@ -140,8 +140,8 @@ public sealed class ObsSessionRecorder : ISessionRecorder
             _recordingOutput = new RecordingOutput($"WatchDog Session {_segmentIndex}")
                 .SetPath(CurrentOutputPath)
                 .SetFormat(format);
-            _recordingOutput.SetVideoEncoder(_videoEncoder);
-            _recordingOutput.SetAudioEncoder(_audioEncoder, 0);
+            _recordingOutput.SetVideoEncoder(_videoEncoder!);
+            _recordingOutput.SetAudioEncoder(_audioEncoder!, 0);
 
             _recordingOutput.Start();
 
