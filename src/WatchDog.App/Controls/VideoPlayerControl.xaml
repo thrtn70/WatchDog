@@ -23,7 +23,8 @@
                 </Grid.ColumnDefinitions>
 
                 <Button x:Name="PlayPauseBtn" Content="&#x25B6;" Width="28" Height="28"
-                        Grid.Column="0" Click="OnPlayPauseClick" FontSize="12"/>
+                        Grid.Column="0" Click="OnPlayPauseClick" FontSize="12"
+                        AutomationProperties.Name="Play or pause"/>
 
                 <TextBlock x:Name="TimeDisplay" Grid.Column="1" VerticalAlignment="Center"
                            Margin="8,0" Foreground="{StaticResource SubtextBrush}" FontSize="11"
@@ -31,6 +32,7 @@
 
                 <Slider x:Name="PositionSlider" Grid.Column="2" VerticalAlignment="Center"
                         Minimum="0" Maximum="1" SmallChange="0.01" LargeChange="0.1"
+                        AutomationProperties.Name="Playback position"
                         Thumb.DragStarted="OnSliderDragStarted"
                         Thumb.DragCompleted="OnSliderDragCompleted"
                         ValueChanged="OnSliderValueChanged"/>
@@ -38,7 +40,8 @@
                 <!-- Volume -->
                 <Slider x:Name="VolumeSlider" Grid.Column="3" Width="60" VerticalAlignment="Center"
                         Minimum="0" Maximum="1" Value="0.8"
-                        ValueChanged="OnVolumeChanged"/>
+                        ValueChanged="OnVolumeChanged"
+                        AutomationProperties.Name="Volume"/>
             </Grid>
         </Border>
     </Grid>

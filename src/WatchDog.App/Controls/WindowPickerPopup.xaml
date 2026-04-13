@@ -44,7 +44,8 @@
                      Background="Transparent"
                      BorderThickness="0"
                      Padding="4"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     AutomationProperties.Name="Available windows">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <Border Padding="10,8" CornerRadius="4" Cursor="Hand"

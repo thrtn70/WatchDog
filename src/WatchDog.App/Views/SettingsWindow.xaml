@@ -96,7 +96,8 @@
                         <TextBlock Text="Monitor:" VerticalAlignment="Center" Margin="0,0,8,0"/>
                         <ComboBox ItemsSource="{Binding Monitors}"
                                   SelectedItem="{Binding SelectedMonitor}"
-                                  DisplayMemberPath="DisplayName" Width="280"/>
+                                  DisplayMemberPath="DisplayName" Width="280"
+                                  AutomationProperties.Name="Monitor selection"/>
                     </StackPanel>
 
                     <Grid Margin="0,0,0,8">
@@ -109,24 +110,30 @@
                             <ColumnDefinition Width="60"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="Width:" VerticalAlignment="Center" Grid.Column="0" Margin="0,0,8,0"/>
-                        <TextBox Text="{Binding OutputWidth}" Grid.Column="1" PreviewTextInput="NumericOnly_PreviewTextInput"/>
+                        <TextBox Text="{Binding OutputWidth}" Grid.Column="1" PreviewTextInput="NumericOnly_PreviewTextInput"
+                                 AutomationProperties.Name="Output width"/>
                         <TextBlock Text="Height:" VerticalAlignment="Center" Grid.Column="2" Margin="12,0,8,0"/>
-                        <TextBox Text="{Binding OutputHeight}" Grid.Column="3" PreviewTextInput="NumericOnly_PreviewTextInput"/>
+                        <TextBox Text="{Binding OutputHeight}" Grid.Column="3" PreviewTextInput="NumericOnly_PreviewTextInput"
+                                 AutomationProperties.Name="Output height"/>
                         <TextBlock Text="FPS:" VerticalAlignment="Center" Grid.Column="4" Margin="12,0,8,0"/>
-                        <TextBox Text="{Binding Fps}" Grid.Column="5" PreviewTextInput="NumericOnly_PreviewTextInput"/>
+                        <TextBox Text="{Binding Fps}" Grid.Column="5" PreviewTextInput="NumericOnly_PreviewTextInput"
+                                 AutomationProperties.Name="Frames per second"/>
                     </Grid>
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                         <TextBlock Text="Encoder:" VerticalAlignment="Center" Margin="0,0,8,0"/>
                         <ComboBox ItemsSource="{Binding Source={x:Static helpers:EnumHelper.EncoderTypes}}"
-                                  SelectedItem="{Binding Encoder}" Width="140"/>
+                                  SelectedItem="{Binding Encoder}" Width="140"
+                                  AutomationProperties.Name="Encoder type"/>
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
                         <TextBlock Text="Quality (CQP):" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="Constant quality parameter. Lower = better quality, larger files. Recommended: 18-23 for NVENC, 20-28 for x264."/>
-                        <TextBox Text="{Binding Quality}" Width="48" PreviewTextInput="NumericOnly_PreviewTextInput"/>
+                        <TextBox Text="{Binding Quality}" Width="48" PreviewTextInput="NumericOnly_PreviewTextInput"
+                                 AutomationProperties.Name="Quality CQP value"/>
                         <TextBlock Text="Bitrate (kbps):" VerticalAlignment="Center" Margin="16,0,8,0" ToolTip="Target bitrate in kilobits per second. Higher = better quality, larger files. Recommended: 6000-20000 for 1080p."/>
-                        <TextBox Text="{Binding Bitrate}" Width="64" PreviewTextInput="NumericOnly_PreviewTextInput"/>
+                        <TextBox Text="{Binding Bitrate}" Width="64" PreviewTextInput="NumericOnly_PreviewTextInput"
+                                 AutomationProperties.Name="Bitrate kilobits per second"/>
                     </StackPanel>
 
                     <!-- Recording Mode -->
@@ -135,17 +142,20 @@
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                         <TextBlock Text="Mode:" VerticalAlignment="Center" Margin="0,0,8,0"/>
                         <ComboBox ItemsSource="{Binding Source={x:Static helpers:EnumHelper.RecordingModes}}"
-                                  SelectedItem="{Binding RecordingMode}" Width="180"/>
+                                  SelectedItem="{Binding RecordingMode}" Width="180"
+                                  AutomationProperties.Name="Recording mode"/>
                     </StackPanel>
                     <TextBlock Text="ReplayBufferOnly: instant clips via hotkey. SessionRecording: full match files. Both: runs both."
                                TextWrapping="Wrap" Foreground="{StaticResource SubtextBrush}" Margin="0,0,0,8" FontSize="11"/>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                         <TextBlock Text="Segment Duration (min):" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="Split session recordings into chunks of this length. Prevents single massive files. 0 = no splitting."/>
-                        <TextBox Text="{Binding SegmentDurationMinutes}" Width="48" PreviewTextInput="NumericOnly_PreviewTextInput"/>
+                        <TextBox Text="{Binding SegmentDurationMinutes}" Width="48" PreviewTextInput="NumericOnly_PreviewTextInput"
+                                 AutomationProperties.Name="Segment duration minutes"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Max Duration (min, 0=unlimited):" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="Auto-stop recording after this many minutes. 0 = record until the game exits."/>
-                        <TextBox Text="{Binding MaxDurationMinutes}" Width="48" PreviewTextInput="NumericOnly_PreviewTextInput"/>
+                        <TextBox Text="{Binding MaxDurationMinutes}" Width="48" PreviewTextInput="NumericOnly_PreviewTextInput"
+                                 AutomationProperties.Name="Max duration minutes"/>
                     </StackPanel>
                 </StackPanel>
             </TabItem>
@@ -160,7 +170,8 @@
                         <TextBlock Text="Output Device:" VerticalAlignment="Center" Margin="0,0,8,0" Width="96"/>
                         <ComboBox ItemsSource="{Binding DesktopDevices}"
                                   SelectedItem="{Binding SelectedDesktopDevice}"
-                                  DisplayMemberPath="DisplayName" Width="248"/>
+                                  DisplayMemberPath="DisplayName" Width="248"
+                                  AutomationProperties.Name="Desktop audio output device"/>
                         <Button Content="&#x21BB;" Command="{Binding RefreshAudioDevicesCommand}"
                                 Margin="4,0,0,0" ToolTip="Refresh devices" Padding="8,4" FontSize="14"
                                 AutomationProperties.Name="Refresh audio devices"/>
@@ -177,7 +188,8 @@
                         <TextBlock Text="Input Device:" VerticalAlignment="Center" Margin="0,0,8,0" Width="96"/>
                         <ComboBox ItemsSource="{Binding MicDevices}"
                                   SelectedItem="{Binding SelectedMicDevice}"
-                                  DisplayMemberPath="DisplayName" Width="248"/>
+                                  DisplayMemberPath="DisplayName" Width="248"
+                                  AutomationProperties.Name="Microphone input device"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                         <TextBlock Text="Mic Volume:" VerticalAlignment="Center" Margin="0,0,8,0" Width="96"/>
@@ -199,25 +211,30 @@
                     <TextBlock Text="Replay Buffer" FontWeight="SemiBold" Margin="0,0,0,8"/>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                         <TextBlock Text="Buffer Duration (seconds):" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="How many seconds of gameplay to keep in memory. When you press the hotkey, the last N seconds are saved as a clip."/>
-                        <TextBox Text="{Binding BufferSeconds}" Width="56"/>
+                        <TextBox Text="{Binding BufferSeconds}" Width="56"
+                                 AutomationProperties.Name="Buffer duration seconds"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
                         <TextBlock Text="Max Buffer Size (MB):" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="Maximum memory used by the replay buffer. Higher = longer buffer at higher quality settings."/>
-                        <TextBox Text="{Binding BufferMaxSizeMb}" Width="56"/>
+                        <TextBox Text="{Binding BufferMaxSizeMb}" Width="56"
+                                 AutomationProperties.Name="Max buffer size MB"/>
                     </StackPanel>
 
                     <!-- File Storage -->
                     <TextBlock Text="File Storage" FontWeight="SemiBold" Margin="0,0,0,8"/>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                         <TextBlock Text="Save Path:" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                        <TextBox Text="{Binding SavePath}" Width="248"/>
+                        <TextBox Text="{Binding SavePath}" Width="248"
+                                 AutomationProperties.Name="Clip save path"/>
                         <Button Content="Browse" Command="{Binding BrowseSavePathCommand}" Margin="8,0,0,0"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Max Storage (GB):" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="When total clips exceed this size, the oldest non-favorited clips are automatically deleted."/>
-                        <TextBox Text="{Binding MaxStorageGb}" Width="48"/>
+                        <TextBox Text="{Binding MaxStorageGb}" Width="48"
+                                 AutomationProperties.Name="Max storage GB"/>
                         <TextBlock Text="Auto-delete after (days):" VerticalAlignment="Center" Margin="16,0,8,0" ToolTip="Clips older than this many days are automatically deleted (favorited clips are kept). 0 = never auto-delete by age."/>
-                        <TextBox Text="{Binding AutoDeleteDays}" Width="48"/>
+                        <TextBox Text="{Binding AutoDeleteDays}" Width="48"
+                                 AutomationProperties.Name="Auto-delete after days"/>
                     </StackPanel>
                 </StackPanel>
             </TabItem>
@@ -232,11 +249,13 @@
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                         <TextBlock Text="Post-event delay (seconds):" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="Wait this many seconds after a highlight event before saving the clip. Captures the aftermath (kill feed, scoreboard)."/>
-                        <TextBox Text="{Binding HighlightDelaySeconds}" Width="48"/>
+                        <TextBox Text="{Binding HighlightDelaySeconds}" Width="48"
+                                 AutomationProperties.Name="Post-event delay seconds"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                         <TextBlock Text="Cooldown between clips (seconds):" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="Minimum time between auto-saved highlight clips. Prevents spam during rapid multi-kills."/>
-                        <TextBox Text="{Binding HighlightCooldownSeconds}" Width="48"/>
+                        <TextBox Text="{Binding HighlightCooldownSeconds}" Width="48"
+                                 AutomationProperties.Name="Cooldown between clips seconds"/>
                     </StackPanel>
 
                     <TextBlock Text="CS2: requires gamestate_integration_watchdog.cfg in your CS2 cfg folder."
@@ -253,13 +272,15 @@
                         <TextBlock Text="Save Clip:" VerticalAlignment="Center" Width="120"/>
                         <controls:HotkeyRecorderControl VirtualKey="{Binding SaveClipKey, Mode=TwoWay}"
                                                          Modifiers="{Binding SaveClipModifiers, Mode=TwoWay}"
-                                                         MinWidth="120"/>
+                                                         MinWidth="120"
+                                                         AutomationProperties.Name="Save clip hotkey"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Toggle Recording:" VerticalAlignment="Center" Width="120"/>
                         <controls:HotkeyRecorderControl VirtualKey="{Binding ToggleRecordingKey, Mode=TwoWay}"
                                                          Modifiers="{Binding ToggleRecordingModifiers, Mode=TwoWay}"
-                                                         MinWidth="120"/>
+                                                         MinWidth="120"
+                                                         AutomationProperties.Name="Toggle recording hotkey"/>
                     </StackPanel>
                 </StackPanel>
             </TabItem>
@@ -274,7 +295,8 @@
                                Margin="0,0,0,12"/>
 
                     <TextBlock Text="Webhook URL:" FontSize="11" Margin="0,0,0,4"/>
-                    <TextBox Text="{Binding DiscordWebhookUrl}" Margin="0,0,0,12"/>
+                    <TextBox Text="{Binding DiscordWebhookUrl}" Margin="0,0,0,12"
+                             AutomationProperties.Name="Discord webhook URL"/>
 
                     <Grid Margin="0,0,0,8">
                         <Grid.ColumnDefinitions>
@@ -283,11 +305,13 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" Margin="0,0,4,0">
                             <TextBlock Text="Bot Username:" FontSize="11" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding DiscordUsername}"/>
+                            <TextBox Text="{Binding DiscordUsername}"
+                                     AutomationProperties.Name="Bot username"/>
                         </StackPanel>
                         <StackPanel Grid.Column="1" Margin="4,0,0,0">
                             <TextBlock Text="Message Template:" FontSize="11" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding DiscordMessageTemplate}"/>
+                            <TextBox Text="{Binding DiscordMessageTemplate}"
+                                     AutomationProperties.Name="Message template"/>
                         </StackPanel>
                     </Grid>
                     <TextBlock Text="Tokens: {GameName}, {HighlightType}, {Duration}, {FileName}"
@@ -338,7 +362,8 @@
                                  Padding="6,4"
                                  Background="{StaticResource SurfaceBrush}"
                                  Foreground="{StaticResource TextBrush}"
-                                 BorderBrush="{StaticResource Surface1Brush}">
+                                 BorderBrush="{StaticResource Surface1Brush}"
+                                 AutomationProperties.Name="Search games">
                             <TextBox.Style>
                                 <Style TargetType="TextBox">
                                     <Setter Property="Tag" Value="Search games..."/>
@@ -349,7 +374,8 @@
                                  SelectedItem="{Binding GameProfiles.SelectedGame}"
                                  Background="Transparent" BorderThickness="0"
                                  Margin="0,0,8,0"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 AutomationProperties.Name="Game list">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel Margin="2,3">
@@ -415,7 +441,8 @@
                                 <Slider Minimum="0.1" Maximum="1.0"
                                         Value="{Binding HighlightSensitivity}"
                                         TickFrequency="0.1" IsSnapToTickEnabled="True"
-                                        VerticalAlignment="Center"/>
+                                        VerticalAlignment="Center"
+                                        AutomationProperties.Name="Highlight sensitivity"/>
                             </DockPanel>
 
                             <!-- Actions -->

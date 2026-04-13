@@ -35,7 +35,8 @@
         <Grid Grid.Row="1" Margin="0,0,0,8">
             <ProgressBar Value="{Binding ProgressPercent}" Maximum="100" Height="20"
                          Background="{StaticResource Surface1Brush}"
-                         Foreground="{StaticResource AccentBrush}" BorderThickness="0"/>
+                         Foreground="{StaticResource AccentBrush}" BorderThickness="0"
+                         AutomationProperties.Name="Upload progress"/>
             <TextBlock Text="{Binding ProgressPercent, StringFormat={}{0:F0}%}"
                        HorizontalAlignment="Center" VerticalAlignment="Center"
                        FontSize="11" FontWeight="SemiBold"/>

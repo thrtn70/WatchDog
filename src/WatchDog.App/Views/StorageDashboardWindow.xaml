@@ -54,14 +54,16 @@
 
         <!-- Usage bar -->
         <Grid Grid.Row="1" Margin="0,0,0,12">
-            <ProgressBar Value="{Binding UsagePercent}" Maximum="100" Height="24"/>
+            <ProgressBar Value="{Binding UsagePercent}" Maximum="100" Height="24"
+                         AutomationProperties.Name="Storage usage"/>
             <TextBlock Text="{Binding UsagePercentDisplay}" HorizontalAlignment="Center"
                        VerticalAlignment="Center" FontSize="11" FontWeight="SemiBold"/>
         </Grid>
 
         <!-- Per-game breakdown -->
         <ListView Grid.Row="2" ItemsSource="{Binding GameUsages}"
-                  Background="{StaticResource BaseBrush}" BorderThickness="0">
+                  Background="{StaticResource BaseBrush}" BorderThickness="0"
+                  AutomationProperties.Name="Storage breakdown by game">
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="Game" Width="180"
