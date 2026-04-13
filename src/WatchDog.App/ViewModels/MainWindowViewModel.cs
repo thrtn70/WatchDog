@@ -813,14 +813,14 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         if (_disposed) return;
         try { action(); }
-        catch (Exception ex) { Debug.WriteLine($"MainWindow: {ex.Message}"); }
+        catch (Exception ex) { System.Diagnostics.Trace.TraceError($"MainWindow: {ex.Message}"); }
     }
 
     public void Dispose()
     {
-        _disposed = true;
         _captureEngine.StateChanged -= _stateChangedHandler;
         _clipSavedSub.Dispose();
+        _disposed = true;
     }
 }
 
