@@ -338,7 +338,7 @@
                     <StackPanel Orientation="Horizontal">
                         <Button Content="Check for Updates"
                                 Command="{Binding CheckForUpdateCommand}"
-                                Padding="12,6"/>
+                                Padding="12,8"/>
                         <TextBlock Text="{Binding UpdateStatusText}" VerticalAlignment="Center"
                                    Margin="12,0,0,0" FontSize="11"
                                    Foreground="{StaticResource SubtextBrush}"/>
@@ -378,7 +378,7 @@
                                  AutomationProperties.Name="Game list">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <StackPanel Margin="2,3">
+                                    <StackPanel Margin="4">
                                         <TextBlock Text="{Binding DisplayName}" FontSize="12"
                                                    Foreground="{StaticResource TextBrush}"/>
                                         <TextBlock FontSize="10"
@@ -410,7 +410,7 @@
 
                             <!-- Recording Mode -->
                             <TextBlock Text="Recording Mode" FontWeight="SemiBold"
-                                       FontSize="12" Margin="0,0,0,6"/>
+                                       FontSize="12" Margin="0,0,0,8"/>
                             <StackPanel Margin="0,0,0,16">
                                 <RadioButton Content="Highlight (auto-clip on events)"
                                              IsChecked="{Binding SelectedMode, Converter={StaticResource EnumBoolConverter}, ConverterParameter=Highlight}"

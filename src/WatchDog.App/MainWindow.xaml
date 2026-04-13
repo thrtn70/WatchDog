@@ -166,7 +166,7 @@
         <!-- ═══ Update Banner (collapses when no update) ═════════════════ -->
         <Border Grid.Row="1" Background="{StaticResource AccentMutedBrush}"
                 Visibility="{Binding AvailableUpdate, Converter={StaticResource NullToVisConverter}}"
-                Padding="10,6">
+                Padding="12,8">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -220,7 +220,7 @@
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <Border Background="{StaticResource SurfaceBrush}" CornerRadius="5"
-                                Margin="4,2" Padding="12,10" Cursor="Hand"
+                                Margin="4,2" Padding="12,8" Cursor="Hand"
                                 BorderBrush="Transparent" BorderThickness="1">
                             <Border.InputBindings>
                                 <MouseBinding Gesture="LeftClick"
@@ -263,7 +263,7 @@
                                                    VerticalAlignment="Center"/>
                                     </StackPanel>
                                     <TextBlock Text="{Binding SummaryDisplay}" FontSize="11"
-                                               Foreground="{StaticResource SubtextBrush}" Margin="0,3,0,0"/>
+                                               Foreground="{StaticResource SubtextBrush}" Margin="0,4,0,0"/>
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center"
@@ -289,7 +289,7 @@
 
             <!-- Session Detail Header (back button + session info, visible in detail view) -->
             <Border Grid.Column="0" VerticalAlignment="Top" Background="{StaticResource BaseBrush}"
-                    Padding="8,6" Panel.ZIndex="1"
+                    Padding="8,4" Panel.ZIndex="1"
                     Visibility="{Binding IsSessionDetailView, Converter={StaticResource BoolToVis}}">
                 <StackPanel Orientation="Horizontal">
                     <Button Content="&#xE72B;" Style="{StaticResource IconButton}"
@@ -378,7 +378,7 @@
                                     <!-- Favorite star -->
                                     <TextBlock Text="&#xE735;" FontFamily="Segoe MDL2 Assets" FontSize="13"
                                                Foreground="{StaticResource WarningBrush}"
-                                               HorizontalAlignment="Left" VerticalAlignment="Top" Margin="5,3"
+                                               HorizontalAlignment="Left" VerticalAlignment="Top" Margin="4"
                                                Visibility="{Binding IsFavorite, Converter={StaticResource BoolToVis}}"/>
                                 </Grid>
 
@@ -525,7 +525,7 @@
                 <TextBlock Text="No clips yet" FontSize="16" FontWeight="SemiBold"
                            FontFamily="{StaticResource DisplayFont}"
                            Foreground="{StaticResource SubtextBrush}"
-                           HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                           HorizontalAlignment="Center" Margin="0,0,0,8"/>
                 <TextBlock Text="Start a game and press F9 to save highlights"
                            FontSize="11" Foreground="{StaticResource MutedTextBrush}"
                            HorizontalAlignment="Center"/>
@@ -567,7 +567,7 @@
                         </StackPanel.Style>
                         <TextBlock Text="&#xE714;" FontFamily="Segoe MDL2 Assets" FontSize="25"
                                    Foreground="{StaticResource Surface2Brush}"
-                                   HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                                   HorizontalAlignment="Center" Margin="0,0,0,12"/>
                         <TextBlock Text="Select a clip to preview"
                                    FontFamily="{StaticResource DisplayFont}"
                                    FontSize="13" FontWeight="SemiBold"
@@ -594,7 +594,7 @@
                         <StackPanel>
                             <TextBlock Text="{Binding DataContext.SelectedClip.FileName, RelativeSource={RelativeSource AncestorType=Window}}"
                                        FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                 <TextBlock Text="{Binding DataContext.SelectedClip.GameName, RelativeSource={RelativeSource AncestorType=Window}}"
                                            FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
                                 <TextBlock Text=" · " Foreground="{StaticResource MutedTextBrush}" FontSize="11"/>
@@ -628,12 +628,12 @@
                                                Margin="0,0,0,4"/>
                                     <TextBlock FontSize="11" Foreground="{StaticResource MutedTextBrush}"
                                                Text="Drag handles on the timeline, then export."/>
-                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                                         <Button Content="Export" Command="{Binding ExecuteTrimCommand}"
-                                                Style="{StaticResource ActionButton}" Padding="12,5"
+                                                Style="{StaticResource ActionButton}" Padding="12,4"
                                                 Margin="0,0,4,0"/>
                                         <Button Content="Cancel" Command="{Binding CancelTrimCommand}"
-                                                Padding="10,5"/>
+                                                Padding="8,4"/>
                                     </StackPanel>
                                     <TextBlock Text="{Binding TrimStatus}" Margin="0,4,0,0"
                                                Foreground="{StaticResource SubtextBrush}" FontSize="11"/>
@@ -675,7 +675,7 @@
                             HorizontalAlignment="Left">
                     <!-- Buffer state -->
                     <Ellipse Width="6" Height="6" VerticalAlignment="Center"
-                             Fill="{Binding BufferIndicatorBrush}" Margin="0,0,5,0"/>
+                             Fill="{Binding BufferIndicatorBrush}" Margin="0,0,4,0"/>
                     <TextBlock Text="{Binding BufferStatusText}" FontSize="11"
                                Foreground="{StaticResource SubtextBrush}"
                                VerticalAlignment="Center" Margin="0,0,14,0"/>
@@ -686,7 +686,7 @@
 
                     <!-- Current game -->
                     <Ellipse Width="6" Height="6" VerticalAlignment="Center"
-                             Fill="{Binding GameIndicatorBrush}" Margin="0,0,5,0"/>
+                             Fill="{Binding GameIndicatorBrush}" Margin="0,0,4,0"/>
                     <TextBlock Text="{Binding CurrentGameName}" FontSize="11"
                                Foreground="{StaticResource SubtextBrush}"
                                VerticalAlignment="Center" Margin="0,0,14,0"/>

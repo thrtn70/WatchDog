@@ -17,7 +17,7 @@
 
             <!-- Drag header -->
             <Border Grid.Row="0" Background="{StaticResource Surface2Brush}"
-                    CornerRadius="8,8,0,0" Padding="10,6"
+                    CornerRadius="8,8,0,0" Padding="8,4"
                     MouseLeftButtonDown="Header_MouseLeftButtonDown"
                     Cursor="SizeAll">
                 <Grid>

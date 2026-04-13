@@ -22,7 +22,7 @@
             BorderThickness="1"
             CornerRadius="6"
             Opacity="0.9"
-            Padding="10,6">
+            Padding="8,4">
         <StackPanel Orientation="Horizontal">
             <!-- Status indicator dot with pulse animation when recording -->
             <Ellipse x:Name="StatusDot" Width="10" Height="10"

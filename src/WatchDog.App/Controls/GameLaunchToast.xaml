@@ -31,7 +31,7 @@
                        Margin="0,0,0,12"/>
 
             <!-- Mode buttons -->
-            <WrapPanel x:Name="ModeButtonsPanel" Margin="0,0,0,10">
+            <WrapPanel x:Name="ModeButtonsPanel" Margin="0,0,0,12">
                 <!-- Buttons added programmatically based on genre compatibility -->
             </WrapPanel>
 

@@ -28,7 +28,7 @@
                 Padding="16,12" Margin="0,0,0,12"
                 Effect="{StaticResource FloatingPanelShadow}">
             <StackPanel>
-                <TextBlock Text="Storage Overview" Style="{StaticResource Heading1}" Margin="0,0,0,10"/>
+                <TextBlock Text="Storage Overview" Style="{StaticResource Heading1}" Margin="0,0,0,12"/>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
