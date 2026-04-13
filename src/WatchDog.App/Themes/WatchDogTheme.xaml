@@ -28,6 +28,8 @@
     <Color x:Key="SubtextColor">#7E939E</Color>
     <Color x:Key="AccentColor">#2EC4B6</Color>
     <Color x:Key="AccentMutedColor">#1A7A70</Color>
+    <Color x:Key="AccentSubtleColor">#1A2EC4B6</Color>
+    <Color x:Key="AccentFaintColor">#0D2EC4B6</Color>
     <Color x:Key="RecordingColor">#E0964C</Color>
     <Color x:Key="DangerColor">#D95555</Color>
     <Color x:Key="SuccessColor">#38BF7F</Color>
@@ -47,8 +49,8 @@
     <SolidColorBrush x:Key="SubtextBrush" Color="{StaticResource SubtextColor}"/>
     <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
     <SolidColorBrush x:Key="AccentMutedBrush" Color="{StaticResource AccentMutedColor}"/>
-    <SolidColorBrush x:Key="AccentSubtleBrush" Color="#1A2EC4B6"/>
-    <SolidColorBrush x:Key="AccentFaintBrush" Color="#0D2EC4B6"/>
+    <SolidColorBrush x:Key="AccentSubtleBrush" Color="{StaticResource AccentSubtleColor}"/>
+    <SolidColorBrush x:Key="AccentFaintBrush" Color="{StaticResource AccentFaintColor}"/>
     <SolidColorBrush x:Key="RecordingBrush" Color="{StaticResource RecordingColor}"/>
     <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}"/>
     <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}"/>
