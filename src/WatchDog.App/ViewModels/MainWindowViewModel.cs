@@ -141,7 +141,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
                 try
                 {
-                    await Application.Current!.Dispatcher.InvokeAsync(() => PostToUi(RefreshClips));
+                    await (Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(RefreshClips))
+                          ?? Task.CompletedTask);
                 }
                 catch { /* refresh failure is non-fatal */ }
             });

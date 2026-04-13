@@ -73,22 +73,29 @@ public sealed class HotkeyListenerHostedService : IHostedService
 
     private void OnSettingsChanged(AppSettings settings)
     {
-        if (settings.Hotkey == _currentHotkey)
-            return;
-
         var newHotkey = settings.Hotkey;
 
         Application.Current?.Dispatcher.InvokeAsync(() =>
         {
-            _hotkeyService.Unregister(SaveClipHotkeyId);
-            _hotkeyService.Unregister(ToggleRecordingHotkeyId);
-            RegisterAllHotkeys(newHotkey);
-            _currentHotkey = newHotkey;
+            if (newHotkey == _currentHotkey)
+                return;
 
-            _logger.LogInformation(
-                "Hotkeys re-registered. SaveClip={SaveClip}, ToggleRecording={Toggle}",
-                HotkeyConfig.FormatDisplay(newHotkey.SaveClipKey, newHotkey.Modifiers),
-                HotkeyConfig.FormatDisplay(newHotkey.ToggleRecordingKey, newHotkey.ToggleRecordingModifiers));
+            try
+            {
+                _hotkeyService.Unregister(SaveClipHotkeyId);
+                _hotkeyService.Unregister(ToggleRecordingHotkeyId);
+                RegisterAllHotkeys(newHotkey);
+                _currentHotkey = newHotkey;
+
+                _logger.LogInformation(
+                    "Hotkeys re-registered. SaveClip={SaveClip}, ToggleRecording={Toggle}",
+                    HotkeyConfig.FormatDisplay(newHotkey.SaveClipKey, newHotkey.Modifiers),
+                    HotkeyConfig.FormatDisplay(newHotkey.ToggleRecordingKey, newHotkey.ToggleRecordingModifiers));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to re-register hotkeys after settings change");
+            }
         });
     }
 
