@@ -230,10 +230,16 @@ public sealed class ObsSessionRecorder : ISessionRecorder
         if (_disposed) return;
         _disposed = true;
 
-        if (IsRecording)
-            StopAsync().GetAwaiter().GetResult();
-
+        // Inline stop logic instead of calling StopCoreAsync to avoid
+        // blocking on the async semaphore (deadlock risk if SplitSegmentSafe
+        // or another async path currently holds _lock).
+        IsRecording = false;
         _segmentTimer?.Dispose();
+        _segmentTimer = null;
         _maxDurationTimer?.Dispose();
+        _maxDurationTimer = null;
+
+        StopCurrentOutput();
+        _elapsed.Stop();
     }
 }

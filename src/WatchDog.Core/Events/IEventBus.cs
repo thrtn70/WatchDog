@@ -33,7 +33,7 @@ public sealed class InMemoryEventBus : IEventBus
                 {
                     // Keep publishing to remaining subscribers even if one fails.
                     System.Diagnostics.Trace.TraceError(
-                        $"InMemoryEventBus handler for {typeof(T).Name} failed: {ex}");
+                        "InMemoryEventBus handler for {0} failed: {1}", typeof(T).Name, ex);
                 }
             }
         }
