@@ -12,6 +12,7 @@ public sealed class MatchTracker : IDisposable
     private readonly IDisposable _subscription;
     private readonly object _stateLock = new();
 
+    private Guid? _trackedSessionId;
     private int _currentMatchNumber;
     private DateTimeOffset? _currentMatchStartedAt;
 
@@ -43,6 +44,13 @@ public sealed class MatchTracker : IDisposable
 
         lock (_stateLock)
         {
+            if (_trackedSessionId != sessionId.Value)
+            {
+                _trackedSessionId = sessionId.Value;
+                _currentMatchNumber = 0;
+                _currentMatchStartedAt = null;
+            }
+
             switch (e.Type)
             {
                 case HighlightType.MatchStarted:
@@ -158,6 +166,7 @@ public sealed class MatchTracker : IDisposable
     {
         lock (_stateLock)
         {
+            _trackedSessionId = null;
             _currentMatchNumber = 0;
             _currentMatchStartedAt = null;
         }

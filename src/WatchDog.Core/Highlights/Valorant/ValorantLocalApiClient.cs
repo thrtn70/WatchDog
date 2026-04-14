@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Security;
 using System.Net.WebSockets;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Microsoft.Extensions.Logging;
 
@@ -18,6 +19,7 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
     private ClientWebSocket? _webSocket;
     private CancellationTokenSource? _cts;
     private Task? _listenTask;
+    private const int MaxWebSocketMessageBytes = 1_048_576; // 1 MB safety cap
     private int _port;
     private string _password = string.Empty;
 
@@ -37,12 +39,7 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
         {
             var handler = new HttpClientHandler
             {
-                ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
-                {
-                    if (message.RequestUri?.Host is "127.0.0.1" or "localhost")
-                        return true;
-                    return errors == SslPolicyErrors.None;
-                }
+                ServerCertificateCustomValidationCallback = ValidateLoopbackHttpCertificate
             };
             _httpClient = new HttpClient(handler);
             _ownsHttpClient = true;
@@ -184,13 +181,15 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
     {
         try
         {
+            var uri = new Uri($"wss://127.0.0.1:{_port}");
             _webSocket = new ClientWebSocket();
-            _webSocket.Options.RemoteCertificateValidationCallback = (_, _, _, _) => true;
+            _webSocket.Options.RemoteCertificateValidationCallback =
+                (sender, certificate, chain, errors) =>
+                    ValidateLoopbackWebSocketCertificate(uri.Host, certificate, chain, errors);
 
             var credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes($"riot:{_password}"));
             _webSocket.Options.SetRequestHeader("Authorization", $"Basic {credentials}");
 
-            var uri = new Uri($"wss://127.0.0.1:{_port}");
             await _webSocket.ConnectAsync(uri, ct);
 
             return _webSocket.State == WebSocketState.Open;
@@ -215,12 +214,34 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
                 // Accumulate frames until EndOfMessage (payloads can exceed buffer size)
                 using var ms = new MemoryStream();
                 WebSocketReceiveResult result;
+                var totalBytes = 0;
                 do
                 {
                     result = await _webSocket.ReceiveAsync(buffer, ct);
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
                         _logger.LogInformation("Valorant WebSocket closed, switching to HTTP polling");
+                        _listenTask = HttpPollFallbackAsync(ct);
+                        return;
+                    }
+                    totalBytes += result.Count;
+                    if (totalBytes > MaxWebSocketMessageBytes)
+                    {
+                        _logger.LogWarning(
+                            "Valorant WebSocket message exceeded size limit ({Bytes} bytes), switching to HTTP polling",
+                            totalBytes);
+                        try
+                        {
+                            await _webSocket.CloseAsync(
+                                WebSocketCloseStatus.MessageTooBig,
+                                "message too large",
+                                CancellationToken.None);
+                        }
+                        catch
+                        {
+                            // Best effort close.
+                        }
+
                         _listenTask = HttpPollFallbackAsync(ct);
                         return;
                     }
@@ -268,5 +289,39 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
                 await Task.Delay(3000, ct);
             }
         }
+    }
+
+    private static bool ValidateLoopbackHttpCertificate(
+        HttpRequestMessage requestMessage,
+        X509Certificate2? certificate,
+        X509Chain? chain,
+        SslPolicyErrors errors)
+    {
+        if (requestMessage.RequestUri?.Host is not ("127.0.0.1" or "localhost"))
+            return false;
+
+        if (certificate is null)
+            return false;
+
+        // Riot local API commonly uses a self-signed loopback cert. Allow only chain errors
+        // for loopback and reject all other SSL errors.
+        return errors == SslPolicyErrors.None ||
+            errors == SslPolicyErrors.RemoteCertificateChainErrors;
+    }
+
+    private static bool ValidateLoopbackWebSocketCertificate(
+        string host,
+        X509Certificate? certificate,
+        X509Chain? chain,
+        SslPolicyErrors errors)
+    {
+        if (host is not ("127.0.0.1" or "localhost"))
+            return false;
+
+        if (certificate is null)
+            return false;
+
+        return errors == SslPolicyErrors.None ||
+            errors == SslPolicyErrors.RemoteCertificateChainErrors;
     }
 }

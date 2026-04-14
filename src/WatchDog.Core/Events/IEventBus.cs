@@ -24,7 +24,18 @@ public sealed class InMemoryEventBus : IEventBus
         foreach (var handler in snapshot)
         {
             if (handler is Action<T> typed)
-                typed(eventData);
+            {
+                try
+                {
+                    typed(eventData);
+                }
+                catch (Exception ex)
+                {
+                    // Keep publishing to remaining subscribers even if one fails.
+                    System.Diagnostics.Trace.TraceError(
+                        $"InMemoryEventBus handler for {typeof(T).Name} failed: {ex}");
+                }
+            }
         }
     }
 

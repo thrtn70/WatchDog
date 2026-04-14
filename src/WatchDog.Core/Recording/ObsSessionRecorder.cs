@@ -104,21 +104,32 @@ public sealed class ObsSessionRecorder : ISessionRecorder
 
     public Task StopAsync(CancellationToken ct = default)
     {
-        if (!IsRecording)
-            return Task.CompletedTask;
+        return StopCoreAsync(ct);
+    }
 
-        _segmentTimer?.Dispose();
-        _segmentTimer = null;
-        _maxDurationTimer?.Dispose();
-        _maxDurationTimer = null;
+    private async Task StopCoreAsync(CancellationToken ct)
+    {
+        await _lock.WaitAsync(ct);
+        try
+        {
+            if (!IsRecording)
+                return;
 
-        StopCurrentOutput();
+            IsRecording = false;
+            _segmentTimer?.Dispose();
+            _segmentTimer = null;
+            _maxDurationTimer?.Dispose();
+            _maxDurationTimer = null;
 
-        _elapsed.Stop();
-        IsRecording = false;
+            StopCurrentOutput();
 
-        _logger.LogInformation("Session recording stopped. Total duration: {Duration}", Elapsed);
-        return Task.CompletedTask;
+            _elapsed.Stop();
+            _logger.LogInformation("Session recording stopped. Total duration: {Duration}", Elapsed);
+        }
+        finally
+        {
+            _lock.Release();
+        }
     }
 
     private bool StartSegment()
@@ -179,6 +190,9 @@ public sealed class ObsSessionRecorder : ISessionRecorder
 
     private void SplitSegment()
     {
+        if (!IsRecording)
+            return;
+
         _logger.LogInformation("Splitting session recording at segment {Index}", _segmentIndex);
 
         StopCurrentOutput();

@@ -133,12 +133,12 @@ public sealed class SessionRecordingHostedService : IHostedService, IDisposable
 
     private async void OnSegmentSaved(string filePath)
     {
-        _eventBus.Publish(new SessionRecordingSegmentSavedEvent(
-            filePath, null, _recorder.Elapsed));
-        _logger.LogInformation("Session segment saved: {File}", Path.GetFileName(filePath));
-
         try
         {
+            _eventBus.Publish(new SessionRecordingSegmentSavedEvent(
+                filePath, null, _recorder.Elapsed));
+            _logger.LogInformation("Session segment saved: {File}", Path.GetFileName(filePath));
+
             await _sessionManager.AddRecordingPathAsync(filePath);
         }
         catch (Exception ex)

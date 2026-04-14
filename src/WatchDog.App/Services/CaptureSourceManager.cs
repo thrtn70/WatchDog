@@ -330,6 +330,7 @@ public sealed class CaptureSourceManager : IHostedService
                 {
                     _logger.LogInformation("Desktop capture enabled via settings change, starting");
                     await _captureEngine.StartDesktopCaptureAsync();
+                    await _sessionManager.StartDesktopSessionAsync();
                     ActiveSource = CaptureSource.Desktop();
                 }
             }
@@ -338,6 +339,12 @@ public sealed class CaptureSourceManager : IHostedService
                 if (_captureEngine.IsDesktopCapture)
                 {
                     _logger.LogInformation("Desktop capture disabled via settings change, stopping");
+                    var desktop = ActiveSource?.ToGameInfo() ?? new GameInfo
+                    {
+                        ExecutableName = "desktop",
+                        DisplayName = "Desktop",
+                    };
+                    await _sessionManager.EndSessionAsync(desktop);
                     await _captureEngine.StopAsync();
                     ActiveSource = null;
                 }
