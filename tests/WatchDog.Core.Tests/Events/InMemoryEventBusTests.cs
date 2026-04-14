@@ -68,4 +68,19 @@ public sealed class InMemoryEventBusTests
         var ex = Record.Exception(() => bus.Publish(new TestEvent("orphan")));
         Assert.Null(ex);
     }
+
+    [Fact]
+    public void Publish_WhenOneHandlerThrows_StillNotifiesOtherHandlers()
+    {
+        var bus = new InMemoryEventBus();
+        var received = false;
+
+        bus.Subscribe<TestEvent>(_ => throw new InvalidOperationException("boom"));
+        bus.Subscribe<TestEvent>(_ => received = true);
+
+        var ex = Record.Exception(() => bus.Publish(new TestEvent("safe")));
+
+        Assert.Null(ex);
+        Assert.True(received);
+    }
 }

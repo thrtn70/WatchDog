@@ -154,4 +154,18 @@ public sealed class MatchTrackerTests : IDisposable
 
         Assert.Equal(1, _tracker.CurrentMatchNumber);
     }
+
+    [Fact]
+    public async Task NewSession_ResetsMatchCounter()
+    {
+        await _sessionManager.StartSessionAsync(TestGame);
+        PublishHighlight(HighlightType.MatchStarted);
+        PublishHighlight(HighlightType.MatchWin, "13-7");
+        await _sessionManager.EndSessionAsync(TestGame);
+
+        await _sessionManager.StartSessionAsync(TestGame);
+        PublishHighlight(HighlightType.MatchStarted);
+
+        Assert.Equal(1, _tracker.CurrentMatchNumber);
+    }
 }

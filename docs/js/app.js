@@ -210,7 +210,10 @@
 
   function initReveals() {
     // Skip feature-hero elements if scroll-driven animations are supported (CSS handles them)
-    var supportsScrollTimeline = CSS && CSS.supports && CSS.supports('animation-timeline', 'scroll()');
+    var supportsScrollTimeline =
+      typeof window.CSS !== 'undefined' &&
+      typeof window.CSS.supports === 'function' &&
+      window.CSS.supports('animation-timeline', 'scroll()');
     var selector = supportsScrollTimeline ? '.reveal:not(.feature-hero)' : '.reveal';
     var els = document.querySelectorAll(selector);
     if (!els.length) return;
@@ -242,6 +245,11 @@
   function initCopyButtons() {
     var blocks = document.querySelectorAll('.setup-card pre');
     var COPY_LABEL = 'Copy';
+    var canUseClipboard = !!(
+      navigator &&
+      navigator.clipboard &&
+      typeof navigator.clipboard.writeText === 'function'
+    );
 
     function makeCheckIcon() {
       var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -268,7 +276,7 @@
 
       btn.addEventListener('click', function () {
         var text = pre.textContent;
-        navigator.clipboard.writeText(text).then(function () {
+        function showCopiedState() {
           btn.textContent = '';
           btn.appendChild(makeCheckIcon());
           btn.classList.add('copied');
@@ -276,8 +284,9 @@
             btn.textContent = COPY_LABEL;
             btn.classList.remove('copied');
           }, 2000);
-        }).catch(function () {
-          // Fallback: select the text
+        }
+
+        function fallbackSelect() {
           var range = document.createRange();
           range.selectNodeContents(pre);
           var sel = window.getSelection();
@@ -285,7 +294,14 @@
             sel.removeAllRanges();
             sel.addRange(range);
           }
-        });
+        }
+
+        if (!canUseClipboard) {
+          fallbackSelect();
+          return;
+        }
+
+        navigator.clipboard.writeText(text).then(showCopiedState).catch(fallbackSelect);
       });
 
       // Wrap pre in a container for positioning
@@ -806,8 +822,12 @@
 
         lightboxImg.src = link.href;
         lightboxImg.alt = img.alt;
-        lightbox.showModal();
-        document.body.style.overflow = 'hidden';
+        if (typeof lightbox.showModal === 'function') {
+          lightbox.showModal();
+          document.body.style.overflow = 'hidden';
+        } else {
+          window.open(link.href, '_blank', 'noopener,noreferrer');
+        }
       });
     });
 
