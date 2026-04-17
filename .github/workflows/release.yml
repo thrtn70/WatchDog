@@ -99,7 +99,7 @@ jobs:
         shell: pwsh
         run: |
           $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-          & $iscc /DAppVersion=${{ steps.version.outputs.APP_VERSION }} installer/watchdog.iss
+          & $iscc "/DAppVersion=${{ steps.version.outputs.APP_VERSION }}" installer/watchdog.iss
           if ($LASTEXITCODE -ne 0) { exit 1 }
           Write-Host "Installer compiled"
 
@@ -119,7 +119,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload ${{ github.ref_name }} `
+          gh release upload "${{ github.ref_name }}" `
             "installer/Output/WatchDog-Setup.exe" `
             "WatchDog-win-x64.zip" `
             --clobber
