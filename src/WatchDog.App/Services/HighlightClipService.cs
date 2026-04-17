@@ -80,6 +80,9 @@ public sealed class HighlightClipService : IHostedService, IDisposable
     {
         _cts?.Cancel();
         await _registry.StopActiveDetectorAsync(cancellationToken);
+        _highlightSub?.Dispose();
+        _gameDetectedSub?.Dispose();
+        _gameExitedSub?.Dispose();
     }
 
     private async void OnGameDetected(GameDetectedEvent e)

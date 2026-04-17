@@ -292,10 +292,12 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
 
         foreach (var asset in assets.EnumerateArray())
         {
-            var name = asset.GetProperty("name").GetString();
+            if (!asset.TryGetProperty("name", out var nameEl)) continue;
+            var name = nameEl.GetString();
             if (name is not null && name.EndsWith(InstallerAssetSuffix, StringComparison.OrdinalIgnoreCase))
             {
-                var url = asset.GetProperty("browser_download_url").GetString();
+                if (!asset.TryGetProperty("browser_download_url", out var urlEl)) break;
+                var url = urlEl.GetString();
                 if (IsAllowedDownloadUrl(url)) return url;
 
                 _logger.LogWarning("Rejected installer URL from untrusted host: {Host}",
@@ -313,10 +315,12 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
 
         foreach (var asset in assets.EnumerateArray())
         {
-            var name = asset.GetProperty("name").GetString();
+            if (!asset.TryGetProperty("name", out var nameEl)) continue;
+            var name = nameEl.GetString();
             if (name is not null && name.EndsWith(InstallerAssetSuffix, StringComparison.OrdinalIgnoreCase))
             {
-                var url = asset.GetProperty("browser_download_url").GetString();
+                if (!asset.TryGetProperty("browser_download_url", out var urlEl)) break;
+                var url = urlEl.GetString();
                 var updatedAt = asset.TryGetProperty("updated_at", out var ts) ? ts.GetString() : null;
 
                 if (IsAllowedDownloadUrl(url)) return (url, updatedAt);
