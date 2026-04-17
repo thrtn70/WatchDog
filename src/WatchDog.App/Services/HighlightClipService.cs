@@ -78,6 +78,9 @@ public sealed class HighlightClipService : IHostedService, IDisposable
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
+        _highlightSub?.Dispose();
+        _gameDetectedSub?.Dispose();
+        _gameExitedSub?.Dispose();
         _cts?.Cancel();
         await _registry.StopActiveDetectorAsync(cancellationToken);
     }
