@@ -70,6 +70,8 @@ public sealed class SessionRecordingHostedService : IHostedService, IDisposable
 
         _recorder.SegmentSaved -= OnSegmentSaved;
         _recorder.Error -= OnRecorderError;
+        _gameDetectedSub?.Dispose();
+        _gameExitedSub?.Dispose();
     }
 
     private async void OnGameDetected(GameDetectedEvent e)

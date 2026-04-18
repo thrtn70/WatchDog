@@ -32,19 +32,33 @@ public partial class WindowPickerPopup : Window
     /// <summary>Single-click confirms selection (standard picker UX).</summary>
     private async void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (WindowList.SelectedItem is WindowEnumerator.WindowInfo window)
+        try
         {
-            Close();
-            await _viewModel.SelectWindowCommand.ExecuteAsync(window);
+            if (WindowList.SelectedItem is WindowEnumerator.WindowInfo window)
+            {
+                Close();
+                await _viewModel.SelectWindowCommand.ExecuteAsync(window);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.TraceError($"Window selection failed: {ex}");
         }
     }
 
     private async void OnWindowListKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter && WindowList.SelectedItem is WindowEnumerator.WindowInfo window)
+        try
         {
-            Close();
-            await _viewModel.SelectWindowCommand.ExecuteAsync(window);
+            if (e.Key == Key.Enter && WindowList.SelectedItem is WindowEnumerator.WindowInfo window)
+            {
+                Close();
+                await _viewModel.SelectWindowCommand.ExecuteAsync(window);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.TraceError($"Window selection failed: {ex}");
         }
     }
 

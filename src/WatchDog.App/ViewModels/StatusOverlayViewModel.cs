@@ -113,7 +113,7 @@ public partial class StatusOverlayViewModel : ObservableObject, IDisposable
                 IsRecording = true;
                 break;
             case CaptureState.Saving:
-                StatusLine = $"SAVE · {gameName}";
+                StatusLine = $"SAVE · {displayName}";
                 StatusLabel = "Saving...";
                 IndicatorBrush = SavingBrush;
                 StatusLabelBrush = SavingBrush;
