@@ -604,7 +604,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 FileName = "explorer.exe",
                 ArgumentList = { "/select,", target.FilePath },
                 UseShellExecute = false,
-            });
+            })?.Dispose();
         }
         else
         {
@@ -616,7 +616,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                     FileName = "explorer.exe",
                     ArgumentList = { dir },
                     UseShellExecute = false,
-                });
+                })?.Dispose();
             }
         }
     }
@@ -782,7 +782,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 FileName = resolvedInstaller,
                 UseShellExecute = true,
                 Arguments = "/SILENT /NORESTART",
-            });
+            })?.Dispose();
 
             Application.Current.Shutdown(0);
         }

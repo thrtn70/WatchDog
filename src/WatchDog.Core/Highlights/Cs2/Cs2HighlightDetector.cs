@@ -50,6 +50,7 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to start CS2 GSI listener on port {Port}", Port);
+            _listener.Close();
             _listener = null;
         }
 
