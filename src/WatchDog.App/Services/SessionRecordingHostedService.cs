@@ -156,6 +156,8 @@ public sealed class SessionRecordingHostedService : IHostedService, IDisposable
 
     public void Dispose()
     {
+        _recorder.SegmentSaved -= OnSegmentSaved;
+        _recorder.Error -= OnRecorderError;
         _gameDetectedSub?.Dispose();
         _gameExitedSub?.Dispose();
     }

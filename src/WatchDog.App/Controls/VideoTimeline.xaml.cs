@@ -67,12 +67,12 @@ public partial class VideoTimeline : UserControl
     public VideoTimeline()
     {
         InitializeComponent();
-        SizeChanged += (_, _) => UpdateLayout();
+        SizeChanged += (_, _) => UpdateTimelineLayout();
     }
 
     private static void OnLayoutPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        ((VideoTimeline)d).UpdateLayout();
+        ((VideoTimeline)d).UpdateTimelineLayout();
     }
 
     private static void OnThumbnailFramesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -81,7 +81,7 @@ public partial class VideoTimeline : UserControl
         control.ThumbnailStrip.ItemsSource = e.NewValue as IReadOnlyList<string>;
     }
 
-    private new void UpdateLayout()
+    private void UpdateTimelineLayout()
     {
         var width = OverlayCanvas.ActualWidth;
         if (width <= 0 || Duration.TotalSeconds <= 0) return;

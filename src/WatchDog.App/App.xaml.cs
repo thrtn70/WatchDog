@@ -164,7 +164,8 @@ public partial class App : Application
             var iconStream = Application.GetResourceStream(iconUri);
             if (iconStream is not null)
             {
-                _trayIcon.Icon = new System.Drawing.Icon(iconStream.Stream);
+                using var stream = iconStream.Stream;
+                _trayIcon.Icon = new System.Drawing.Icon(stream);
             }
         }
         catch

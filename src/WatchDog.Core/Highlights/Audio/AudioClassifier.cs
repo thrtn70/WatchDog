@@ -37,7 +37,7 @@ public sealed class AudioClassifier : IDisposable
                 "yamnet.onnx");
         }
 
-        var options = new SessionOptions();
+        using var options = new SessionOptions();
         // Try DirectML (GPU) first, fall back to CPU
         try
         {

@@ -52,6 +52,8 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
             _logger.LogError(ex, "Failed to start CS2 GSI listener on port {Port}", Port);
             _listener.Close();
             _listener = null;
+            _cts?.Dispose();
+            _cts = null;
         }
 
         return Task.CompletedTask;
@@ -106,7 +108,7 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
     private async Task ProcessRequestAsync(HttpListenerContext context)
     {
         // Reject oversized payloads (CS2 GSI is typically <2KB)
-        if (context.Request.ContentLength64 > 65_536)
+        if (context.Request.ContentLength64 is < 0 or > 65_536)
         {
             context.Response.StatusCode = 413;
             context.Response.Close();

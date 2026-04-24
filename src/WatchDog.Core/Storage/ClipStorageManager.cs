@@ -130,7 +130,9 @@ public sealed class ClipStorageManager : IClipStorage
         lock (_lock)
             indexed = _clips.Select(c => c.FilePath).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var newFiles = Directory.EnumerateFiles(_config.BasePath, "*.mp4", SearchOption.AllDirectories)
+        var extensions = new[] { "*.mp4", "*.mkv", "*.flv" };
+        var newFiles = extensions
+            .SelectMany(ext => Directory.EnumerateFiles(_config.BasePath, ext, SearchOption.AllDirectories))
             .Where(f => !indexed.Contains(f))
             .ToList();
 
@@ -191,7 +193,13 @@ public sealed class ClipStorageManager : IClipStorage
             if (File.Exists(filePath))
                 File.Delete(filePath);
             if (thumbnailPath is not null && File.Exists(thumbnailPath))
-                File.Delete(thumbnailPath);
+            {
+                var thumbFull = Path.GetFullPath(thumbnailPath);
+                if (thumbFull.StartsWith(baseFull + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                    File.Delete(thumbnailPath);
+                else
+                    _logger.LogWarning("Blocked thumbnail deletion outside base path: {Path}", thumbnailPath);
+            }
         }
         catch (Exception ex)
         {
@@ -356,16 +364,21 @@ public sealed class ClipStorageManager : IClipStorage
             var json = File.ReadAllText(IndexPath);
             var clips = JsonSerializer.Deserialize<List<ClipMetadata>>(json, JsonOptions);
 
+            int count;
             if (clips is not null)
             {
-                // Only include clips whose files still exist
                 lock (_lock)
                 {
                     _clips.AddRange(clips.Where(c => File.Exists(c.FilePath)));
+                    count = _clips.Count;
                 }
             }
+            else
+            {
+                count = 0;
+            }
 
-            _logger.LogInformation("Loaded {Count} clips from index", _clips.Count);
+            _logger.LogInformation("Loaded {Count} clips from index", count);
         }
         catch (Exception ex)
         {

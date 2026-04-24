@@ -20,6 +20,7 @@ public sealed class JsonSettingsService : ISettingsService
     };
 
     private readonly ILogger<JsonSettingsService> _logger;
+    private readonly object _saveLock = new();
     private AppSettings _cached;
 
     public event Action<AppSettings>? SettingsChanged;
@@ -34,23 +35,27 @@ public sealed class JsonSettingsService : ISettingsService
 
     public void Save(AppSettings settings)
     {
-        _cached = settings;
-        Directory.CreateDirectory(SettingsDir);
-
-        var tmp = Path.Combine(SettingsDir, $"settings.{Guid.NewGuid():N}.tmp");
-        try
+        lock (_saveLock)
         {
-            var json = JsonSerializer.Serialize(settings, JsonOptions);
-            File.WriteAllText(tmp, json);
-            File.Move(tmp, SettingsPath, overwrite: true);
-        }
-        catch
-        {
-            try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* best-effort */ }
-            throw;
+            _cached = settings;
+            Directory.CreateDirectory(SettingsDir);
+
+            var tmp = Path.Combine(SettingsDir, $"settings.{Guid.NewGuid():N}.tmp");
+            try
+            {
+                var json = JsonSerializer.Serialize(settings, JsonOptions);
+                File.WriteAllText(tmp, json);
+                File.Move(tmp, SettingsPath, overwrite: true);
+            }
+            catch
+            {
+                try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* best-effort */ }
+                throw;
+            }
+
+            _logger.LogDebug("Settings saved to {Path}", SettingsPath);
         }
 
-        _logger.LogDebug("Settings saved to {Path}", SettingsPath);
         SettingsChanged?.Invoke(settings);
     }
 
