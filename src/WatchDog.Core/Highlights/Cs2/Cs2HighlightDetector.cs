@@ -52,6 +52,8 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
             _logger.LogError(ex, "Failed to start CS2 GSI listener on port {Port}", Port);
             _listener.Close();
             _listener = null;
+            _cts?.Dispose();
+            _cts = null;
         }
 
         return Task.CompletedTask;
@@ -105,8 +107,10 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
 
     private async Task ProcessRequestAsync(HttpListenerContext context)
     {
-        // Reject oversized payloads (CS2 GSI is typically <2KB)
-        if (context.Request.ContentLength64 > 65_536)
+        // Reject oversized payloads (CS2 GSI is typically <2KB).
+        // ContentLength64 is -1 for chunked encoding, so also cap the actual read.
+        const int maxPayloadBytes = 65_536;
+        if (context.Request.ContentLength64 > maxPayloadBytes)
         {
             context.Response.StatusCode = 413;
             context.Response.Close();
@@ -116,7 +120,15 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
         string body;
         using (var reader = new System.IO.StreamReader(context.Request.InputStream, Encoding.UTF8))
         {
-            body = await reader.ReadToEndAsync();
+            var buffer = new char[maxPayloadBytes + 1];
+            var charsRead = await reader.ReadBlockAsync(buffer, 0, buffer.Length);
+            if (charsRead > maxPayloadBytes)
+            {
+                context.Response.StatusCode = 413;
+                context.Response.Close();
+                return;
+            }
+            body = new string(buffer, 0, charsRead);
         }
 
         // Respond immediately (CS2 expects a quick 200)
