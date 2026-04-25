@@ -181,8 +181,9 @@ public sealed class HighlightClipService : IHostedService, IDisposable
 
             // Index with highlight metadata and session context
             var sessionId = _sessionManager.CurrentSessionId;
-            var matchNumber = _sessionManager.CurrentSession?.Matches.Count > 0
-                ? _sessionManager.CurrentSession.Matches[^1].MatchNumber
+            var currentSession = _sessionManager.CurrentSession;
+            var matchNumber = currentSession?.Matches.Count > 0
+                ? currentSession.Matches[^1].MatchNumber
                 : (int?)null;
             await _clipStorage.IndexClipAsync(path, e.Game.DisplayName, e.Type, sessionId, matchNumber, ct);
             _logger.LogInformation("Highlight clip saved: {Type} — {Path}", e.Type, Path.GetFileName(path));

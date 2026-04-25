@@ -338,9 +338,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
             SessionGroups = new ObservableCollection<SessionGroupViewModel>(groups);
         }
-        catch
+        catch (Exception ex)
         {
-            // Session loading failure is non-fatal — flat clip list still works
+            System.Diagnostics.Trace.TraceError($"Session group build failed: {ex.Message}");
         }
     }
 
@@ -819,9 +819,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _disposed = true;
         _captureEngine.StateChanged -= _stateChangedHandler;
         _clipSavedSub.Dispose();
-        _disposed = true;
     }
 }
 
