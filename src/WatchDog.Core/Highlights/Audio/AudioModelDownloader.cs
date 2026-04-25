@@ -53,6 +53,12 @@ public static class AudioModelDownloader
 
             var totalBytes = response.Content.Headers.ContentLength ?? -1L;
 
+            if (totalBytes > 50 * 1024 * 1024)
+            {
+                logger.LogError("Model Content-Length ({Bytes} bytes) exceeds 50MB limit, aborting", totalBytes);
+                return false;
+            }
+
             // Write to a temp file first, then rename (atomic)
             var tempPath = modelPath + ".downloading";
             try
