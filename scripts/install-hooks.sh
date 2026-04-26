@@ -28,8 +28,10 @@ install_hook() {
         rm -f "$link"
     fi
 
-    ln -s "../../scripts/${hook_name}.sh" "$link"
-    echo "  ✓ $hook_name → scripts/${hook_name}.sh"
+    # Absolute path so the symlink survives `git worktree` (where .git/hooks/
+    # may be three levels deep instead of two).
+    ln -s "$target" "$link"
+    echo "  ✓ $hook_name → $target"
 }
 
 echo "Installing git hooks…"

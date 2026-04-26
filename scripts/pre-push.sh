@@ -3,6 +3,12 @@
 # Runs format check + lightweight build via SSH to the Windows VM.
 # Heavy checks (warnaserror full build, tests, reviewer agents) run in CI.
 #
+# Architecture note: C:\Code\tikrclpr inside the VM is a symlink to the Mac
+# source folder (see scripts/build.sh). The remote dotnet commands therefore
+# see the same files git sees on the Mac, including any uncommitted changes
+# in the working tree. The gate validates the actual ref being pushed in the
+# common case where HEAD == working tree.
+#
 # Bypass in an emergency: SKIP_PREPUSH=1 git push
 #
 # Exits non-zero on any failure; git aborts the push.

@@ -16,6 +16,9 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0.x'
+      - name: Restore
+        run: dotnet restore
+        shell: pwsh
       - name: dotnet format --verify-no-changes
         shell: pwsh
         run: dotnet format --verify-no-changes --no-restore
@@ -47,4 +50,5 @@ jobs:
           dotnet test `
             --configuration Release `
             --no-build `
+            --no-restore `
             --logger "console;verbosity=normal"
