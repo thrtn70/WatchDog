@@ -28,8 +28,7 @@ public sealed class SessionManagerTests : IDisposable
     public void Dispose()
     {
         _repo.Dispose();
-        if (Directory.Exists(_tempDir))
-            Directory.Delete(_tempDir, recursive: true);
+        TestFs.DeleteDirectoryWithRetry(_tempDir);
     }
 
     private static GameInfo MakeGame(string name = "CS2", string exe = "cs2.exe") =>

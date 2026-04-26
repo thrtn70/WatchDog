@@ -38,8 +38,7 @@ public sealed class MatchTrackerTests : IDisposable
     {
         _tracker.Dispose();
         _repo.Dispose();
-        if (Directory.Exists(_tempDir))
-            Directory.Delete(_tempDir, recursive: true);
+        TestFs.DeleteDirectoryWithRetry(_tempDir);
     }
 
     private void PublishHighlight(HighlightType type, string? description = null)
