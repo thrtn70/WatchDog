@@ -5,7 +5,7 @@ namespace WatchDog.App.Logging;
 
 /// <summary>
 /// Simple file-based logger that writes to a rolling daily log file.
-/// Logs to %APPDATA%\WatchDog\logs\tikrclipr-YYYY-MM-DD.log
+/// Logs to %APPDATA%\WatchDog\logs\watchdog-YYYY-MM-DD.log
 /// </summary>
 public sealed class FileLoggerProvider : ILoggerProvider
 {
@@ -46,7 +46,7 @@ public sealed class FileLoggerProvider : ILoggerProvider
             {
                 _writer?.Dispose();
                 _writer = null;
-                var logPath = Path.Combine(_logDirectory, $"tikrclipr-{today}.log");
+                var logPath = Path.Combine(_logDirectory, $"watchdog-{today}.log");
                 _writer = new StreamWriter(logPath, append: true) { AutoFlush = true };
                 _currentDate = today;
             }
