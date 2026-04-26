@@ -164,8 +164,9 @@ public partial class App : Application
             var iconStream = Application.GetResourceStream(iconUri);
             if (iconStream is not null)
             {
-                using var stream = iconStream.Stream;
-                _trayIcon.Icon = new System.Drawing.Icon(stream);
+                // Don't dispose the stream — System.Drawing.Icon reads from it
+                // lazily and will fail to redraw if the stream is closed early.
+                _trayIcon.Icon = new System.Drawing.Icon(iconStream.Stream);
             }
         }
         catch
