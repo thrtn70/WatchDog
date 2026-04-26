@@ -63,13 +63,64 @@ type_text({pid, text})                 → only on macOS-native text fields
 > the Windows OS inside. Verified: `press_key(pid=parallels, key="return")`
 > on a focused PowerShell prompt did not advance the prompt.
 >
-> **For input INTO the VM**, the only reliable paths are:
-> 1. SSH (Layer 1) — for command execution
-> 2. Coherence-mode apps — Windows apps that surface as their own macOS pid
->    (e.g. `Terminal (pid 21424) [com.parallels.winapp...]`) accept Cua
->    Driver input directly, because Parallels exposes them as native AX
->    targets, not as part of the VM bitmap.
-> 3. Standard `mcp__computer-use__*` — works but DOES steal focus.
+> **What DOES work** for Parallels' own macOS-level UI: any keyboard
+> shortcut that Parallels handles itself, not the VM. Verified working:
+> `hotkey({pid: parallels, keys: ["ctrl","cmd","return"]})` switched the
+> VM into Coherence view. Parallels' menu shortcut handler accepts CGEvent
+> posts; only the VM input pipeline rejects them.
+>
+> **For input INTO the VM (Windows OS)**, the only reliable paths are:
+> 1. SSH (Layer 1) — for command execution. ⚠️ But SSH-launched processes
+>    run in a non-interactive Windows session and cannot spawn GUI apps
+>    (verified: `Start-Process notepad` returned "Access is denied").
+>    `prlctl exec` has the same session-isolation issue.
+> 2. Standard `mcp__computer-use__*` — works but DOES steal focus.
+
+## Coherence mode — verified
+
+Tested 2026-04-25. Setup:
+
+```bash
+# Persist as default (optional — affects future VM starts)
+prlctl set "Windows 11" --startup-view coherence
+
+# Toggle a running VM into Coherence (no focus steal — Parallels'
+# OWN macOS shortcut handler accepts CGEvent posts, even though
+# the VM input driver doesn't)
+mcp__cua-driver__hotkey({pid: 84408, keys: ["ctrl","cmd","return"]})
+
+# Toggle back
+mcp__cua-driver__hotkey({pid: 84408, keys: ["ctrl","cmd","return"]})
+```
+
+What works in Coherence:
+- The Parallels VM display window disappears entirely — your screen real
+  estate is freed, no big VM rectangle in the way
+- Windows apps that **already had visible windows** before the switch may
+  surface as separate macOS-level processes with bundle IDs like
+  `com.parallels.winapp.<hash>.<vm-uuid>` — those CAN be screenshot,
+  AX-inspected, and (in theory) input-driven via Cua Driver
+- `mcp__cua-driver__launch_app({bundle_id: "com.parallels.winapp..."})`
+  brings a Coherence-exposed app to running state
+
+What does NOT work, even in Coherence:
+- Spawning a fresh GUI Windows app from Mac-side tools is still blocked
+  by Windows session isolation. SSH and `prlctl exec` both run in a
+  non-interactive Windows session that cannot push windows to the user's
+  desktop. Verified.
+- The Coherence helper windows that surface (e.g. `Terminal (pid 21424)`
+  with four 1512×33 stub windows at y=0) are top-of-screen menubar
+  accessories, not real content windows. Until a Windows app actively
+  creates a content window IN the user's interactive session, Coherence
+  has nothing real to expose.
+
+**Practical verdict**: Coherence is useful for *visual decluttering*
+(no big VM window dominating the screen) and for *driving Parallels'
+own macOS UI* (view modes, menus). It does not bridge the
+session-isolation gap that prevents Mac-initiated GUI app launches.
+For interactive WatchDog testing, the user must still launch the app
+**from inside** the VM (via the visible PowerShell, manually) and only
+then can Cua Driver see/screenshot the result.
 
 ### Quality-of-life knobs
 
