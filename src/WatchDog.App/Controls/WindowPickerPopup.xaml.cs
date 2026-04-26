@@ -16,6 +16,7 @@ public partial class WindowPickerPopup : Window
         InitializeComponent();
         _viewModel = viewModel;
 
+        Deactivated += OnDeactivated;
         RefreshButton.Click += (_, _) => RefreshWindowList();
         WindowList.SelectionChanged += OnSelectionChanged;
         WindowList.KeyDown += OnWindowListKeyDown;

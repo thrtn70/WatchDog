@@ -600,9 +600,12 @@ public sealed class ObsCaptureEngine : ICaptureEngine
 
         Directory.CreateDirectory(outputDir);
 
+        if (_videoEncoder is null || _audioEncoder is null)
+            throw new InvalidOperationException("Cannot start replay buffer: encoders not initialized");
+
         var config = _bufferConfig with { OutputDirectory = outputDir };
         _replayBuffer = new ObsReplayBuffer(config, _loggerFactory.CreateLogger<ObsReplayBuffer>());
-        _replayBuffer.Initialize(_videoEncoder!, _audioEncoder!);
+        _replayBuffer.Initialize(_videoEncoder, _audioEncoder);
 
         _replayBuffer.Saved += path =>
         {

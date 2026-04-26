@@ -25,8 +25,15 @@ public sealed class ValorantHighlightDetector : IHighlightDetector
         // Shared HttpClient with SSL bypass scoped to localhost only — reused across game sessions
         var handler = new HttpClientHandler
         {
-            ServerCertificateCustomValidationCallback = (message, _, _, errors) =>
-                message.RequestUri?.Host is "127.0.0.1" or "localhost" || errors == SslPolicyErrors.None
+            ServerCertificateCustomValidationCallback = (message, cert, _, errors) =>
+            {
+                if (message.RequestUri?.Host is not ("127.0.0.1" or "localhost"))
+                    return false;
+                if (cert is null)
+                    return false;
+                return errors == SslPolicyErrors.None
+                    || errors == SslPolicyErrors.RemoteCertificateChainErrors;
+            }
         };
         _sharedHttpClient = new HttpClient(handler);
     }

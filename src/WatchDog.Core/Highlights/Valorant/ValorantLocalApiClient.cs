@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Security;
 using System.Net.WebSockets;
 using System.Security.Cryptography.X509Certificates;
@@ -22,6 +23,7 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
     private const int MaxWebSocketMessageBytes = 1_048_576; // 1 MB safety cap
     private int _port;
     private string _password = string.Empty;
+    private AuthenticationHeaderValue? _authHeader;
 
     public event Action<string>? MessageReceived;
     public bool IsConnected => _webSocket?.State == WebSocketState.Open;
@@ -57,9 +59,8 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
 
         (_port, _password) = lockfileData.Value;
 
-        var authHeader = Convert.ToBase64String(Encoding.UTF8.GetBytes($"riot:{_password}"));
-        _httpClient.DefaultRequestHeaders.Clear();
-        _httpClient.DefaultRequestHeaders.Add("Authorization", $"Basic {authHeader}");
+        var authValue = Convert.ToBase64String(Encoding.UTF8.GetBytes($"riot:{_password}"));
+        _authHeader = new AuthenticationHeaderValue("Basic", authValue);
 
         _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 
@@ -117,8 +118,11 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
     {
         try
         {
-            using var response = await _httpClient.GetAsync(
-                $"https://127.0.0.1:{_port}/chat/v4/presences", ct);
+            using var request = new HttpRequestMessage(HttpMethod.Get,
+                $"https://127.0.0.1:{_port}/chat/v4/presences");
+            request.Headers.Authorization = _authHeader;
+
+            using var response = await _httpClient.SendAsync(request, ct);
 
             if (response.IsSuccessStatusCode)
                 return await response.Content.ReadAsStringAsync(ct);
@@ -221,7 +225,7 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
                         _logger.LogInformation("Valorant WebSocket closed, switching to HTTP polling");
-                        _listenTask = HttpPollFallbackAsync(ct);
+                        await HttpPollFallbackAsync(ct);
                         return;
                     }
                     totalBytes += result.Count;
@@ -242,7 +246,7 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
                             // Best effort close.
                         }
 
-                        _listenTask = HttpPollFallbackAsync(ct);
+                        await HttpPollFallbackAsync(ct);
                         return;
                     }
                     ms.Write(buffer, 0, result.Count);
@@ -261,7 +265,7 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
             catch (WebSocketException ex)
             {
                 _logger.LogDebug(ex, "WebSocket error, switching to HTTP polling");
-                _listenTask = HttpPollFallbackAsync(ct);
+                await HttpPollFallbackAsync(ct);
                 return;
             }
         }
