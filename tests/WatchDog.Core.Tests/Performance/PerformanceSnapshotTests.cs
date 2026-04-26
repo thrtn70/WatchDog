@@ -26,13 +26,13 @@ public sealed class PerformanceSnapshotTests
             RenderFps = 59.9,
             DroppedFrames = 3,
             TotalFrames = 1000,
-            CpuUsage = 12.5,
+            CpuUsage = 12.7,
             MemoryUsageMb = 256,
         };
 
         Assert.Contains("59.9 fps", snap.Summary);
         Assert.Contains("3 dropped", snap.Summary);
-        Assert.Contains("CPU 13%", snap.Summary); // 12.5 rounds to 13
+        Assert.Contains("CPU 13%", snap.Summary); // F0 rounds 12.7 to 13
         Assert.Contains("RAM 256MB", snap.Summary);
     }
 

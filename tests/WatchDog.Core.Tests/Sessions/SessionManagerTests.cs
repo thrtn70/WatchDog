@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using WatchDog.Core.Events;
 using WatchDog.Core.GameDetection;
 using WatchDog.Core.Sessions;
+using WatchDog.Core.Tests.Helpers;
 
 namespace WatchDog.Core.Tests.Sessions;
 
@@ -10,6 +11,7 @@ public sealed class SessionManagerTests : IDisposable
     private readonly string _tempDir;
     private readonly InMemoryEventBus _eventBus;
     private readonly JsonSessionRepository _repo;
+    private readonly NullClipStorage _clipStorage;
     private readonly SessionManager _manager;
 
     public SessionManagerTests()
@@ -19,7 +21,8 @@ public sealed class SessionManagerTests : IDisposable
 
         _eventBus = new InMemoryEventBus();
         _repo = new JsonSessionRepository(_tempDir, NullLogger<JsonSessionRepository>.Instance);
-        _manager = new SessionManager(_repo, _eventBus, NullLogger<SessionManager>.Instance);
+        _clipStorage = new NullClipStorage();
+        _manager = new SessionManager(_repo, _clipStorage, _eventBus, NullLogger<SessionManager>.Instance);
     }
 
     public void Dispose()
@@ -57,6 +60,10 @@ public sealed class SessionManagerTests : IDisposable
         await _manager.StartSessionAsync(game);
         var sessionId = _manager.CurrentSessionId;
 
+        // Add a recording path so the session has content; otherwise the
+        // SessionManager discards empty sessions on End instead of saving them.
+        await _manager.AddRecordingPathAsync("/path/test.mp4");
+
         await _manager.EndSessionAsync(game);
 
         Assert.Null(_manager.CurrentSessionId);
@@ -86,6 +93,10 @@ public sealed class SessionManagerTests : IDisposable
     {
         await _manager.StartSessionAsync(MakeGame("CS2", "cs2.exe"));
         var firstId = _manager.CurrentSessionId;
+
+        // Give the first session content so it's not discarded as empty when
+        // the second StartSessionAsync ends it.
+        await _manager.AddRecordingPathAsync("/path/cs2-session.mp4");
 
         await _manager.StartSessionAsync(MakeGame("Valorant", "valorant.exe"));
 
@@ -136,7 +147,8 @@ public sealed class SessionManagerTests : IDisposable
     [Fact]
     public async Task RecoverOrphanedSessionsAsync_MarksAsCrashed()
     {
-        // Simulate a session that was left InProgress (crash)
+        // Simulate a session that was left InProgress (crash). It needs a
+        // recording so recovery doesn't treat it as empty and discard it.
         var orphan = new GameSession
         {
             Id = Guid.NewGuid(),
@@ -144,6 +156,7 @@ public sealed class SessionManagerTests : IDisposable
             GameExecutableName = "cs2.exe",
             StartedAt = DateTimeOffset.UtcNow.AddHours(-2),
             Status = SessionStatus.InProgress,
+            RecordingPaths = ["/path/orphan-recording.mp4"],
         };
         await _repo.SaveAsync(orphan);
 

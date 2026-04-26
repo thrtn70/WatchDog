@@ -3,6 +3,7 @@ using WatchDog.Core.Events;
 using WatchDog.Core.GameDetection;
 using WatchDog.Core.Highlights;
 using WatchDog.Core.Sessions;
+using WatchDog.Core.Tests.Helpers;
 
 namespace WatchDog.Core.Tests.Sessions;
 
@@ -11,6 +12,7 @@ public sealed class MatchTrackerTests : IDisposable
     private readonly string _tempDir;
     private readonly InMemoryEventBus _eventBus;
     private readonly JsonSessionRepository _repo;
+    private readonly NullClipStorage _clipStorage;
     private readonly SessionManager _sessionManager;
     private readonly MatchTracker _tracker;
 
@@ -27,7 +29,8 @@ public sealed class MatchTrackerTests : IDisposable
 
         _eventBus = new InMemoryEventBus();
         _repo = new JsonSessionRepository(_tempDir, NullLogger<JsonSessionRepository>.Instance);
-        _sessionManager = new SessionManager(_repo, _eventBus, NullLogger<SessionManager>.Instance);
+        _clipStorage = new NullClipStorage();
+        _sessionManager = new SessionManager(_repo, _clipStorage, _eventBus, NullLogger<SessionManager>.Instance);
         _tracker = new MatchTracker(_sessionManager, _eventBus, NullLogger<MatchTracker>.Instance);
     }
 

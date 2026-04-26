@@ -80,5 +80,9 @@ public sealed class StorageAnalyticsTests
         public void DeleteClip(string fp) { }
         public void ToggleFavorite(string fp) { }
         public Task RunCleanupAsync(CancellationToken ct) => Task.CompletedTask;
+        public void AddTags(string fp, IEnumerable<string> tags) { }
+        public void RemoveTags(string fp, IEnumerable<string> tags) { }
+        public IReadOnlySet<string> GetAllTags() => new HashSet<string>();
+        public IReadOnlyList<ClipMetadata> GetClipsByTag(string tag) => [];
     }
 }

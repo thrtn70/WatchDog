@@ -1,5 +1,6 @@
 using System.Net;
 using Microsoft.Extensions.Logging.Abstractions;
+using WatchDog.Core.Settings;
 using WatchDog.Core.Updates;
 
 namespace WatchDog.Core.Tests.Updates;
@@ -9,7 +10,24 @@ public sealed class GitHubUpdateCheckerTests
     private static readonly Version TestVersion = new(1, 2, 0);
 
     private static GitHubUpdateChecker CreateChecker(HttpMessageHandler handler)
-        => new(new HttpClient(handler), NullLogger<GitHubUpdateChecker>.Instance, () => TestVersion);
+        => new(
+            new HttpClient(handler),
+            NullLogger<GitHubUpdateChecker>.Instance,
+            new StubSettingsService(),
+            () => BuildChannel.Stable,
+            () => TestVersion);
+
+    private sealed class StubSettingsService : ISettingsService
+    {
+        private AppSettings _settings = new();
+        public AppSettings Load() => _settings;
+        public void Save(AppSettings settings) => _settings = settings;
+        public event Action<AppSettings>? SettingsChanged
+        {
+            add { }
+            remove { }
+        }
+    }
 
     [Fact]
     public async Task CheckForUpdateAsync_ReturnsNull_WhenHttpFails()
