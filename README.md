@@ -112,6 +112,14 @@ The app starts minimized to the system tray. Right-click the tray icon to open t
 
 This produces both `WatchDog-win-x64.zip` (portable) and `installer/Output/WatchDog-Setup.exe` (installer, requires Inno Setup 6).
 
+#### 5. Install git hooks (one-time)
+
+```bash
+./scripts/install-hooks.sh
+```
+
+Installs the pre-push gate at `.git/hooks/pre-push` (a symlink to `scripts/pre-push.sh`). The gate runs `dotnet format --verify-no-changes` and a lightweight build via SSH to a Windows dev VM (`win11` host alias). Heavy checks (full `dotnet build` with warnings-as-errors plus `dotnet test`) run in CI on push/PR. Bypass for emergencies with `SKIP_PREPUSH=1 git push`.
+
 </details>
 
 ---

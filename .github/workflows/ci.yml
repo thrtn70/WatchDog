@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  format-check:
+    name: Format check
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: dotnet format --verify-no-changes
+        shell: pwsh
+        run: dotnet format --verify-no-changes --no-restore
+
+  build-test:
+    name: Build (warnings-as-errors) + test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore
+        shell: pwsh
+
+      - name: Build (warnings-as-errors)
+        shell: pwsh
+        run: |
+          dotnet build `
+            --configuration Release `
+            --no-restore `
+            -p:TreatWarningsAsErrors=true
+
+      - name: Test
+        shell: pwsh
+        run: |
+          dotnet test `
+            --configuration Release `
+            --no-build `
+            --logger "console;verbosity=normal"
