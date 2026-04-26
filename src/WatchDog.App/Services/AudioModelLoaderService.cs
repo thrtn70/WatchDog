@@ -32,10 +32,11 @@ public sealed class AudioModelLoaderService : IHostedService
         _logger = logger;
     }
 
-    public async Task StartAsync(CancellationToken cancellationToken)
+    public Task StartAsync(CancellationToken cancellationToken)
     {
         // Run in the background — don't block hosted service startup
         _ = Task.Run(() => LoadModelAsync(cancellationToken), cancellationToken);
+        return Task.CompletedTask;
     }
 
     private async Task LoadModelAsync(CancellationToken ct)
