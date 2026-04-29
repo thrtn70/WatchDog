@@ -5,7 +5,7 @@ using WatchDog.Core.Discord;
 
 namespace WatchDog.App.ViewModels;
 
-public partial class DiscordUploadViewModel : ObservableObject
+public partial class DiscordUploadViewModel : ObservableObject, IDisposable
 {
     private readonly IDiscordWebhookService _service;
     private CancellationTokenSource? _cts;
@@ -86,4 +86,11 @@ public partial class DiscordUploadViewModel : ObservableObject
 
     /// <summary>Raised when the dialog should close (upload finished or cancelled).</summary>
     public event Action? RequestClose;
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
+    }
 }
