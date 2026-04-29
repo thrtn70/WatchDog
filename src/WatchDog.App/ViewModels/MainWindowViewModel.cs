@@ -127,7 +127,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         _clipSavedSub = eventBus.Subscribe<ClipSavedEvent>(e =>
         {
-            Task.Run(async () =>
+            _ = Task.Run(async () =>
             {
                 try
                 {
@@ -177,7 +177,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             _initialScanDone = true;
             IsScanning = true;
-            Task.Run(async () =>
+            _ = Task.Run(async () =>
             {
                 try
                 {

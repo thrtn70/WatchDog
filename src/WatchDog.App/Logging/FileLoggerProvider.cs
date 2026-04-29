@@ -14,6 +14,7 @@ public sealed class FileLoggerProvider : ILoggerProvider
     private readonly object _lock = new();
     private StreamWriter? _writer;
     private string _currentDate = string.Empty;
+    private bool _disposed;
 
     public FileLoggerProvider(LogLevel minLevel = LogLevel.Information)
     {
@@ -32,6 +33,7 @@ public sealed class FileLoggerProvider : ILoggerProvider
     {
         lock (_lock)
         {
+            _disposed = true;
             _writer?.Dispose();
             _writer = null;
         }
@@ -41,6 +43,7 @@ public sealed class FileLoggerProvider : ILoggerProvider
     {
         lock (_lock)
         {
+            if (_disposed) return;
             var today = DateTime.Now.ToString("yyyy-MM-dd");
             if (today != _currentDate)
             {

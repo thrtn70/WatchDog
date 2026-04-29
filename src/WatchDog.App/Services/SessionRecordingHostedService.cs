@@ -71,7 +71,9 @@ public sealed class SessionRecordingHostedService : IHostedService, IDisposable
         _recorder.SegmentSaved -= OnSegmentSaved;
         _recorder.Error -= OnRecorderError;
         _gameDetectedSub?.Dispose();
+        _gameDetectedSub = null;
         _gameExitedSub?.Dispose();
+        _gameExitedSub = null;
     }
 
     private async void OnGameDetected(GameDetectedEvent e)
@@ -154,8 +156,11 @@ public sealed class SessionRecordingHostedService : IHostedService, IDisposable
         _logger.LogError("Session recorder error: {Error}", message);
     }
 
+    private bool _disposed;
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
         _recorder.SegmentSaved -= OnSegmentSaved;
         _recorder.Error -= OnRecorderError;
         _gameDetectedSub?.Dispose();

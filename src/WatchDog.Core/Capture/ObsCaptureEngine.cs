@@ -682,7 +682,7 @@ public sealed class ObsCaptureEngine : ICaptureEngine
 
     // ── Cleanup ──────────────────────────────────────────────────────────
 
-    private Task FullCleanupAsync()
+    private void FullCleanup()
     {
         StopReplayBuffer();
         DisposeSceneSources();
@@ -704,6 +704,11 @@ public sealed class ObsCaptureEngine : ICaptureEngine
         _obsInitialized = false;
 
         _logger.LogDebug("OBS resources cleaned up");
+    }
+
+    private Task FullCleanupAsync()
+    {
+        FullCleanup();
         return Task.CompletedTask;
     }
 
@@ -732,7 +737,7 @@ public sealed class ObsCaptureEngine : ICaptureEngine
         if (_disposed) return;
         _disposed = true;
 
-        FullCleanupAsync().GetAwaiter().GetResult();
+        FullCleanup();
         _stateLock.Dispose();
     }
 }

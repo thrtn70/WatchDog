@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 
 namespace WatchDog.Core.Highlights.Cs2;
@@ -105,32 +106,39 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
         }
     }
 
+    private const int MaxBodyBytes = 65_536;
+
     private async Task ProcessRequestAsync(HttpListenerContext context)
     {
         // Reject oversized payloads (CS2 GSI is typically <2KB).
-        // ContentLength64 == -1 means "unknown" (chunked transfer); accept
-        // those and let the streaming reader handle bounding if needed.
-        if (context.Request.ContentLength64 > 65_536)
+        if (context.Request.ContentLength64 > MaxBodyBytes)
         {
             context.Response.StatusCode = 413;
             context.Response.Close();
             return;
         }
 
+        // Bound the read regardless of Content-Length (chunked transfers send -1).
         string body;
         using (var reader = new System.IO.StreamReader(context.Request.InputStream, Encoding.UTF8))
         {
-            body = await reader.ReadToEndAsync();
+            var buffer = new char[MaxBodyBytes + 1];
+            int charsRead = await reader.ReadAsync(buffer, 0, buffer.Length);
+            if (charsRead > MaxBodyBytes)
+            {
+                context.Response.StatusCode = 413;
+                context.Response.Close();
+                return;
+            }
+            body = new string(buffer, 0, charsRead);
         }
 
         // Respond immediately (CS2 expects a quick 200)
         context.Response.StatusCode = 200;
         context.Response.Close();
 
-        // Validate auth token to prevent local spoofing from other processes.
-        // CS2 GSI sends "auth": {"token": "..."} in every payload.
-        if (!body.Contains($"\"token\":\"{GsiAuthToken}\"", StringComparison.Ordinal)
-            && !body.Contains($"\"token\": \"{GsiAuthToken}\"", StringComparison.Ordinal))
+        // Validate auth token via JSON parsing to prevent local spoofing.
+        if (!ValidateGsiAuthToken(body))
         {
             _logger.LogDebug("Rejected GSI payload: auth token mismatch");
             return;
@@ -141,6 +149,22 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
 
         DetectHighlights(_previousState, newState);
         _previousState = newState;
+    }
+
+    private static bool ValidateGsiAuthToken(string body)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("auth", out var auth)
+                && auth.TryGetProperty("token", out var token)
+                && token.ValueEquals(GsiAuthToken))
+            {
+                return true;
+            }
+        }
+        catch (JsonException) { }
+        return false;
     }
 
     internal void DetectHighlights(Cs2GameState? previous, Cs2GameState current)
