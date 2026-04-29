@@ -26,6 +26,7 @@ public partial class ClipSavedToast : Window
         _closeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(AutoCloseSeconds) };
         _closeTimer.Tick += (_, _) => FadeOutAndClose();
         _closeTimer.Start();
+        Closed += (_, _) => _closeTimer.Stop();
     }
 
     private void FadeOutAndClose()
