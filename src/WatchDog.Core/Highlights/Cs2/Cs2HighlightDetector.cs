@@ -25,6 +25,7 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
     public event Action<HighlightDetectedEventArgs>? HighlightDetected;
 
     private const int Port = 35847;
+    private const long MaxGsiPayloadBytes = 65_536;
 
     public Cs2HighlightDetector(ILogger<Cs2HighlightDetector> logger)
     {
@@ -110,7 +111,7 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
         // Reject oversized payloads (CS2 GSI is typically <2KB).
         // ContentLength64 == -1 means "unknown" (chunked transfer); accept
         // those and let the streaming reader handle bounding if needed.
-        if (context.Request.ContentLength64 > 65_536)
+        if (context.Request.ContentLength64 > MaxGsiPayloadBytes)
         {
             context.Response.StatusCode = 413;
             context.Response.Close();

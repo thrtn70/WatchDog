@@ -22,7 +22,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-if (-not (Test-Path (Join-Path $ProjectRoot "WatchDog.sln"))) {
+if (-not (Test-Path (Join-Path $ProjectRoot "WatchDog.slnx"))) {
     $ProjectRoot = Split-Path -Parent $PSScriptRoot
 }
 

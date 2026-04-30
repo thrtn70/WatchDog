@@ -19,6 +19,7 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
     private static readonly TimeSpan CheckTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan DownloadTimeout = TimeSpan.FromMinutes(5);
     private const long MaxInstallerBytes = 512L * 1024 * 1024;
+    private const int BufferSize = 81920;
 
     private static readonly string[] AllowedHosts =
     [
@@ -220,9 +221,9 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
             var bytesRead = 0L;
 
             await using var contentStream = await response.Content.ReadAsStreamAsync(cts.Token);
-            await using var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+            await using var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, BufferSize, useAsync: true);
 
-            var buffer = new byte[81920];
+            var buffer = new byte[BufferSize];
             int read;
             while ((read = await contentStream.ReadAsync(buffer, cts.Token)) > 0)
             {

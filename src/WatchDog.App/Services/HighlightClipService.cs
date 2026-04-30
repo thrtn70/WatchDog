@@ -89,7 +89,8 @@ public sealed class HighlightClipService : IHostedService, IDisposable
     {
         try
         {
-            await _registry.StartDetectorForGameAsync(e.Game, _cts?.Token ?? default);
+            var cts = _cts;
+            await _registry.StartDetectorForGameAsync(e.Game, cts?.Token ?? default);
         }
         catch (Exception ex)
         {
@@ -152,7 +153,8 @@ public sealed class HighlightClipService : IHostedService, IDisposable
                 }
 
                 _lastSaveTime = DateTimeOffset.UtcNow;
-                ct = _cts?.Token ?? default;
+                var cts = _cts;
+                ct = cts?.Token ?? default;
             }
             finally
             {
