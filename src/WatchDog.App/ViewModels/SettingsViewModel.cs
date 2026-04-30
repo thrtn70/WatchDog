@@ -185,14 +185,17 @@ public partial class SettingsViewModel : ObservableObject
         _settingsService.Save(updated);
 
         // Apply startup registration when setting changes
+        var startupFailed = false;
         if (updated.StartWithWindows != _settings.StartWithWindows)
         {
             try { Services.StartupRegistration.SetStartWithWindows(updated.StartWithWindows); }
-            catch { StatusMessage = "Settings saved, but startup registration failed."; }
+            catch { startupFailed = true; }
         }
 
         _settings = updated;
-        StatusMessage = "Settings saved. Restart to apply capture changes.";
+        StatusMessage = startupFailed
+            ? "Settings saved, but startup registration failed."
+            : "Settings saved. Restart to apply capture changes.";
     }
 
     [RelayCommand]

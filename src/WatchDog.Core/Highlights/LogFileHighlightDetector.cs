@@ -138,6 +138,8 @@ public abstract class LogFileHighlightDetector : IHighlightDetector
     {
         // Validate new file is still within the watched directory
         var resolvedBase = Path.GetFullPath(LogDirectoryPath);
+        if (!resolvedBase.EndsWith(Path.DirectorySeparatorChar))
+            resolvedBase += Path.DirectorySeparatorChar;
         var resolvedNew = Path.GetFullPath(e.FullPath);
         if (!resolvedNew.StartsWith(resolvedBase, StringComparison.OrdinalIgnoreCase)) return;
 
