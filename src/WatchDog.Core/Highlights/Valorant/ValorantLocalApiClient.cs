@@ -116,6 +116,9 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
     /// </summary>
     public async Task<string?> GetGameStateAsync(CancellationToken ct = default)
     {
+        if (_authHeader is null)
+            return null;
+
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Get,
