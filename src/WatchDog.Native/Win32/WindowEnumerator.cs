@@ -104,7 +104,11 @@ public static partial class WindowEnumerator
         var length = GetWindowTextLength(hWnd);
         if (length <= 0) return null;
 
+        const int maxStackAlloc = 512;
         var bufLen = length + 1;
+        if (bufLen > maxStackAlloc)
+            bufLen = maxStackAlloc;
+
         char* buffer = stackalloc char[bufLen];
         var result = GetWindowText(hWnd, buffer, bufLen);
         return result > 0 ? new string(buffer, 0, result) : null;

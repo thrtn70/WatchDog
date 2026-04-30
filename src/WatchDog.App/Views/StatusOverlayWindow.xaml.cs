@@ -86,6 +86,12 @@ public partial class StatusOverlayWindow : Window
         }
     }
 
+    protected override void OnClosed(EventArgs e)
+    {
+        (DataContext as IDisposable)?.Dispose();
+        base.OnClosed(e);
+    }
+
     private void SetClickThrough(bool enable)
     {
         var hwnd = new WindowInteropHelper(this).Handle;
