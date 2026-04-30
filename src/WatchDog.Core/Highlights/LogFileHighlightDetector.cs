@@ -14,7 +14,7 @@ public abstract class LogFileHighlightDetector : IHighlightDetector
     private Task? _tailTask;
     private string? _currentLogFile;
     private long _lastReadPosition;
-    private bool _watching;
+    private volatile bool _watching;
     private readonly SemaphoreSlim _readLock = new(1, 1);
 
     protected abstract string LogDirectoryPath { get; }
