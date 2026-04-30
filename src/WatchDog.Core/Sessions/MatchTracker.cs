@@ -81,7 +81,9 @@ public sealed class MatchTracker : IDisposable
         // Snapshot values and persist asynchronously
         var matchNumber = _currentMatchNumber;
         var startedAt = e.Timestamp;
-        _ = PersistMatchStartAsync(sessionId, matchNumber, startedAt);
+        _ = PersistMatchStartAsync(sessionId, matchNumber, startedAt)
+            .ContinueWith(t => _logger.LogError(t.Exception, "PersistMatchStart faulted"),
+                TaskContinuationOptions.OnlyOnFaulted);
     }
 
     private void EndCurrentMatch(Guid sessionId, MatchResult result, HighlightDetectedEvent e)
@@ -98,7 +100,9 @@ public sealed class MatchTracker : IDisposable
         _currentMatchStartedAt = null;
 
         // Snapshot values and persist asynchronously
-        _ = PersistMatchEndAsync(sessionId, matchNumber, startedAt, result, score);
+        _ = PersistMatchEndAsync(sessionId, matchNumber, startedAt, result, score)
+            .ContinueWith(t => _logger.LogError(t.Exception, "PersistMatchEnd faulted"),
+                TaskContinuationOptions.OnlyOnFaulted);
     }
 
     private async Task PersistMatchStartAsync(Guid sessionId, int matchNumber, DateTimeOffset startedAt)

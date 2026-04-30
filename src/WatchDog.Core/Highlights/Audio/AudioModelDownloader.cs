@@ -13,6 +13,9 @@ public static class AudioModelDownloader
 
     private static readonly string[] AllowedHosts = ["essentia.upf.edu"];
 
+    private const long MaxModelBytes = 50L * 1024 * 1024;
+    private const int BufferSize = 81920;
+
     private static readonly string? ExpectedSha256 = "9bc15ac91426e431527196ee6663de78dffcc7db53ac002d5afbda61429b456f";
 
     /// <summary>
@@ -53,7 +56,7 @@ public static class AudioModelDownloader
 
             var totalBytes = response.Content.Headers.ContentLength ?? -1L;
 
-            if (totalBytes > 50 * 1024 * 1024)
+            if (totalBytes > MaxModelBytes)
             {
                 logger.LogError("Model Content-Length ({Bytes} bytes) exceeds 50MB limit, aborting", totalBytes);
                 return false;
@@ -65,9 +68,9 @@ public static class AudioModelDownloader
             {
                 await using var contentStream = await response.Content.ReadAsStreamAsync(ct);
                 await using var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write,
-                    FileShare.None, 81920, useAsync: true);
+                    FileShare.None, BufferSize, useAsync: true);
 
-                var buffer = new byte[81920];
+                var buffer = new byte[BufferSize];
                 var bytesRead = 0L;
                 int read;
 
@@ -77,7 +80,7 @@ public static class AudioModelDownloader
                     bytesRead += read;
 
                     // Reject suspiciously large files (model should be ~14MB)
-                    if (bytesRead > 50 * 1024 * 1024)
+                    if (bytesRead > MaxModelBytes)
                     {
                         logger.LogError("Model download exceeds 50MB limit, aborting");
                         try { File.Delete(tempPath); } catch { /* best-effort */ }

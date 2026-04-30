@@ -35,7 +35,9 @@ public sealed class AudioModelLoaderService : IHostedService
     public Task StartAsync(CancellationToken cancellationToken)
     {
         // Run in the background — don't block hosted service startup
-        _ = Task.Run(() => LoadModelAsync(cancellationToken), cancellationToken);
+        _ = Task.Run(() => LoadModelAsync(cancellationToken), cancellationToken)
+            .ContinueWith(t => _logger.LogError(t.Exception, "Background model load faulted"),
+                TaskContinuationOptions.OnlyOnFaulted);
         return Task.CompletedTask;
     }
 
