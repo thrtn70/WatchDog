@@ -15,6 +15,7 @@ public partial class StatusOverlayWindow : Window
     {
         InitializeComponent();
         _settings = settings;
+        Closed += (_, _) => (DataContext as IDisposable)?.Dispose();
     }
 
     protected override void OnSourceInitialized(EventArgs e)
