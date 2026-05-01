@@ -137,7 +137,8 @@ public abstract class LogFileHighlightDetector : IHighlightDetector
     private void OnNewLogFileCreated(object sender, FileSystemEventArgs e)
     {
         // Validate new file is still within the watched directory
-        var resolvedBase = Path.GetFullPath(LogDirectoryPath);
+        var resolvedBase = Path.GetFullPath(LogDirectoryPath).TrimEnd(Path.DirectorySeparatorChar)
+            + Path.DirectorySeparatorChar;
         var resolvedNew = Path.GetFullPath(e.FullPath);
         if (!resolvedNew.StartsWith(resolvedBase, StringComparison.OrdinalIgnoreCase)) return;
 
