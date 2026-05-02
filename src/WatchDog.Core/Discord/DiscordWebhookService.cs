@@ -60,8 +60,9 @@ public sealed class DiscordWebhookService : IDiscordWebhookService
         {
             using var content = new MultipartFormDataContent();
 
-            // File attachment with progress tracking (using ensures cleanup on failure)
-            using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            // File attachment with progress tracking — ProgressStreamContent takes
+            // ownership of the stream and disposes it via MultipartFormDataContent.
+            var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
             var progressContent = new ProgressStreamContent(fileStream, ChunkSize, progress);
             progressContent.Headers.ContentType = new MediaTypeHeaderValue("video/mp4");
             content.Add(progressContent, "file", metadata.FileName);

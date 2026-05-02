@@ -150,7 +150,9 @@ public partial class GameProfilesViewModel : ObservableObject
         SelectedGame.HasProfile = true;
 
         // Refresh the list to move the game to the "Configured" group
+        var selectedExe = SelectedGame.ExecutableName;
         LoadGames();
+        SelectedGame = FilteredGames.FirstOrDefault(g => g.ExecutableName == selectedExe);
     }
 
     [RelayCommand]
@@ -170,8 +172,10 @@ public partial class GameProfilesViewModel : ObservableObject
         SelectedGame.HasProfile = false;
 
         // Reset to defaults
+        var selectedExe = SelectedGame.ExecutableName;
         OnSelectedGameChanged(SelectedGame);
         LoadGames();
+        SelectedGame = FilteredGames.FirstOrDefault(g => g.ExecutableName == selectedExe);
     }
 }
 
