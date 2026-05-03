@@ -12,11 +12,12 @@ namespace WatchDog.App.Services;
 /// The app starts immediately with a NoOp detector, then upgrades to the
 /// real detector once the model is available.
 /// </summary>
-public sealed class AudioModelLoaderService : IHostedService
+public sealed class AudioModelLoaderService : IHostedService, IDisposable
 {
     private readonly HighlightDetectorRegistry _registry;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<AudioModelLoaderService> _logger;
+    private AudioClassifier? _classifier;
 
     private static readonly string ModelPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -56,10 +57,10 @@ public sealed class AudioModelLoaderService : IHostedService
             }
 
             // Load the classifier
-            var classifier = new AudioClassifier(ModelPath,
+            _classifier = new AudioClassifier(ModelPath,
                 _loggerFactory.CreateLogger<AudioClassifier>());
 
-            var detector = new AudioHighlightDetector(classifier,
+            var detector = new AudioHighlightDetector(_classifier,
                 _loggerFactory.CreateLogger<AudioHighlightDetector>());
 
             // Swap into the registry — replaces the NoOp fallback
@@ -78,4 +79,9 @@ public sealed class AudioModelLoaderService : IHostedService
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public void Dispose()
+    {
+        _classifier?.Dispose();
+    }
 }
