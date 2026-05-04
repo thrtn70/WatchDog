@@ -35,6 +35,7 @@ public sealed class ObsCaptureEngine : ICaptureEngine
     private bool _disposed;
 
     private readonly SemaphoreSlim _stateLock = new(1, 1);
+    private volatile GameDetection.GameInfo? _pendingSaveGame;
 
     public CaptureState State { get; private set; } = CaptureState.Idle;
     public CaptureConfig Config { get; }
@@ -260,6 +261,10 @@ public sealed class ObsCaptureEngine : ICaptureEngine
             }
 
             TransitionState(CaptureState.Saving);
+
+            _pendingSaveGame = CurrentGame ?? (IsDesktopCapture
+                ? new GameDetection.GameInfo { DisplayName = "Desktop", ExecutableName = "desktop" }
+                : null);
 
             var path = await (_replayBuffer?.SaveAsync(ct) ?? Task.FromResult<string?>(null));
 
@@ -610,9 +615,10 @@ public sealed class ObsCaptureEngine : ICaptureEngine
         _replayBuffer.Saved += path =>
         {
             ClipSaved?.Invoke(path);
-            var game = CurrentGame ?? (IsDesktopCapture
+            var game = _pendingSaveGame ?? CurrentGame ?? (IsDesktopCapture
                 ? new GameDetection.GameInfo { DisplayName = "Desktop", ExecutableName = "desktop" }
                 : null);
+            _pendingSaveGame = null;
             _eventBus.Publish(new ClipSavedEvent(path, game, DateTimeOffset.UtcNow));
         };
 
