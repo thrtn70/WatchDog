@@ -67,7 +67,7 @@ public static partial class WindowEnumerator
         return windows;
     }
 
-    // ── P/Invoke declarations ────────────────────────────────────────────
+    // ── P/Invoke declarations ──────────────────────────────────────────────────────
 
     private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
@@ -97,14 +97,15 @@ public static partial class WindowEnumerator
     [LibraryImport("dwmapi.dll")]
     private static partial int DwmGetWindowAttribute(IntPtr hwnd, int dwAttribute, out int pvAttribute, int cbAttribute);
 
-    // ── Helpers ──────────────────────────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private static unsafe string? GetWindowTitle(IntPtr hWnd)
     {
         var length = GetWindowTextLength(hWnd);
         if (length <= 0) return null;
 
-        var bufLen = length + 1;
+        const int maxStackChars = 1024;
+        var bufLen = Math.Min(length + 1, maxStackChars);
         char* buffer = stackalloc char[bufLen];
         var result = GetWindowText(hWnd, buffer, bufLen);
         return result > 0 ? new string(buffer, 0, result) : null;

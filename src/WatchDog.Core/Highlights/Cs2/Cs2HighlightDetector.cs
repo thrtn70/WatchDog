@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 
 namespace WatchDog.Core.Highlights.Cs2;
@@ -107,32 +108,51 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
 
     private async Task ProcessRequestAsync(HttpListenerContext context)
     {
+        const int maxBodySize = 65_536;
+
         // Reject oversized payloads (CS2 GSI is typically <2KB).
-        // ContentLength64 == -1 means "unknown" (chunked transfer); accept
-        // those and let the streaming reader handle bounding if needed.
-        if (context.Request.ContentLength64 > 65_536)
+        if (context.Request.ContentLength64 > maxBodySize)
         {
             context.Response.StatusCode = 413;
             context.Response.Close();
             return;
         }
 
+        // Bound the read for chunked transfers where ContentLength64 == -1
         string body;
         using (var reader = new System.IO.StreamReader(context.Request.InputStream, Encoding.UTF8))
         {
-            body = await reader.ReadToEndAsync();
+            var buffer = new char[maxBodySize + 1];
+            var totalRead = await reader.ReadBlockAsync(buffer, 0, buffer.Length);
+            if (totalRead > maxBodySize)
+            {
+                context.Response.StatusCode = 413;
+                context.Response.Close();
+                return;
+            }
+            body = new string(buffer, 0, totalRead);
         }
 
         // Respond immediately (CS2 expects a quick 200)
         context.Response.StatusCode = 200;
         context.Response.Close();
 
-        // Validate auth token to prevent local spoofing from other processes.
+        // Validate auth token via JSON parsing to prevent local spoofing.
         // CS2 GSI sends "auth": {"token": "..."} in every payload.
-        if (!body.Contains($"\"token\":\"{GsiAuthToken}\"", StringComparison.Ordinal)
-            && !body.Contains($"\"token\": \"{GsiAuthToken}\"", StringComparison.Ordinal))
+        try
         {
-            _logger.LogDebug("Rejected GSI payload: auth token mismatch");
+            using var doc = JsonDocument.Parse(body);
+            if (!doc.RootElement.TryGetProperty("auth", out var auth)
+                || !auth.TryGetProperty("token", out var token)
+                || token.GetString() != GsiAuthToken)
+            {
+                _logger.LogDebug("Rejected GSI payload: auth token mismatch");
+                return;
+            }
+        }
+        catch (JsonException)
+        {
+            _logger.LogDebug("Rejected GSI payload: invalid JSON");
             return;
         }
 

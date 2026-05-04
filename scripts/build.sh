@@ -61,6 +61,14 @@ run_remote() {
 cmd_build() {
     local config="${1:-Release}"
     local project="${2:-$DEFAULT_PROJECT}"
+    if [[ ! "$config" =~ ^(Release|Debug)$ ]]; then
+        fail "Invalid configuration '$config' — must be Release or Debug"
+        exit 2
+    fi
+    if [[ "$project" =~ [^a-zA-Z0-9_.\\/-] ]]; then
+        fail "Invalid project path '$project'"
+        exit 2
+    fi
     preflight
     run_remote "cd $REMOTE_PATH; dotnet build $project -c $config"
     ok "Build complete (${config})"

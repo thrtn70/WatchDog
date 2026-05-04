@@ -23,7 +23,7 @@ public sealed class ObsSessionRecorder : ISessionRecorder
     private string _outputDirectory = string.Empty;
     private GameInfo? _currentGame;
     private int _segmentIndex;
-    private bool _disposed;
+    private volatile bool _disposed;
 
     public bool IsRecording { get; private set; }
     public TimeSpan Elapsed => _elapsed.Elapsed;
@@ -170,12 +170,14 @@ public sealed class ObsSessionRecorder : ISessionRecorder
 
     private async void SplitSegmentSafe()
     {
+        if (_disposed) return;
         try
         {
             await _lock.WaitAsync();
             try { SplitSegment(); }
             finally { _lock.Release(); }
         }
+        catch (ObjectDisposedException) { }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during segment split");
@@ -184,7 +186,9 @@ public sealed class ObsSessionRecorder : ISessionRecorder
 
     private async void StopSafe()
     {
+        if (_disposed) return;
         try { await StopAsync(); }
+        catch (ObjectDisposedException) { }
         catch (Exception ex) { _logger.LogError(ex, "Error during auto-stop"); }
     }
 
