@@ -12,6 +12,7 @@ public sealed class ClipStorageManager : IClipStorage
     private readonly ILogger<ClipStorageManager> _logger;
     private readonly List<ClipMetadata> _clips = [];
     private readonly object _lock = new();
+    private readonly object _saveLock = new();
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -394,13 +395,16 @@ public sealed class ClipStorageManager : IClipStorage
 
         try
         {
-            List<ClipMetadata> snapshot;
-            lock (_lock)
-                snapshot = [.. _clips];
+            lock (_saveLock)
+            {
+                List<ClipMetadata> snapshot;
+                lock (_lock)
+                    snapshot = [.. _clips];
 
-            var json = JsonSerializer.Serialize(snapshot, JsonOptions);
-            File.WriteAllText(tmp, json);
-            File.Move(tmp, IndexPath, overwrite: true);
+                var json = JsonSerializer.Serialize(snapshot, JsonOptions);
+                File.WriteAllText(tmp, json);
+                File.Move(tmp, IndexPath, overwrite: true);
+            }
         }
         catch (Exception ex)
         {

@@ -11,6 +11,7 @@ public sealed class MatchTracker : IDisposable
     private readonly ILogger<MatchTracker> _logger;
     private readonly IDisposable _subscription;
     private readonly object _stateLock = new();
+    private readonly SemaphoreSlim _persistLock = new(1, 1);
 
     private Guid? _trackedSessionId;
     private int _currentMatchNumber;
@@ -103,6 +104,7 @@ public sealed class MatchTracker : IDisposable
 
     private async Task PersistMatchStartAsync(Guid sessionId, int matchNumber, DateTimeOffset startedAt)
     {
+        await _persistLock.WaitAsync();
         try
         {
             var session = _sessionManager.CurrentSession;
@@ -121,10 +123,15 @@ public sealed class MatchTracker : IDisposable
         {
             _logger.LogWarning(ex, "Failed to persist match start for session {SessionId}", sessionId);
         }
+        finally
+        {
+            _persistLock.Release();
+        }
     }
 
     private async Task PersistMatchEndAsync(Guid sessionId, int matchNumber, DateTimeOffset startedAt, MatchResult result, string? score)
     {
+        await _persistLock.WaitAsync();
         try
         {
             var session = _sessionManager.CurrentSession;
@@ -160,6 +167,10 @@ public sealed class MatchTracker : IDisposable
         {
             _logger.LogWarning(ex, "Failed to persist match end for session {SessionId}", sessionId);
         }
+        finally
+        {
+            _persistLock.Release();
+        }
     }
 
     public void Reset()
@@ -172,5 +183,9 @@ public sealed class MatchTracker : IDisposable
         }
     }
 
-    public void Dispose() => _subscription.Dispose();
+    public void Dispose()
+    {
+        _subscription.Dispose();
+        _persistLock.Dispose();
+    }
 }
