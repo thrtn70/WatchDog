@@ -177,20 +177,22 @@ public abstract class LogFileHighlightDetector : IHighlightDetector
 
     private async Task ReadNewLinesAsync()
     {
-        if (_currentLogFile is null) return;
-        if (!File.Exists(_currentLogFile))
+        var logFile = _currentLogFile;
+        if (logFile is null) return;
+        if (!File.Exists(logFile))
         {
             // File may have been rotated; try to find the new one
             var newFile = FindMostRecentLogFile();
-            if (newFile is null || newFile == _currentLogFile) return;
+            if (newFile is null || newFile == logFile) return;
             _currentLogFile = newFile;
+            logFile = newFile;
             _lastReadPosition = 0;
         }
 
         if (!await _readLock.WaitAsync(0)) return; // Skip if already reading
         try
         {
-            using var fs = new FileStream(_currentLogFile, FileMode.Open, FileAccess.Read,
+            using var fs = new FileStream(logFile, FileMode.Open, FileAccess.Read,
                 FileShare.ReadWrite | FileShare.Delete);
 
             if (fs.Length <= _lastReadPosition) return; // No new data
