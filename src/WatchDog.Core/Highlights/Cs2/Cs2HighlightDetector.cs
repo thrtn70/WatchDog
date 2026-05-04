@@ -33,9 +33,15 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
 
     public Task StartAsync(CancellationToken ct = default)
     {
-        if (_listener is not null) return Task.CompletedTask;
+        if (_listener is not null)
+        {
+            try { _listener.Close(); } catch { /* best-effort cleanup of stale listener */ }
+            _listener = null;
+        }
 
         _previousState = null;
+        _cts?.Cancel();
+        _cts?.Dispose();
         _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 
         _listener = new HttpListener();
@@ -105,22 +111,36 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
         }
     }
 
+    private const int MaxPayloadBytes = 65_536;
+
     private async Task ProcessRequestAsync(HttpListenerContext context)
     {
         // Reject oversized payloads (CS2 GSI is typically <2KB).
-        // ContentLength64 == -1 means "unknown" (chunked transfer); accept
-        // those and let the streaming reader handle bounding if needed.
-        if (context.Request.ContentLength64 > 65_536)
+        if (context.Request.ContentLength64 > MaxPayloadBytes)
         {
             context.Response.StatusCode = 413;
             context.Response.Close();
             return;
         }
 
+        // Read with a hard byte limit. ContentLength64 is -1 for chunked
+        // transfers, so we enforce the cap regardless during the actual read.
         string body;
-        using (var reader = new System.IO.StreamReader(context.Request.InputStream, Encoding.UTF8))
+        using (var ms = new System.IO.MemoryStream())
         {
-            body = await reader.ReadToEndAsync();
+            var buffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = await context.Request.InputStream.ReadAsync(buffer)) > 0)
+            {
+                ms.Write(buffer, 0, bytesRead);
+                if (ms.Length > MaxPayloadBytes)
+                {
+                    context.Response.StatusCode = 413;
+                    context.Response.Close();
+                    return;
+                }
+            }
+            body = Encoding.UTF8.GetString(ms.GetBuffer(), 0, (int)ms.Length);
         }
 
         // Respond immediately (CS2 expects a quick 200)

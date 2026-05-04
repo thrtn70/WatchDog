@@ -114,15 +114,15 @@ public sealed class CaptureSourceManager : IHostedService
         }
     }
 
-    public Task StopAsync(CancellationToken cancellationToken)
+    public async Task StopAsync(CancellationToken cancellationToken)
     {
         _gameDetector.GameStarted -= OnGameStarted;
         _gameDetector.GameStopped -= OnGameStopped;
         _settingsService.SettingsChanged -= OnSettingsChanged;
         _gameDetector.Stop();
-        ActiveSource = null;
 
-        return Task.CompletedTask;
+        if (ActiveSource is not null)
+            await StopActiveSourceAsync(cancellationToken);
     }
 
     // ── Manual Capture ──────────────────────────────────────────────────
