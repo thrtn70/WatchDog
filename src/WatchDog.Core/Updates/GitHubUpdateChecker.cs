@@ -282,8 +282,17 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
         }
 
         response.EnsureSuccessStatusCode();
-        var json = await response.Content.ReadAsStringAsync(ct);
-        return JsonDocument.Parse(json);
+
+        const long maxResponseBytes = 5 * 1024 * 1024;
+        var contentLength = response.Content.Headers.ContentLength;
+        if (contentLength > maxResponseBytes)
+        {
+            _logger.LogWarning("GitHub API response too large ({Bytes} bytes), skipping", contentLength);
+            return null;
+        }
+
+        await using var stream = await response.Content.ReadAsStreamAsync(ct);
+        return await JsonDocument.ParseAsync(stream, cancellationToken: ct);
     }
 
     private string? FindInstallerAssetUrl(JsonElement release)

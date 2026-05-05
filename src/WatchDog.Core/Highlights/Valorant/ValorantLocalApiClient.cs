@@ -50,6 +50,9 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
 
     public async Task<bool> ConnectAsync(CancellationToken ct = default)
     {
+        if (IsConnected)
+            await DisconnectAsync();
+
         var lockfileData = await ReadLockfileWithRetryAsync(ct);
         if (lockfileData is null)
         {
@@ -62,6 +65,7 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
         var authValue = Convert.ToBase64String(Encoding.UTF8.GetBytes($"riot:{_password}"));
         _authHeader = new AuthenticationHeaderValue("Basic", authValue);
 
+        _cts?.Dispose();
         _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 
         // Try WebSocket first, fall back to HTTP polling
