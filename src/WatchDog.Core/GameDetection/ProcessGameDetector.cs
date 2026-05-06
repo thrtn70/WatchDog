@@ -102,8 +102,8 @@ public sealed class ProcessGameDetector : IGameDetector
 
     private void OnProcessCreated(object sender, EventArrivedEventArgs e)
     {
-        if (CurrentGame is not null)
-            return; // Already tracking a game
+        if (_disposed || CurrentGame is not null)
+            return;
 
         try
         {
@@ -129,7 +129,7 @@ public sealed class ProcessGameDetector : IGameDetector
 
     private void OnPollTick(object? state)
     {
-        if (!_running) return;
+        if (!_running || _disposed) return;
 
         if (CurrentGame is not null)
             return; // Already tracking

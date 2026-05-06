@@ -158,10 +158,10 @@ public partial class StatusOverlayViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
-        _disposed = true;
         _captureEngine.StateChanged -= _stateHandler;
         _gameDetectedSub.Dispose();
         _gameExitedSub.Dispose();
         _clipSavedSub.Dispose();
+        _disposed = true;
     }
 }

@@ -107,34 +107,49 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
 
     private async Task ProcessRequestAsync(HttpListenerContext context)
     {
+        const int MaxBodyBytes = 65_536;
+
         // Reject oversized payloads (CS2 GSI is typically <2KB).
-        // ContentLength64 == -1 means "unknown" (chunked transfer); accept
-        // those and let the streaming reader handle bounding if needed.
-        if (context.Request.ContentLength64 > 65_536)
+        if (context.Request.ContentLength64 > MaxBodyBytes)
         {
             context.Response.StatusCode = 413;
             context.Response.Close();
             return;
         }
 
+        // Bounded read: enforce the 64KB cap regardless of Content-Length or
+        // chunked transfer encoding (ContentLength64 == -1).
         string body;
-        using (var reader = new System.IO.StreamReader(context.Request.InputStream, Encoding.UTF8))
+        using (var ms = new System.IO.MemoryStream())
         {
-            body = await reader.ReadToEndAsync();
+            var buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = await context.Request.InputStream.ReadAsync(buffer)) > 0)
+            {
+                ms.Write(buffer, 0, bytesRead);
+                if (ms.Length > MaxBodyBytes)
+                {
+                    context.Response.StatusCode = 413;
+                    context.Response.Close();
+                    return;
+                }
+            }
+            body = Encoding.UTF8.GetString(ms.GetBuffer(), 0, (int)ms.Length);
         }
-
-        // Respond immediately (CS2 expects a quick 200)
-        context.Response.StatusCode = 200;
-        context.Response.Close();
 
         // Validate auth token to prevent local spoofing from other processes.
         // CS2 GSI sends "auth": {"token": "..."} in every payload.
         if (!body.Contains($"\"token\":\"{GsiAuthToken}\"", StringComparison.Ordinal)
             && !body.Contains($"\"token\": \"{GsiAuthToken}\"", StringComparison.Ordinal))
         {
+            context.Response.StatusCode = 401;
+            context.Response.Close();
             _logger.LogDebug("Rejected GSI payload: auth token mismatch");
             return;
         }
+
+        context.Response.StatusCode = 200;
+        context.Response.Close();
 
         var newState = Cs2GsiPayloadParser.Parse(body);
         if (newState is null) return;
@@ -199,7 +214,7 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
                 HighlightDetected?.Invoke(new HighlightDetectedEventArgs(
                     HighlightType.MatchWin, $"Match won {current.TeamScore}-{current.EnemyScore}"));
             }
-            else
+            else if (current.TeamScore < current.EnemyScore)
             {
                 HighlightDetected?.Invoke(new HighlightDetectedEventArgs(
                     HighlightType.MatchLoss, $"Match lost {current.TeamScore}-{current.EnemyScore}"));
