@@ -156,7 +156,7 @@ public sealed class ValorantHighlightDetector : IHighlightDetector
                 HighlightDetected?.Invoke(new HighlightDetectedEventArgs(
                     HighlightType.MatchWin, $"Match won {current.TeamScore}-{current.EnemyScore}"));
             }
-            else
+            else if (current.TeamScore < current.EnemyScore)
             {
                 HighlightDetected?.Invoke(new HighlightDetectedEventArgs(
                     HighlightType.MatchLoss, $"Match lost {current.TeamScore}-{current.EnemyScore}"));
