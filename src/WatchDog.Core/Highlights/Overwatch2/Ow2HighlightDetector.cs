@@ -82,7 +82,7 @@ public sealed class Ow2HighlightDetector : LogFileHighlightDetector
                 if (_state.TeamScore > _state.EnemyScore)
                     RaiseHighlight(HighlightType.MatchWin,
                         $"Match won {_state.TeamScore}-{_state.EnemyScore}");
-                else
+                else if (_state.TeamScore < _state.EnemyScore)
                     RaiseHighlight(HighlightType.MatchLoss,
                         $"Match lost {_state.TeamScore}-{_state.EnemyScore}");
 

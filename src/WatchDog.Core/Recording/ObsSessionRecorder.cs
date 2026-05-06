@@ -170,12 +170,14 @@ public sealed class ObsSessionRecorder : ISessionRecorder
 
     private async void SplitSegmentSafe()
     {
+        if (_disposed) return;
         try
         {
             await _lock.WaitAsync();
             try { SplitSegment(); }
             finally { _lock.Release(); }
         }
+        catch (ObjectDisposedException) { }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during segment split");
@@ -184,7 +186,9 @@ public sealed class ObsSessionRecorder : ISessionRecorder
 
     private async void StopSafe()
     {
+        if (_disposed) return;
         try { await StopAsync(); }
+        catch (ObjectDisposedException) { }
         catch (Exception ex) { _logger.LogError(ex, "Error during auto-stop"); }
     }
 
