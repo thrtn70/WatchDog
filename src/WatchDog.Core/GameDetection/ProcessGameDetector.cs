@@ -107,18 +107,23 @@ public sealed class ProcessGameDetector : IGameDetector
 
         try
         {
-            var targetInstance = (ManagementBaseObject)e.NewEvent["TargetInstance"];
-            var processName = targetInstance["Name"]?.ToString();
-            var processId = Convert.ToInt32(targetInstance["ProcessId"]);
-
-            if (processName is null)
+            if (e.NewEvent["TargetInstance"] is not ManagementBaseObject targetInstance)
                 return;
 
-            var game = _gameDatabase.TryMatch(processName, processId);
-            if (game is not null)
+            using (targetInstance)
             {
-                _logger.LogInformation("WMI detected game: {Game} (PID {Pid})", game.DisplayName, game.ProcessId);
-                TrackGame(game);
+                var processName = targetInstance["Name"]?.ToString();
+                var processId = Convert.ToInt32(targetInstance["ProcessId"]);
+
+                if (processName is null)
+                    return;
+
+                var game = _gameDatabase.TryMatch(processName, processId);
+                if (game is not null)
+                {
+                    _logger.LogInformation("WMI detected game: {Game} (PID {Pid})", game.DisplayName, game.ProcessId);
+                    TrackGame(game);
+                }
             }
         }
         catch (Exception ex)

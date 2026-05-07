@@ -214,7 +214,6 @@ public partial class VideoPlayerControl : UserControl
     {
         _positionTimer.Stop();
         _positionTimer.Tick -= OnPositionTimerTick;
-        Player.Stop();
-        Player.Source = null;
+        Player.Close();
     }
 }
