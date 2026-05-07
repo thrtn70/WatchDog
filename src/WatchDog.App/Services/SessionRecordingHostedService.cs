@@ -127,6 +127,10 @@ public sealed class SessionRecordingHostedService : IHostedService, IDisposable
             _logger.LogInformation("Session recording stopped for {Game} ({Duration})",
                 e.Game.DisplayName, elapsed);
         }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("Session recording stop cancelled for {Game}", e.Game.DisplayName);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to stop session recording for {Game}", e.Game.DisplayName);
@@ -142,6 +146,10 @@ public sealed class SessionRecordingHostedService : IHostedService, IDisposable
             _logger.LogInformation("Session segment saved: {File}", Path.GetFileName(filePath));
 
             await _sessionManager.AddRecordingPathAsync(filePath);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("Segment tracking cancelled for {File}", Path.GetFileName(filePath));
         }
         catch (Exception ex)
         {

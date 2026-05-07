@@ -121,7 +121,7 @@ public sealed class DiscordWebhookService : IDiscordWebhookService
 
         try
         {
-            var response = await _httpClient.GetAsync(webhookUrl, ct);
+            using var response = await _httpClient.GetAsync(webhookUrl, ct);
             return response.IsSuccessStatusCode;
         }
         catch
