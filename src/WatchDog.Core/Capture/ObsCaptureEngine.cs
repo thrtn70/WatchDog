@@ -288,7 +288,8 @@ public sealed class ObsCaptureEngine : ICaptureEngine
         // Acquire the state lock to prevent concurrent initialization races
         // (e.g., CaptureSourceManager calling this while OnGameStarted
         // fires on a background thread and enters StartAsync).
-        _stateLock.Wait();
+        if (!_stateLock.Wait(TimeSpan.FromSeconds(30)))
+            throw new TimeoutException("Timed out waiting for capture engine state lock in EnsureInitialized.");
         try
         {
             EnsureObsInitialized();
@@ -732,7 +733,7 @@ public sealed class ObsCaptureEngine : ICaptureEngine
         if (_disposed) return;
         _disposed = true;
 
-        FullCleanupAsync().GetAwaiter().GetResult();
+        Task.Run(() => FullCleanupAsync()).GetAwaiter().GetResult();
         _stateLock.Dispose();
     }
 }
