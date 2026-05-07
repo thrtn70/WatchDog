@@ -18,8 +18,12 @@ public static class StartupRegistration
 
         if (enabled)
         {
-            var exePath = Environment.ProcessPath
-                          ?? System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+            var exePath = Environment.ProcessPath;
+            if (exePath is null)
+            {
+                using var proc = System.Diagnostics.Process.GetCurrentProcess();
+                exePath = proc.MainModule?.FileName;
+            }
             if (exePath is not null)
                 key.SetValue(AppName, $"\"{exePath}\"");
         }

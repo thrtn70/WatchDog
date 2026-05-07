@@ -358,14 +358,12 @@ public partial class App : Application
         services.AddSingleton(_ => new HttpClient { Timeout = TimeSpan.FromMinutes(10) });
 
         // Auto-update (separate HttpClient with short default timeout)
+        services.AddKeyedSingleton("update-http", (_, _) => new HttpClient { Timeout = TimeSpan.FromSeconds(30) });
         services.AddSingleton<Core.Updates.IUpdateChecker>(sp =>
-        {
-            var updateHttp = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-            return new Core.Updates.GitHubUpdateChecker(
-                updateHttp,
+            new Core.Updates.GitHubUpdateChecker(
+                sp.GetRequiredKeyedService<HttpClient>("update-http"),
                 sp.GetRequiredService<ILoggerFactory>().CreateLogger<Core.Updates.GitHubUpdateChecker>(),
-                sp.GetRequiredService<Core.Settings.ISettingsService>());
-        });
+                sp.GetRequiredService<Core.Settings.ISettingsService>()));
         services.AddSingleton<Core.Discord.IDiscordWebhookService, Core.Discord.DiscordWebhookService>();
 
         // Audio device enumeration

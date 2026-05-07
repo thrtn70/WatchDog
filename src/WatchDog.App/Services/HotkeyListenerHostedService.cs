@@ -11,7 +11,7 @@ namespace WatchDog.App.Services;
 /// Registers global hotkeys and triggers replay buffer save / recording toggle on press.
 /// Re-registers hotkeys at runtime when settings change.
 /// </summary>
-public sealed class HotkeyListenerHostedService : IHostedService
+public sealed class HotkeyListenerHostedService : IHostedService, IDisposable
 {
     private const int SaveClipHotkeyId = 1;
     private const int ToggleRecordingHotkeyId = 2;
@@ -69,6 +69,12 @@ public sealed class HotkeyListenerHostedService : IHostedService
                 _hotkeyService.Unregister(ToggleRecordingHotkeyId);
             });
         }
+    }
+
+    public void Dispose()
+    {
+        _settingsService.SettingsChanged -= OnSettingsChanged;
+        _hotkeyService.HotkeyPressed -= OnHotkeyPressed;
     }
 
     private void OnSettingsChanged(AppSettings settings)
