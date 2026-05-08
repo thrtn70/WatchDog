@@ -28,6 +28,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly int _maxStorageGb;
     private readonly IDisposable _clipSavedSub;
     private readonly Action<CaptureState> _stateChangedHandler;
+    private CancellationTokenSource? _clipLoadCts;
     private volatile bool _disposed;
 
     // Session-grouped view
@@ -436,10 +437,16 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     partial void OnSelectedClipChanged(ClipItemViewModel? value)
     {
+        _clipLoadCts?.Cancel();
+        _clipLoadCts?.Dispose();
+        _clipLoadCts = null;
+
         if (value is not null)
         {
+            _clipLoadCts = new CancellationTokenSource();
+            var ct = _clipLoadCts.Token;
             ClipEditor = CreateClipEditor();
-            _ = ClipEditor.LoadClipAsync(value.FilePath, value.GameName)
+            _ = ClipEditor.LoadClipAsync(value.FilePath, value.GameName, ct)
                 .ContinueWith(t =>
                 {
                     if (t.IsFaulted)
@@ -821,6 +828,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         _captureEngine.StateChanged -= _stateChangedHandler;
         _clipSavedSub.Dispose();
+        _clipLoadCts?.Cancel();
+        _clipLoadCts?.Dispose();
         _disposed = true;
     }
 }
