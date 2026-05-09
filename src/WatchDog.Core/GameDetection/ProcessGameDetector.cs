@@ -185,8 +185,8 @@ public sealed class ProcessGameDetector : IGameDetector
         try
         {
             _trackedProcess = Process.GetProcessById(game.ProcessId);
-            _trackedProcess.EnableRaisingEvents = true;
             _trackedProcess.Exited += OnGameProcessExited;
+            _trackedProcess.EnableRaisingEvents = true;
         }
         catch (Exception ex)
         {
