@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 
 namespace WatchDog.Core.Highlights.Cs2;
@@ -107,10 +108,9 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
 
     private async Task ProcessRequestAsync(HttpListenerContext context)
     {
-        // Reject oversized payloads (CS2 GSI is typically <2KB).
-        // ContentLength64 == -1 means "unknown" (chunked transfer); accept
-        // those and let the streaming reader handle bounding if needed.
-        if (context.Request.ContentLength64 > 65_536)
+        // Reject oversized or unknown-length payloads (CS2 GSI is typically <2KB
+        // and always sends Content-Length; chunked requests are not from GSI).
+        if (context.Request.ContentLength64 is -1 or > 65_536)
         {
             context.Response.StatusCode = 413;
             context.Response.Close();
@@ -129,8 +129,20 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
 
         // Validate auth token to prevent local spoofing from other processes.
         // CS2 GSI sends "auth": {"token": "..."} in every payload.
-        if (!body.Contains($"\"token\":\"{GsiAuthToken}\"", StringComparison.Ordinal)
-            && !body.Contains($"\"token\": \"{GsiAuthToken}\"", StringComparison.Ordinal))
+        bool authValid = false;
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("auth", out var auth)
+                && auth.TryGetProperty("token", out var token)
+                && token.GetString() == GsiAuthToken)
+            {
+                authValid = true;
+            }
+        }
+        catch (JsonException) { }
+
+        if (!authValid)
         {
             _logger.LogDebug("Rejected GSI payload: auth token mismatch");
             return;
