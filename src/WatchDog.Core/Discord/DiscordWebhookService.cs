@@ -207,7 +207,6 @@ public sealed class DiscordWebhookService : IDiscordWebhookService
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing) _stream.Dispose();
             base.Dispose(disposing);
         }
     }

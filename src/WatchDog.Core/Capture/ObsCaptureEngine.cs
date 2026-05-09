@@ -607,29 +607,37 @@ public sealed class ObsCaptureEngine : ICaptureEngine
         _replayBuffer = new ObsReplayBuffer(config, _loggerFactory.CreateLogger<ObsReplayBuffer>());
         _replayBuffer.Initialize(_videoEncoder, _audioEncoder);
 
-        _replayBuffer.Saved += path =>
-        {
-            ClipSaved?.Invoke(path);
-            var game = CurrentGame ?? (IsDesktopCapture
-                ? new GameDetection.GameInfo { DisplayName = "Desktop", ExecutableName = "desktop" }
-                : null);
-            _eventBus.Publish(new ClipSavedEvent(path, game, DateTimeOffset.UtcNow));
-        };
-
-        _replayBuffer.Error += msg =>
-        {
-            _logger.LogError("Replay buffer error: {Error}", msg);
-            Error?.Invoke(msg);
-        };
+        _replayBuffer.Saved += OnReplayBufferSaved;
+        _replayBuffer.Error += OnReplayBufferError;
 
         if (!_replayBuffer.Start())
             throw new InvalidOperationException("Failed to start replay buffer");
     }
 
+    private void OnReplayBufferSaved(string path)
+    {
+        ClipSaved?.Invoke(path);
+        var game = CurrentGame ?? (IsDesktopCapture
+            ? new GameDetection.GameInfo { DisplayName = "Desktop", ExecutableName = "desktop" }
+            : null);
+        _eventBus.Publish(new ClipSavedEvent(path, game, DateTimeOffset.UtcNow));
+    }
+
+    private void OnReplayBufferError(string msg)
+    {
+        _logger.LogError("Replay buffer error: {Error}", msg);
+        Error?.Invoke(msg);
+    }
+
     private void StopReplayBuffer()
     {
-        _replayBuffer?.Dispose();
-        _replayBuffer = null;
+        if (_replayBuffer is not null)
+        {
+            _replayBuffer.Saved -= OnReplayBufferSaved;
+            _replayBuffer.Error -= OnReplayBufferError;
+            _replayBuffer.Dispose();
+            _replayBuffer = null;
+        }
     }
 
     // ── Encoder creation ─────────────────────────────────────────────────
