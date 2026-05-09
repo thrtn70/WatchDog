@@ -31,7 +31,8 @@ public partial class DiscordUploadViewModel : ObservableObject
         GameName = metadata.GameName ?? "Unknown";
         IsUploading = true;
         var oldCts = _cts;
-        _cts = new CancellationTokenSource();
+        var cts = new CancellationTokenSource();
+        _cts = cts;
         oldCts?.Cancel();
         oldCts?.Dispose();
 
@@ -52,7 +53,7 @@ public partial class DiscordUploadViewModel : ObservableObject
         try
         {
             StatusText = "Uploading...";
-            var result = await _service.UploadClipAsync(metadata.FilePath, metadata, progress, _cts.Token);
+            var result = await _service.UploadClipAsync(metadata.FilePath, metadata, progress, cts.Token);
 
             Succeeded = result.Success;
             StatusText = result.Success
@@ -73,8 +74,9 @@ public partial class DiscordUploadViewModel : ObservableObject
         {
             IsUploading = false;
             IsComplete = true;
-            _cts?.Dispose();
-            _cts = null;
+            if (_cts == cts)
+                _cts = null;
+            cts.Dispose();
         }
     }
 
