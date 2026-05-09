@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 
 namespace WatchDog.Core.Highlights.Cs2;
@@ -117,20 +118,30 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
             return;
         }
 
+        const int MaxBodyBytes = 65_536;
         string body;
-        using (var reader = new System.IO.StreamReader(context.Request.InputStream, Encoding.UTF8))
+        using (var ms = new System.IO.MemoryStream())
         {
-            body = await reader.ReadToEndAsync();
+            var buf = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = await context.Request.InputStream.ReadAsync(buf, 0, buf.Length)) > 0)
+            {
+                if (ms.Length + bytesRead > MaxBodyBytes)
+                {
+                    context.Response.StatusCode = 413;
+                    context.Response.Close();
+                    return;
+                }
+                ms.Write(buf, 0, bytesRead);
+            }
+            body = Encoding.UTF8.GetString(ms.GetBuffer(), 0, (int)ms.Length);
         }
 
         // Respond immediately (CS2 expects a quick 200)
         context.Response.StatusCode = 200;
         context.Response.Close();
 
-        // Validate auth token to prevent local spoofing from other processes.
-        // CS2 GSI sends "auth": {"token": "..."} in every payload.
-        if (!body.Contains($"\"token\":\"{GsiAuthToken}\"", StringComparison.Ordinal)
-            && !body.Contains($"\"token\": \"{GsiAuthToken}\"", StringComparison.Ordinal))
+        if (!ValidateAuthToken(body))
         {
             _logger.LogDebug("Rejected GSI payload: auth token mismatch");
             return;
@@ -141,6 +152,21 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
 
         DetectHighlights(_previousState, newState);
         _previousState = newState;
+    }
+
+    private static bool ValidateAuthToken(string body)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            return doc.RootElement.TryGetProperty("auth", out var auth)
+                && auth.TryGetProperty("token", out var token)
+                && token.GetString() == GsiAuthToken;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 
     internal void DetectHighlights(Cs2GameState? previous, Cs2GameState current)

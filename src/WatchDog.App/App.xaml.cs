@@ -111,8 +111,8 @@ public partial class App : Application
 
     protected override async void OnExit(ExitEventArgs e)
     {
-        _overlayWindow?.Close();
-        _trayIcon?.Dispose();
+        try { _overlayWindow?.Close(); } catch { /* best-effort */ }
+        try { _trayIcon?.Dispose(); } catch { /* best-effort */ }
 
         try
         {
