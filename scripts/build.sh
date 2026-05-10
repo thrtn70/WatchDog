@@ -62,7 +62,7 @@ cmd_build() {
     local config="${1:-Release}"
     local project="${2:-$DEFAULT_PROJECT}"
     preflight
-    run_remote "cd $REMOTE_PATH; dotnet build $project -c $config"
+    run_remote "cd $REMOTE_PATH; dotnet build \"$project\" -c \"$config\""
     ok "Build complete (${config})"
 }
 
@@ -81,7 +81,7 @@ cmd_clean() {
 cmd_shell() {
     preflight
     log "Opening interactive PowerShell on $SSH_HOST (Ctrl-D to exit)"
-    ssh -t "$SSH_HOST" "cd $REMOTE_PATH; powershell"
+    ssh -t "$SSH_HOST" "cd \"$REMOTE_PATH\"; powershell"
 }
 
 main() {
