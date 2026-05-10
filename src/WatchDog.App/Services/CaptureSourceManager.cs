@@ -15,7 +15,7 @@ namespace WatchDog.App.Services;
 /// Replaces GameDetectorHostedService with unified support for auto-detected games,
 /// manual window capture, and desktop fallback.
 /// </summary>
-public sealed class CaptureSourceManager : IHostedService
+public sealed class CaptureSourceManager : IHostedService, IDisposable
 {
     private readonly IGameDetector _gameDetector;
     private readonly ICaptureEngine _captureEngine;
@@ -123,6 +123,13 @@ public sealed class CaptureSourceManager : IHostedService
         ActiveSource = null;
 
         return Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+        _gameDetector.GameStarted -= OnGameStarted;
+        _gameDetector.GameStopped -= OnGameStopped;
+        _settingsService.SettingsChanged -= OnSettingsChanged;
     }
 
     // ── Manual Capture ──────────────────────────────────────────────────

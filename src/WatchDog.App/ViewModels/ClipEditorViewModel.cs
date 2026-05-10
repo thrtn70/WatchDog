@@ -1,4 +1,5 @@
 using System.IO;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using WatchDog.Core.ClipEditor;
@@ -35,23 +36,27 @@ public partial class ClipEditorViewModel : ObservableObject
         _filePath = filePath;
         _gameName = gameName;
         Source = new Uri(filePath);
-        Duration = await _clipEditor.GetDurationAsync(filePath, ct);
-        TrimStart = TimeSpan.Zero;
-        TrimEnd = Duration;
-        Position = TimeSpan.Zero;
-        IsPlaying = false;
-        IsTrimming = false;
-        TrimStatus = string.Empty;
+        var duration = await _clipEditor.GetDurationAsync(filePath, ct);
+        Application.Current?.Dispatcher.Invoke(() =>
+        {
+            Duration = duration;
+            TrimStart = TimeSpan.Zero;
+            TrimEnd = duration;
+            Position = TimeSpan.Zero;
+            IsPlaying = false;
+            IsTrimming = false;
+            TrimStatus = string.Empty;
+        });
 
         // Generate thumbnail strip in background
         try
         {
             var frames = await _clipEditor.GenerateThumbnailStripAsync(filePath, 20, 160, ct);
-            ThumbnailFrames = new List<string>(frames);
+            Application.Current?.Dispatcher.Invoke(() => ThumbnailFrames = new List<string>(frames));
         }
         catch
         {
-            ThumbnailFrames = [];
+            Application.Current?.Dispatcher.Invoke(() => ThumbnailFrames = []);
         }
     }
 
@@ -77,18 +82,23 @@ public partial class ClipEditorViewModel : ObservableObject
         TrimStatus = "Trimming...";
         try
         {
-            var result = await _clipEditor.TrimAsync(_filePath, TrimStart, TrimEnd);
+            var trimStart = TrimStart;
+            var trimEnd = TrimEnd;
+            var result = await _clipEditor.TrimAsync(_filePath, trimStart, trimEnd);
             await _clipStorage.IndexClipAsync(result, _gameName ?? "Unknown");
-            TrimStatus = $"Saved: {Path.GetFileName(result)}";
-            IsTrimming = false;
+            Application.Current?.Dispatcher.Invoke(() =>
+            {
+                TrimStatus = $"Saved: {Path.GetFileName(result)}";
+                IsTrimming = false;
+            });
         }
         catch (Exception ex)
         {
-            TrimStatus = $"Trim failed: {ex.Message}";
+            Application.Current?.Dispatcher.Invoke(() => TrimStatus = $"Trim failed: {ex.Message}");
         }
         finally
         {
-            IsExporting = false;
+            Application.Current?.Dispatcher.Invoke(() => IsExporting = false);
         }
     }
 
