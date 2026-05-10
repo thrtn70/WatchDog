@@ -89,7 +89,22 @@ public sealed class HighlightClipService : IHostedService, IDisposable
     {
         try
         {
-            await _registry.StartDetectorForGameAsync(e.Game, _cts?.Token ?? default);
+            CancellationToken ct;
+            await _saveLock.WaitAsync();
+            try
+            {
+                ct = _cts?.Token ?? default;
+            }
+            finally
+            {
+                _saveLock.Release();
+            }
+
+            await _registry.StartDetectorForGameAsync(e.Game, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            // CTS was cancelled between token capture and detector start
         }
         catch (Exception ex)
         {
