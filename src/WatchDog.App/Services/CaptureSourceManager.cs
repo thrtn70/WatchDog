@@ -264,9 +264,11 @@ public sealed class CaptureSourceManager : IHostedService
     {
         try
         {
+            var source = ActiveSource;
+
             // If manual capture is active and the manually captured process exits
-            if (IsManualCaptureActive &&
-                string.Equals(ActiveSource!.ExecutableName, game.ExecutableName, StringComparison.OrdinalIgnoreCase))
+            if (source?.Kind == CaptureSourceKind.Manual &&
+                string.Equals(source.ExecutableName, game.ExecutableName, StringComparison.OrdinalIgnoreCase))
             {
                 _logger.LogInformation("Manually captured process exited: {Game}", game.DisplayName);
                 await StopManualCaptureAsync();
@@ -275,10 +277,10 @@ public sealed class CaptureSourceManager : IHostedService
 
             // If manual capture is active for a DIFFERENT window, ignore stale game-exit
             // events from previously auto-detected games (ProcessGameDetector still tracks them)
-            if (IsManualCaptureActive)
+            if (source?.Kind == CaptureSourceKind.Manual)
             {
                 _logger.LogDebug("Game exited: {Game} — ignored (manual capture active for {Window})",
-                    game.DisplayName, ActiveSource!.DisplayName);
+                    game.DisplayName, source.DisplayName);
                 return;
             }
 
