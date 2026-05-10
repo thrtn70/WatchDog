@@ -51,6 +51,14 @@ public sealed class AudioClassifier : IDisposable
 
         options.GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL;
         _session = new InferenceSession(modelPath, options);
+
+        if (_session.InputMetadata.Count == 0)
+            throw new InvalidOperationException(
+                "ONNX model has no input metadata. The model file may be corrupted or incompatible.");
+        if (_session.OutputMetadata.Count == 0)
+            throw new InvalidOperationException(
+                "ONNX model has no output metadata. The model file may be corrupted or incompatible.");
+
         _inputName = _session.InputMetadata.Keys.First();
         _outputNames = _session.OutputMetadata.Keys.ToArray();
 
