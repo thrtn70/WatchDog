@@ -103,6 +103,7 @@ public abstract class LogFileHighlightDetector : IHighlightDetector
         _cts = null;
         _currentLogFile = null;
         _lastReadPosition = 0;
+        _readLock.Dispose();
 
         _logger.LogInformation("{Detector} log watcher stopped", GetType().Name);
     }
@@ -110,7 +111,6 @@ public abstract class LogFileHighlightDetector : IHighlightDetector
     public async ValueTask DisposeAsync()
     {
         await StopAsync();
-        _readLock.Dispose();
     }
 
     private string? FindMostRecentLogFile()

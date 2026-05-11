@@ -29,6 +29,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly IDisposable _clipSavedSub;
     private readonly Action<CaptureState> _stateChangedHandler;
     private volatile bool _disposed;
+    private CancellationTokenSource? _sessionLoadCts;
 
     // Session-grouped view
     [ObservableProperty] private ObservableCollection<SessionGroupViewModel> _sessionGroups = [];
@@ -274,6 +275,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     private void LoadSessionGroups()
     {
+        // Cancel any in-flight load to prevent stale results from overwriting current data
+        _sessionLoadCts?.Cancel();
+        _sessionLoadCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _sessionLoadCts = cts;
+
         // Load sessions and clips off the UI thread, then dispatch results
         var filterGame = FilterGame;
         _ = Task.Run(async () =>
@@ -282,9 +289,14 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             {
                 var sessions = await _sessionRepository.GetRecentAsync(100);
                 var allClips = _clipStorage.GetAllClips();
+                if (cts.Token.IsCancellationRequested) return;
                 Application.Current?.Dispatcher.InvokeAsync(() =>
-                    PostToUi(() => BuildSessionGroups(sessions, allClips, filterGame)));
+                {
+                    if (!cts.Token.IsCancellationRequested)
+                        PostToUi(() => BuildSessionGroups(sessions, allClips, filterGame));
+                });
             }
+            catch (OperationCanceledException) { }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Session group load failed: {ex.Message}");
@@ -819,9 +831,11 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _disposed = true;
         _captureEngine.StateChanged -= _stateChangedHandler;
         _clipSavedSub.Dispose();
-        _disposed = true;
+        _sessionLoadCts?.Dispose();
+        Performance?.Dispose();
     }
 }
 

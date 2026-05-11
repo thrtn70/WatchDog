@@ -18,6 +18,9 @@ public sealed class AudioModelLoaderService : IHostedService
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<AudioModelLoaderService> _logger;
 
+    private Task? _loadTask;
+    private AudioClassifier? _classifier;
+
     private static readonly string ModelPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "WatchDog", "Models", "yamnet.onnx");
@@ -35,7 +38,7 @@ public sealed class AudioModelLoaderService : IHostedService
     public Task StartAsync(CancellationToken cancellationToken)
     {
         // Run in the background — don't block hosted service startup
-        _ = Task.Run(() => LoadModelAsync(cancellationToken), cancellationToken);
+        _loadTask = Task.Run(() => LoadModelAsync(cancellationToken), cancellationToken);
         return Task.CompletedTask;
     }
 
@@ -55,9 +58,10 @@ public sealed class AudioModelLoaderService : IHostedService
                 }
             }
 
-            // Load the classifier
-            var classifier = new AudioClassifier(ModelPath,
+            // Load the classifier (stored for disposal on shutdown)
+            _classifier = new AudioClassifier(ModelPath,
                 _loggerFactory.CreateLogger<AudioClassifier>());
+            var classifier = _classifier;
 
             var detector = new AudioHighlightDetector(classifier,
                 _loggerFactory.CreateLogger<AudioHighlightDetector>());
@@ -77,5 +81,16 @@ public sealed class AudioModelLoaderService : IHostedService
         }
     }
 
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public async Task StopAsync(CancellationToken cancellationToken)
+    {
+        if (_loadTask is not null)
+        {
+            try { await _loadTask; }
+            catch (OperationCanceledException) { }
+            catch (Exception ex) { _logger.LogDebug(ex, "Model load task ended with error during shutdown"); }
+        }
+
+        _classifier?.Dispose();
+        _classifier = null;
+    }
 }

@@ -5,7 +5,7 @@ using WatchDog.Core.Highlights.Audio;
 
 namespace WatchDog.Core.Highlights;
 
-public sealed class HighlightDetectorRegistry
+public sealed class HighlightDetectorRegistry : IAsyncDisposable
 {
     private readonly Dictionary<string, IHighlightDetector> _detectors;
     private volatile IHighlightDetector? _audioFallback;
@@ -102,6 +102,20 @@ public sealed class HighlightDetectorRegistry
         _logger.LogInformation("Highlight detector stopped for {Game}", _activeGame?.DisplayName);
         _activeDetector = null;
         _activeGame = null;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await StopActiveDetectorAsync();
+
+        foreach (var detector in _detectors.Values.Distinct())
+        {
+            if (detector is IAsyncDisposable ad)
+                await ad.DisposeAsync();
+        }
+
+        if (_audioFallback is IAsyncDisposable audioDisposable)
+            await audioDisposable.DisposeAsync();
     }
 
     private void OnHighlightDetected(HighlightDetectedEventArgs args)
