@@ -122,6 +122,12 @@ public sealed class CaptureSourceManager : IHostedService
         _gameDetector.Stop();
         ActiveSource = null;
 
+        System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
+        {
+            _activeToast?.Close();
+            _activeToast = null;
+        });
+
         return Task.CompletedTask;
     }
 
@@ -227,9 +233,11 @@ public sealed class CaptureSourceManager : IHostedService
                 return;
             }
 
+            var settings = _settings;
+
             _logger.LogInformation("Game detected: {Game} — starting capture", game.DisplayName);
             // Check for a saved per-game profile
-            var profile = _settings.GameProfiles
+            var profile = settings.GameProfiles
                 .FirstOrDefault(p => string.Equals(p.GameExecutableName, game.ExecutableName,
                     StringComparison.OrdinalIgnoreCase));
 
@@ -243,7 +251,7 @@ public sealed class CaptureSourceManager : IHostedService
                 ShowGameLaunchToast(game);
             }
 
-            if (_settings.Recording.IsReplayBufferEnabled)
+            if (settings.Recording.IsReplayBufferEnabled)
                 await _captureEngine.StartAsync(game);
 
             await _sessionManager.StartSessionAsync(game);
@@ -287,8 +295,9 @@ public sealed class CaptureSourceManager : IHostedService
             _eventBus.Publish(new GameExitedEvent(game));
             ActiveSource = null;
 
-            if (_settings.Recording.IsReplayBufferEnabled &&
-                (_settings.DesktopCaptureEnabled || _settings.Recording.IsHighlightModeEnabled))
+            var settings = _settings;
+            if (settings.Recording.IsReplayBufferEnabled &&
+                (settings.DesktopCaptureEnabled || settings.Recording.IsHighlightModeEnabled))
             {
                 _logger.LogInformation("Switching back to desktop capture");
                 await _captureEngine.SwitchToDesktopCaptureAsync();

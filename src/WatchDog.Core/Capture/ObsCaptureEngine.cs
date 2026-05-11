@@ -653,7 +653,7 @@ public sealed class ObsCaptureEngine : ICaptureEngine
 
     private VideoEncoder CreateNvencEncoder(string encoderId)
     {
-        using var settings = new ObsKit.NET.Core.Settings();
+        var settings = new ObsKit.NET.Core.Settings();
         settings.Set("preset2", Config.Preset);
         settings.Set("profile", Config.Profile);
         settings.Set("rate_control", Config.RateControl.ToString());

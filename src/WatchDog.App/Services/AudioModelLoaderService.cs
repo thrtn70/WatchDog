@@ -17,6 +17,7 @@ public sealed class AudioModelLoaderService : IHostedService
     private readonly HighlightDetectorRegistry _registry;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<AudioModelLoaderService> _logger;
+    private AudioClassifier? _classifier;
 
     private static readonly string ModelPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -55,9 +56,10 @@ public sealed class AudioModelLoaderService : IHostedService
                 }
             }
 
-            // Load the classifier
-            var classifier = new AudioClassifier(ModelPath,
+            // Load the classifier (stored for disposal on shutdown)
+            _classifier = new AudioClassifier(ModelPath,
                 _loggerFactory.CreateLogger<AudioClassifier>());
+            var classifier = _classifier;
 
             var detector = new AudioHighlightDetector(classifier,
                 _loggerFactory.CreateLogger<AudioHighlightDetector>());
@@ -77,5 +79,10 @@ public sealed class AudioModelLoaderService : IHostedService
         }
     }
 
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task StopAsync(CancellationToken cancellationToken)
+    {
+        _classifier?.Dispose();
+        _classifier = null;
+        return Task.CompletedTask;
+    }
 }

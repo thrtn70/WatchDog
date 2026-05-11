@@ -107,9 +107,16 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
 
     private async Task ProcessRequestAsync(HttpListenerContext context)
     {
+        // Reject browser-originated requests (CSRF prevention).
+        // CS2 GSI posts directly from the game process and never sends an Origin header.
+        if (context.Request.Headers["Origin"] is not null)
+        {
+            context.Response.StatusCode = 403;
+            context.Response.Close();
+            return;
+        }
+
         // Reject oversized payloads (CS2 GSI is typically <2KB).
-        // ContentLength64 == -1 means "unknown" (chunked transfer); accept
-        // those and let the streaming reader handle bounding if needed.
         if (context.Request.ContentLength64 > 65_536)
         {
             context.Response.StatusCode = 413;
@@ -117,10 +124,20 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
             return;
         }
 
+        // Bound the read to 64KB even for chunked transfers (ContentLength64 == -1).
         string body;
         using (var reader = new System.IO.StreamReader(context.Request.InputStream, Encoding.UTF8))
         {
-            body = await reader.ReadToEndAsync();
+            const int maxBody = 65_536;
+            var buffer = new char[maxBody + 1];
+            int read = await reader.ReadBlockAsync(buffer, 0, buffer.Length);
+            if (read > maxBody)
+            {
+                context.Response.StatusCode = 413;
+                context.Response.Close();
+                return;
+            }
+            body = new string(buffer, 0, read);
         }
 
         // Respond immediately (CS2 expects a quick 200)
