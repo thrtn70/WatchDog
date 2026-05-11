@@ -15,6 +15,8 @@ public sealed class FileLoggerProvider : ILoggerProvider
     private StreamWriter? _writer;
     private string _currentDate = string.Empty;
 
+    private const int LogRetentionDays = 14;
+
     public FileLoggerProvider(LogLevel minLevel = LogLevel.Information)
     {
         _minLevel = minLevel;
@@ -23,6 +25,24 @@ public sealed class FileLoggerProvider : ILoggerProvider
             "WatchDog", "logs");
 
         Directory.CreateDirectory(_logDirectory);
+        PruneOldLogs();
+    }
+
+    private void PruneOldLogs()
+    {
+        try
+        {
+            var cutoff = DateTime.Now.AddDays(-LogRetentionDays);
+            foreach (var file in Directory.GetFiles(_logDirectory, "watchdog-*.log"))
+            {
+                if (File.GetCreationTime(file) < cutoff)
+                    File.Delete(file);
+            }
+        }
+        catch
+        {
+            // Best-effort cleanup — don't fail startup if pruning fails
+        }
     }
 
     public ILogger CreateLogger(string categoryName)

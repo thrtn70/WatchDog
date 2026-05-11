@@ -27,13 +27,20 @@ public partial class StorageDashboardViewModel : ObservableObject
     [RelayCommand]
     private void Refresh()
     {
-        var report = StorageAnalytics.Analyze(_clipStorage, _config);
+        try
+        {
+            var report = StorageAnalytics.Analyze(_clipStorage, _config);
 
-        TotalClips = report.TotalClips;
-        UsedDisplay = $"{report.TotalGb:F2} GB";
-        RemainingDisplay = $"{report.RemainingGb:F2} GB";
-        UsagePercent = report.UsagePercent;
-        UsagePercentDisplay = $"{report.UsagePercent:F1}%";
-        GameUsages = new ObservableCollection<GameStorageUsage>(report.ByGame);
+            TotalClips = report.TotalClips;
+            UsedDisplay = $"{report.TotalGb:F2} GB";
+            RemainingDisplay = $"{report.RemainingGb:F2} GB";
+            UsagePercent = report.UsagePercent;
+            UsagePercentDisplay = $"{report.UsagePercent:F1}%";
+            GameUsages = new ObservableCollection<GameStorageUsage>(report.ByGame);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.TraceError($"Storage analysis failed: {ex.Message}");
+        }
     }
 }

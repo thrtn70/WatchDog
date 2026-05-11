@@ -115,13 +115,13 @@ public sealed class SessionRecordingHostedService : IHostedService, IDisposable
 
     private async void OnGameExited(GameExitedEvent e)
     {
-        if (!_recorder.IsRecording)
-            return;
-
-        var elapsed = _recorder.Elapsed;
-
         try
         {
+            if (!_recorder.IsRecording)
+                return;
+
+            var elapsed = _recorder.Elapsed;
+
             await _recorder.StopAsync();
             _eventBus.Publish(new SessionRecordingStoppedEvent(e.Game, elapsed));
             _logger.LogInformation("Session recording stopped for {Game} ({Duration})",

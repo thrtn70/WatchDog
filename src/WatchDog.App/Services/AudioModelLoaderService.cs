@@ -17,6 +17,7 @@ public sealed class AudioModelLoaderService : IHostedService
     private readonly HighlightDetectorRegistry _registry;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<AudioModelLoaderService> _logger;
+    private Task? _loadTask;
 
     private static readonly string ModelPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -34,8 +35,7 @@ public sealed class AudioModelLoaderService : IHostedService
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        // Run in the background — don't block hosted service startup
-        _ = Task.Run(() => LoadModelAsync(cancellationToken), cancellationToken);
+        _loadTask = Task.Run(() => LoadModelAsync(cancellationToken), cancellationToken);
         return Task.CompletedTask;
     }
 
@@ -77,5 +77,13 @@ public sealed class AudioModelLoaderService : IHostedService
         }
     }
 
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public async Task StopAsync(CancellationToken cancellationToken)
+    {
+        if (_loadTask is not null)
+        {
+            try { await _loadTask.WaitAsync(cancellationToken); }
+            catch (OperationCanceledException) { }
+            catch (Exception) { }
+        }
+    }
 }
