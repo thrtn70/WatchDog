@@ -89,7 +89,9 @@ public sealed class HighlightClipService : IHostedService, IDisposable
     {
         try
         {
-            await _registry.StartDetectorForGameAsync(e.Game, _cts?.Token ?? default);
+            var cts = _cts;
+            if (cts is null) return;
+            await _registry.StartDetectorForGameAsync(e.Game, cts.Token);
         }
         catch (Exception ex)
         {
