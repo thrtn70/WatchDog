@@ -160,5 +160,11 @@ public sealed class SessionRecordingHostedService : IHostedService, IDisposable
         _recorder.Error -= OnRecorderError;
         _gameDetectedSub?.Dispose();
         _gameExitedSub?.Dispose();
+
+        if (_recorder.IsRecording)
+        {
+            try { _recorder.StopAsync().GetAwaiter().GetResult(); }
+            catch { /* best-effort during dispose */ }
+        }
     }
 }

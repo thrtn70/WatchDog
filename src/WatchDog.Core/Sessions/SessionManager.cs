@@ -66,8 +66,12 @@ public sealed class SessionManager
         // Publish events outside the lock to prevent deadlock via re-entrant subscribers
         if (endedEvent is not null)
             _eventBus.Publish(endedEvent);
-        _eventBus.Publish(new SessionStartedEvent(created!.Id, game));
-        _logger.LogInformation("Session started: {Game} ({Id})", game.DisplayName, created.Id);
+
+        if (created is not null)
+        {
+            _eventBus.Publish(new SessionStartedEvent(created.Id, game));
+            _logger.LogInformation("Session started: {Game} ({Id})", game.DisplayName, created.Id);
+        }
     }
 
     public async Task StartDesktopSessionAsync(CancellationToken ct = default)

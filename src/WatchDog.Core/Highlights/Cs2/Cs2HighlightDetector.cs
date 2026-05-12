@@ -11,6 +11,7 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
     private CancellationTokenSource? _cts;
     private Task? _listenTask;
     private Cs2GameState? _previousState;
+    private readonly object _stateLock = new();
 
     /// <summary>
     /// Auth token that must match the token in gamestate_integration_watchdog.cfg.
@@ -70,13 +71,14 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
         {
             try { await _listenTask; }
             catch (OperationCanceledException) { }
+            catch (Exception ex) { _logger.LogDebug(ex, "Listen task ended with error"); }
         }
 
         _listener.Close();
         _listener = null;
         _cts?.Dispose();
         _cts = null;
-        _previousState = null;
+        lock (_stateLock) { _previousState = null; }
 
         _logger.LogInformation("CS2 GSI listener stopped");
     }
@@ -107,10 +109,9 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
 
     private async Task ProcessRequestAsync(HttpListenerContext context)
     {
-        // Reject oversized payloads (CS2 GSI is typically <2KB).
-        // ContentLength64 == -1 means "unknown" (chunked transfer); accept
-        // those and let the streaming reader handle bounding if needed.
-        if (context.Request.ContentLength64 > 65_536)
+        const int maxBodySize = 65_536;
+
+        if (context.Request.ContentLength64 > maxBodySize)
         {
             context.Response.StatusCode = 413;
             context.Response.Close();
@@ -118,9 +119,22 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
         }
 
         string body;
-        using (var reader = new System.IO.StreamReader(context.Request.InputStream, Encoding.UTF8))
+        using (var ms = new System.IO.MemoryStream())
         {
-            body = await reader.ReadToEndAsync();
+            var buf = new byte[8192];
+            int totalRead = 0, bytesRead;
+            while ((bytesRead = await context.Request.InputStream.ReadAsync(buf, 0, buf.Length)) > 0)
+            {
+                totalRead += bytesRead;
+                if (totalRead > maxBodySize)
+                {
+                    context.Response.StatusCode = 413;
+                    context.Response.Close();
+                    return;
+                }
+                ms.Write(buf, 0, bytesRead);
+            }
+            body = Encoding.UTF8.GetString(ms.GetBuffer(), 0, (int)ms.Length);
         }
 
         // Respond immediately (CS2 expects a quick 200)
@@ -139,8 +153,11 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
         var newState = Cs2GsiPayloadParser.Parse(body);
         if (newState is null) return;
 
-        DetectHighlights(_previousState, newState);
-        _previousState = newState;
+        lock (_stateLock)
+        {
+            DetectHighlights(_previousState, newState);
+            _previousState = newState;
+        }
     }
 
     internal void DetectHighlights(Cs2GameState? previous, Cs2GameState current)

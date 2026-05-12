@@ -230,19 +230,24 @@ public sealed class ObsSessionRecorder : ISessionRecorder
         if (_disposed) return;
         _disposed = true;
 
-        // Inline stop logic instead of calling StopCoreAsync to avoid
-        // blocking on the async semaphore (deadlock risk if SplitSegmentSafe
-        // or another async path currently holds _lock).
-        IsRecording = false;
-        _segmentTimer?.Dispose();
-        _segmentTimer = null;
-        _maxDurationTimer?.Dispose();
-        _maxDurationTimer = null;
+        var acquired = _lock.Wait(TimeSpan.FromSeconds(2));
+        try
+        {
+            IsRecording = false;
+            _segmentTimer?.Dispose();
+            _segmentTimer = null;
+            _maxDurationTimer?.Dispose();
+            _maxDurationTimer = null;
 
-        StopCurrentOutput();
-        _elapsed.Stop();
-        _videoEncoder?.Dispose();
-        _audioEncoder?.Dispose();
-        _lock.Dispose();
+            StopCurrentOutput();
+            _elapsed.Stop();
+            _videoEncoder?.Dispose();
+            _audioEncoder?.Dispose();
+        }
+        finally
+        {
+            if (acquired) _lock.Release();
+            _lock.Dispose();
+        }
     }
 }

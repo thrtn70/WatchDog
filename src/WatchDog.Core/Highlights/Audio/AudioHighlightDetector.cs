@@ -245,11 +245,7 @@ public sealed class AudioHighlightDetector : IHighlightDetector
 
     public ValueTask DisposeAsync()
     {
-        _isRunning = false;
-        _cts?.Cancel();
-        _cts?.Dispose();
-        _cts = null;
-        CleanupCapture();
+        StopAsync();
         return ValueTask.CompletedTask;
     }
 }

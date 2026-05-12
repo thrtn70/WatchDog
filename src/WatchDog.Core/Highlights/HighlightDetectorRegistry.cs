@@ -11,6 +11,7 @@ public sealed class HighlightDetectorRegistry
     private volatile IHighlightDetector? _audioFallback;
     private readonly IEventBus _eventBus;
     private readonly ILogger<HighlightDetectorRegistry> _logger;
+    private readonly object _detectorLock = new();
     private IHighlightDetector? _activeDetector;
     private GameInfo? _activeGame;
 
@@ -69,7 +70,6 @@ public sealed class HighlightDetectorRegistry
 
         if (!_detectors.TryGetValue(game.ExecutableName, out var detector))
         {
-            // No dedicated detector — try the AI audio fallback
             if (_audioFallback is not null)
             {
                 detector = _audioFallback;
@@ -83,38 +83,66 @@ public sealed class HighlightDetectorRegistry
             }
         }
 
-        _activeDetector = detector;
-        _activeGame = game;
+        lock (_detectorLock)
+        {
+            _activeDetector = detector;
+            _activeGame = game;
+        }
 
         detector.HighlightDetected += OnHighlightDetected;
-        await detector.StartAsync(ct);
+        try
+        {
+            await detector.StartAsync(ct);
+        }
+        catch
+        {
+            detector.HighlightDetected -= OnHighlightDetected;
+            lock (_detectorLock)
+            {
+                _activeDetector = null;
+                _activeGame = null;
+            }
+            throw;
+        }
 
         _logger.LogInformation("Highlight detector started for {Game}", game.DisplayName);
     }
 
     public async Task StopActiveDetectorAsync(CancellationToken ct = default)
     {
-        if (_activeDetector is null) return;
+        IHighlightDetector? detector;
+        string? gameName;
+        lock (_detectorLock)
+        {
+            detector = _activeDetector;
+            gameName = _activeGame?.DisplayName;
+            if (detector is null) return;
+            _activeDetector = null;
+            _activeGame = null;
+        }
 
-        _activeDetector.HighlightDetected -= OnHighlightDetected;
-        await _activeDetector.StopAsync(ct);
+        detector.HighlightDetected -= OnHighlightDetected;
+        await detector.StopAsync(ct);
 
-        _logger.LogInformation("Highlight detector stopped for {Game}", _activeGame?.DisplayName);
-        _activeDetector = null;
-        _activeGame = null;
+        _logger.LogInformation("Highlight detector stopped for {Game}", gameName);
     }
 
     private void OnHighlightDetected(HighlightDetectedEventArgs args)
     {
-        if (_activeGame is null) return;
+        GameInfo? game;
+        lock (_detectorLock)
+        {
+            game = _activeGame;
+        }
+        if (game is null) return;
 
         _eventBus.Publish(new HighlightDetectedEvent(
             args.Type,
-            _activeGame,
+            game,
             DateTimeOffset.UtcNow,
             args.Description));
 
         _logger.LogInformation("Highlight detected: {Type} in {Game} — {Description}",
-            args.Type, _activeGame.DisplayName, args.Description ?? "");
+            args.Type, game.DisplayName, args.Description ?? "");
     }
 }

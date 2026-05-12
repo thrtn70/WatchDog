@@ -22,9 +22,11 @@ public partial class MainWindow : Window
 
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
-        // Hide instead of close (tray app)
-        e.Cancel = true;
-        Hide();
+        if (!Application.Current.Dispatcher.HasShutdownStarted)
+        {
+            e.Cancel = true;
+            Hide();
+        }
     }
 
     private void FloatingPanelCanvas_Loaded(object sender, RoutedEventArgs e)
