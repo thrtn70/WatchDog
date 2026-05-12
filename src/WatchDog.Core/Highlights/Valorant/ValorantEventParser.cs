@@ -89,7 +89,7 @@ internal static class ValorantEventParser
     {
         if (element.ValueKind != JsonValueKind.Object) return fallback;
         if (!element.TryGetProperty(name, out var prop)) return fallback;
-        return prop.ValueKind == JsonValueKind.Number ? prop.GetInt32() : fallback;
+        return prop.ValueKind == JsonValueKind.Number && prop.TryGetInt32(out var val) ? val : fallback;
     }
 
     private static string? GetString(JsonElement element, string name)
