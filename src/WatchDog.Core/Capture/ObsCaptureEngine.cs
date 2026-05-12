@@ -732,7 +732,21 @@ public sealed class ObsCaptureEngine : ICaptureEngine
         if (_disposed) return;
         _disposed = true;
 
-        FullCleanupAsync().GetAwaiter().GetResult();
+        StopReplayBuffer();
+        DisposeSceneSources();
+
+        _desktopAudio?.Dispose();
+        _desktopAudio = null;
+        _micAudio?.Dispose();
+        _micAudio = null;
+        _videoEncoder?.Dispose();
+        _videoEncoder = null;
+        _audioEncoder?.Dispose();
+        _audioEncoder = null;
+        _obsContext?.Dispose();
+        _obsContext = null;
+        _obsInitialized = false;
+
         _stateLock.Dispose();
     }
 }

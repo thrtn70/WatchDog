@@ -89,8 +89,14 @@ public sealed class HighlightClipService : IHostedService, IDisposable
     {
         try
         {
-            await _registry.StartDetectorForGameAsync(e.Game, _cts?.Token ?? default);
+            CancellationToken ct;
+            await _saveLock.WaitAsync();
+            try { ct = _cts?.Token ?? default; }
+            finally { _saveLock.Release(); }
+
+            await _registry.StartDetectorForGameAsync(e.Game, ct);
         }
+        catch (OperationCanceledException) { }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to start highlight detector for {Game}", e.Game.DisplayName);

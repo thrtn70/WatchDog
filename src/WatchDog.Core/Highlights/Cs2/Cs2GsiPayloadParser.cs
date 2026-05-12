@@ -63,7 +63,11 @@ internal static class Cs2GsiPayloadParser
                 PlayerTeam = playerTeam,
             };
         }
-        catch
+        catch (JsonException)
+        {
+            return null;
+        }
+        catch (InvalidOperationException)
         {
             return null;
         }

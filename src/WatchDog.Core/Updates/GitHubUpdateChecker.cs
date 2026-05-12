@@ -207,11 +207,12 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(DownloadTimeout);
 
+        string? tempPath = null;
         try
         {
             var tempDir = Path.Combine(Path.GetTempPath(), "WatchDog-Update");
             Directory.CreateDirectory(tempDir);
-            var tempPath = Path.Combine(tempDir, $"WatchDog-Setup-{Guid.NewGuid():N}.exe");
+            tempPath = Path.Combine(tempDir, $"WatchDog-Setup-{Guid.NewGuid():N}.exe");
 
             using var response = await _http.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cts.Token);
             response.EnsureSuccessStatusCode();
@@ -251,8 +252,18 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
             _logger.LogInformation("Installer downloaded: {Path} ({Size:F1} MB)", tempPath, bytesRead / (1024.0 * 1024.0));
             return tempPath;
         }
-        catch (OperationCanceledException) { _logger.LogDebug("Installer download timed out or cancelled"); return null; }
-        catch (Exception ex) { _logger.LogWarning(ex, "Failed to download installer"); return null; }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("Installer download timed out or cancelled");
+            try { if (tempPath is not null) File.Delete(tempPath); } catch { /* best-effort */ }
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to download installer");
+            try { if (tempPath is not null) File.Delete(tempPath); } catch { /* best-effort */ }
+            return null;
+        }
     }
 
     /// <summary>Persist the asset timestamp so the next check can detect newer builds.</summary>

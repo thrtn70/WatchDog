@@ -17,6 +17,7 @@ public sealed class ProcessGameDetector : IGameDetector
     private Process? _trackedProcess;
     private bool _disposed;
     private bool _running;
+    private readonly object _trackLock = new();
 
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
 
@@ -177,22 +178,24 @@ public sealed class ProcessGameDetector : IGameDetector
 
     private void TrackGame(GameInfo game)
     {
-        if (CurrentGame is not null)
-            return;
-
-        CurrentGame = game;
-
-        try
+        lock (_trackLock)
         {
-            _trackedProcess = Process.GetProcessById(game.ProcessId);
-            _trackedProcess.EnableRaisingEvents = true;
-            _trackedProcess.Exited += OnGameProcessExited;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Could not attach to process {Pid}, will rely on polling for exit detection", game.ProcessId);
-            // Start a polling-based exit check
-            _pollTimer?.Change(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
+            if (CurrentGame is not null)
+                return;
+
+            CurrentGame = game;
+
+            try
+            {
+                _trackedProcess = Process.GetProcessById(game.ProcessId);
+                _trackedProcess.EnableRaisingEvents = true;
+                _trackedProcess.Exited += OnGameProcessExited;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not attach to process {Pid}, will rely on polling for exit detection", game.ProcessId);
+                _pollTimer?.Change(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
+            }
         }
 
         GameStarted?.Invoke(game);
@@ -200,11 +203,15 @@ public sealed class ProcessGameDetector : IGameDetector
 
     private void OnGameProcessExited(object? sender, EventArgs e)
     {
-        var game = CurrentGame;
-        if (game is null) return;
+        GameInfo? game;
+        lock (_trackLock)
+        {
+            game = CurrentGame;
+            if (game is null) return;
+            StopTracking();
+        }
 
         _logger.LogInformation("Game process exited: {Game} (PID {Pid})", game.DisplayName, game.ProcessId);
-        StopTracking();
         GameStopped?.Invoke(game);
     }
 

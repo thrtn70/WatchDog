@@ -109,20 +109,20 @@ public partial class App : Application
         }
     }
 
-    protected override async void OnExit(ExitEventArgs e)
+    protected override void OnExit(ExitEventArgs e)
     {
         _overlayWindow?.Close();
         _trayIcon?.Dispose();
 
         try
         {
-            if (_host is not null)
-            {
-                await _host.StopAsync(TimeSpan.FromSeconds(5));
-                _host.Dispose();
-            }
+            _host?.StopAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
         }
         catch { /* best-effort shutdown */ }
+        finally
+        {
+            _host?.Dispose();
+        }
 
         base.OnExit(e);
     }
