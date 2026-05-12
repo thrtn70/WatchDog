@@ -243,6 +243,5 @@ public sealed class ObsSessionRecorder : ISessionRecorder
         _elapsed.Stop();
         _videoEncoder?.Dispose();
         _audioEncoder?.Dispose();
-        _lock.Dispose();
     }
 }

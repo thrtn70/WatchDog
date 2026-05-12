@@ -33,7 +33,6 @@ public partial class DiscordUploadViewModel : ObservableObject
         var oldCts = _cts;
         _cts = new CancellationTokenSource();
         oldCts?.Cancel();
-        oldCts?.Dispose();
 
         // Warn about file size (Discord default limit is 25MB)
         const long maxDefaultSize = 25 * 1024 * 1024;

@@ -83,19 +83,20 @@ public partial class App : Application
             }
 
             // Check for updates (non-blocking, failure is silent)
+            var host = _host;
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    var checker = _host!.Services.GetRequiredService<Core.Updates.IUpdateChecker>();
+                    var checker = host!.Services.GetRequiredService<Core.Updates.IUpdateChecker>();
                     var update = await checker.CheckForUpdateAsync();
                     if (update?.IsUpdateAvailable == true)
                     {
-                        await Application.Current!.Dispatcher.InvokeAsync(() =>
+                        await (Application.Current?.Dispatcher.InvokeAsync(() =>
                         {
-                            var vm = _host.Services.GetRequiredService<MainWindowViewModel>();
+                            var vm = host.Services.GetRequiredService<MainWindowViewModel>();
                             vm.SetUpdateAvailable(update);
-                        });
+                        }) ?? Task.CompletedTask);
                     }
                 }
                 catch { /* update check failure is non-fatal */ }

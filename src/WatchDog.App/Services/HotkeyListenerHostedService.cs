@@ -134,14 +134,21 @@ public sealed class HotkeyListenerHostedService : IHostedService
 
     private async void OnHotkeyPressed(int id)
     {
-        switch (id)
+        try
         {
-            case SaveClipHotkeyId:
-                await HandleSaveClipAsync();
-                break;
-            case ToggleRecordingHotkeyId:
-                HandleToggleRecording();
-                break;
+            switch (id)
+            {
+                case SaveClipHotkeyId:
+                    await HandleSaveClipAsync();
+                    break;
+                case ToggleRecordingHotkeyId:
+                    await HandleToggleRecordingAsync();
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unhandled error in hotkey handler");
         }
     }
 
@@ -169,7 +176,7 @@ public sealed class HotkeyListenerHostedService : IHostedService
         }
     }
 
-    private async void HandleToggleRecording()
+    private async Task HandleToggleRecordingAsync()
     {
         _logger.LogInformation("Toggle recording hotkey pressed (state={State})", _captureEngine.State);
 

@@ -12,6 +12,7 @@ public sealed class ClipStorageManager : IClipStorage
     private readonly ILogger<ClipStorageManager> _logger;
     private readonly List<ClipMetadata> _clips = [];
     private readonly object _lock = new();
+    private readonly object _ioLock = new();
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -60,6 +61,11 @@ public sealed class ClipStorageManager : IClipStorage
 
     public async Task<ClipMetadata> IndexClipAsync(string filePath, string? gameName, Highlights.HighlightType? highlightType, Guid? sessionId, int? matchNumber, CancellationToken ct = default)
     {
+        var resolvedPath = Path.GetFullPath(filePath);
+        var resolvedBase = Path.GetFullPath(_config.BasePath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        if (!resolvedPath.StartsWith(resolvedBase, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("File path is outside the configured storage base path.");
+
         // Deduplicate: if this file is already indexed, return existing metadata
         lock (_lock)
         {
@@ -388,24 +394,27 @@ public sealed class ClipStorageManager : IClipStorage
 
     private void SaveIndex()
     {
-        var dir = Path.GetDirectoryName(IndexPath)!;
-        Directory.CreateDirectory(dir);
-        var tmp = Path.Combine(dir, $"clips-index.{Guid.NewGuid():N}.tmp");
-
-        try
+        lock (_ioLock)
         {
-            List<ClipMetadata> snapshot;
-            lock (_lock)
-                snapshot = [.. _clips];
+            var dir = Path.GetDirectoryName(IndexPath)!;
+            Directory.CreateDirectory(dir);
+            var tmp = Path.Combine(dir, $"clips-index.{Guid.NewGuid():N}.tmp");
 
-            var json = JsonSerializer.Serialize(snapshot, JsonOptions);
-            File.WriteAllText(tmp, json);
-            File.Move(tmp, IndexPath, overwrite: true);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to save clip index");
-            try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* best-effort */ }
+            try
+            {
+                List<ClipMetadata> snapshot;
+                lock (_lock)
+                    snapshot = [.. _clips];
+
+                var json = JsonSerializer.Serialize(snapshot, JsonOptions);
+                File.WriteAllText(tmp, json);
+                File.Move(tmp, IndexPath, overwrite: true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to save clip index");
+                try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* best-effort */ }
+            }
         }
     }
 }

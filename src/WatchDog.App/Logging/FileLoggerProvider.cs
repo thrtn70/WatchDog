@@ -39,19 +39,25 @@ public sealed class FileLoggerProvider : ILoggerProvider
 
     internal void WriteLog(string message)
     {
-        lock (_lock)
+        try
         {
-            var today = DateTime.Now.ToString("yyyy-MM-dd");
-            if (today != _currentDate)
+            lock (_lock)
             {
-                _writer?.Dispose();
-                _writer = null;
-                var logPath = Path.Combine(_logDirectory, $"watchdog-{today}.log");
-                _writer = new StreamWriter(logPath, append: true) { AutoFlush = true };
-                _currentDate = today;
-            }
+                var today = DateTime.Now.ToString("yyyy-MM-dd");
+                if (today != _currentDate)
+                {
+                    _writer?.Dispose();
+                    _writer = null;
+                    var logPath = Path.Combine(_logDirectory, $"watchdog-{today}.log");
+                    _writer = new StreamWriter(logPath, append: true) { AutoFlush = true };
+                    _currentDate = today;
+                }
 
-            _writer?.WriteLine(message);
+                _writer?.WriteLine(message);
+            }
+        }
+        catch
+        {
         }
     }
 
