@@ -45,12 +45,16 @@ public partial class AudioMixerViewModel : ObservableObject
 
     partial void OnIsDesktopMutedChanged(bool value)
     {
+        if (_mixer.IsDesktopMuted != value)
+            _mixer.ToggleDesktopMute();
         OnPropertyChanged(nameof(IsDesktopUnmuted));
         OnPropertyChanged(nameof(DesktopMuteIcon));
     }
 
     partial void OnIsMicMutedChanged(bool value)
     {
+        if (_mixer.IsMicMuted != value)
+            _mixer.ToggleMicMute();
         OnPropertyChanged(nameof(IsMicUnmuted));
         OnPropertyChanged(nameof(MicMuteIcon));
     }
