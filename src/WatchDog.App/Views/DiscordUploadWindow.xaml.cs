@@ -22,6 +22,13 @@ public partial class DiscordUploadWindow : Window
         Loaded += (_, _) => vm.UploadCommand.Execute(metadata);
     }
 
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        if (DataContext is DiscordUploadViewModel vm && vm.IsUploading)
+            vm.CancelCommand.Execute(null);
+        base.OnClosing(e);
+    }
+
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
         Close();
