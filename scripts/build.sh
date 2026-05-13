@@ -21,6 +21,22 @@ readonly SSH_HOST="win11"
 readonly REMOTE_PATH='C:\Code\tikrclpr'
 readonly DEFAULT_PROJECT='src\WatchDog.App\WatchDog.App.csproj'
 
+validate_config() {
+    local config="$1"
+    if [[ ! "$config" =~ ^(Release|Debug)$ ]]; then
+        fail "Invalid build configuration: '$config' (must be Release or Debug)"
+        exit 2
+    fi
+}
+
+validate_project() {
+    local project="$1"
+    if [[ "$project" =~ [';|&`$'] ]] || [[ "$project" != *.csproj ]]; then
+        fail "Invalid project path: '$project'"
+        exit 2
+    fi
+}
+
 # Color helpers (no-ops if stderr is not a tty)
 if [[ -t 2 ]]; then
     readonly C_BLUE=$'\033[34m'
@@ -61,6 +77,8 @@ run_remote() {
 cmd_build() {
     local config="${1:-Release}"
     local project="${2:-$DEFAULT_PROJECT}"
+    validate_config "$config"
+    validate_project "$project"
     preflight
     run_remote "cd $REMOTE_PATH; dotnet build $project -c $config"
     ok "Build complete (${config})"
