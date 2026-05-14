@@ -217,10 +217,13 @@ public sealed class CaptureSourceManager : IHostedService
                 return;
             }
 
+            // Snapshot volatile field once to avoid TOCTOU race across reads
+            var currentSource = ActiveSource;
+
             // Deduplication: same executable within merge window = same session
-            if (ActiveSource is not null &&
-                string.Equals(ActiveSource.ExecutableName, game.ExecutableName, StringComparison.OrdinalIgnoreCase) &&
-                DateTimeOffset.UtcNow - ActiveSource.InitiatedAt < MergeWindow)
+            if (currentSource is not null &&
+                string.Equals(currentSource.ExecutableName, game.ExecutableName, StringComparison.OrdinalIgnoreCase) &&
+                DateTimeOffset.UtcNow - currentSource.InitiatedAt < MergeWindow)
             {
                 _logger.LogInformation("Game detected: {Game} — deduplicated (same exe within {Window}s merge window)",
                     game.DisplayName, MergeWindow.TotalSeconds);
@@ -264,9 +267,12 @@ public sealed class CaptureSourceManager : IHostedService
     {
         try
         {
+            // Snapshot volatile field once to avoid TOCTOU race and null dereference
+            var currentSource = ActiveSource;
+
             // If manual capture is active and the manually captured process exits
-            if (IsManualCaptureActive &&
-                string.Equals(ActiveSource!.ExecutableName, game.ExecutableName, StringComparison.OrdinalIgnoreCase))
+            if (currentSource?.Kind == CaptureSourceKind.Manual &&
+                string.Equals(currentSource.ExecutableName, game.ExecutableName, StringComparison.OrdinalIgnoreCase))
             {
                 _logger.LogInformation("Manually captured process exited: {Game}", game.DisplayName);
                 await StopManualCaptureAsync();
@@ -275,10 +281,10 @@ public sealed class CaptureSourceManager : IHostedService
 
             // If manual capture is active for a DIFFERENT window, ignore stale game-exit
             // events from previously auto-detected games (ProcessGameDetector still tracks them)
-            if (IsManualCaptureActive)
+            if (currentSource?.Kind == CaptureSourceKind.Manual)
             {
                 _logger.LogDebug("Game exited: {Game} — ignored (manual capture active for {Window})",
-                    game.DisplayName, ActiveSource!.DisplayName);
+                    game.DisplayName, currentSource.DisplayName);
                 return;
             }
 

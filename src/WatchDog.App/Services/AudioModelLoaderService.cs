@@ -17,6 +17,9 @@ public sealed class AudioModelLoaderService : IHostedService
     private readonly HighlightDetectorRegistry _registry;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<AudioModelLoaderService> _logger;
+    private Task? _loadTask;
+    private AudioClassifier? _classifier;
+    private AudioHighlightDetector? _detector;
 
     private static readonly string ModelPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -34,8 +37,7 @@ public sealed class AudioModelLoaderService : IHostedService
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        // Run in the background — don't block hosted service startup
-        _ = Task.Run(() => LoadModelAsync(cancellationToken), cancellationToken);
+        _loadTask = Task.Run(() => LoadModelAsync(cancellationToken), cancellationToken);
         return Task.CompletedTask;
     }
 
@@ -55,15 +57,13 @@ public sealed class AudioModelLoaderService : IHostedService
                 }
             }
 
-            // Load the classifier
-            var classifier = new AudioClassifier(ModelPath,
+            _classifier = new AudioClassifier(ModelPath,
                 _loggerFactory.CreateLogger<AudioClassifier>());
 
-            var detector = new AudioHighlightDetector(classifier,
+            _detector = new AudioHighlightDetector(_classifier,
                 _loggerFactory.CreateLogger<AudioHighlightDetector>());
 
-            // Swap into the registry — replaces the NoOp fallback
-            _registry.SetAudioFallback(detector);
+            _registry.SetAudioFallback(_detector);
 
             _logger.LogInformation("AI audio highlight detector ready");
         }
@@ -77,5 +77,17 @@ public sealed class AudioModelLoaderService : IHostedService
         }
     }
 
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public async Task StopAsync(CancellationToken cancellationToken)
+    {
+        if (_loadTask is not null)
+        {
+            try { await _loadTask; }
+            catch { /* already logged in LoadModelAsync */ }
+        }
+
+        if (_detector is not null)
+            await _detector.DisposeAsync();
+
+        _classifier?.Dispose();
+    }
 }
