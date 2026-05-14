@@ -307,10 +307,8 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
         if (certificate is null)
             return false;
 
-        // Riot local API commonly uses a self-signed loopback cert. Allow only chain errors
-        // for loopback and reject all other SSL errors.
-        return errors == SslPolicyErrors.None ||
-            errors == SslPolicyErrors.RemoteCertificateChainErrors;
+        const SslPolicyErrors allowedErrors = SslPolicyErrors.RemoteCertificateChainErrors;
+        return (errors & ~allowedErrors) == SslPolicyErrors.None;
     }
 
     private static bool ValidateLoopbackWebSocketCertificate(
@@ -325,7 +323,7 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
         if (certificate is null)
             return false;
 
-        return errors == SslPolicyErrors.None ||
-            errors == SslPolicyErrors.RemoteCertificateChainErrors;
+        const SslPolicyErrors allowedErrors = SslPolicyErrors.RemoteCertificateChainErrors;
+        return (errors & ~allowedErrors) == SslPolicyErrors.None;
     }
 }

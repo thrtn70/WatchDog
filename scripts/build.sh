@@ -58,9 +58,19 @@ run_remote() {
     ssh "$SSH_HOST" "$remote_cmd" 2> >(filter_pq_warning >&2)
 }
 
+validate_arg() {
+    local value="$1" label="$2"
+    if [[ "$value" =~ [^a-zA-Z0-9_.\\/-] ]]; then
+        fail "Invalid characters in $label: '$value'"
+        exit 1
+    fi
+}
+
 cmd_build() {
     local config="${1:-Release}"
     local project="${2:-$DEFAULT_PROJECT}"
+    validate_arg "$config" "config"
+    validate_arg "$project" "project"
     preflight
     run_remote "cd $REMOTE_PATH; dotnet build $project -c $config"
     ok "Build complete (${config})"

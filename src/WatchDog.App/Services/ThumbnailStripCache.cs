@@ -71,7 +71,7 @@ public sealed class ThumbnailStripCache
             if (paths.Count == 0)
                 return null;
 
-            var frames = new BitmapImage[paths.Count];
+            var frameList = new List<BitmapImage>(paths.Count);
             for (var i = 0; i < paths.Count; i++)
             {
                 if (!File.Exists(paths[i]))
@@ -84,8 +84,12 @@ public sealed class ThumbnailStripCache
                 bmp.CacheOption = BitmapCacheOption.OnLoad;
                 bmp.EndInit();
                 bmp.Freeze();
-                frames[i] = bmp;
+                frameList.Add(bmp);
             }
+
+            var frames = frameList.ToArray();
+            if (frames.Length == 0)
+                return null;
 
             // Evict oldest entries if cache is full
             _lruOrder.Enqueue(clipPath);
