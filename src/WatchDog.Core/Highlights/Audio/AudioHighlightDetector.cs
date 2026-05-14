@@ -171,6 +171,7 @@ public sealed class AudioHighlightDetector : IHighlightDetector
                     _ = Task.Run(() =>
                     {
                         try { ProcessAudioWindow(windowArray); }
+                        catch (Exception ex) { _logger.LogDebug(ex, "Audio inference failed"); }
                         finally { Interlocked.Exchange(ref _inferenceInFlight, 0); }
                     });
                 }
