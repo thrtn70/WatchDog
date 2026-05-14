@@ -148,6 +148,7 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
                 IconSource = SavingIconPath;
                 IsRecording = true;
                 // Revert to buffering icon after 3 seconds
+                _savingRevertTimer?.Dispose();
                 _savingRevertTimer = new System.Threading.Timer(_ =>
                 {
                     Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() =>
