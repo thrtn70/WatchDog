@@ -42,10 +42,8 @@ public sealed class DiscordWebhookService : IDiscordWebhookService
         if (string.IsNullOrWhiteSpace(settings.WebhookUrl))
             return new DiscordUploadResult(false, "No Discord webhook URL configured.");
 
-        // SSRF prevention: only allow HTTPS Discord webhook hosts
-        if (!Uri.TryCreate(settings.WebhookUrl, UriKind.Absolute, out var webhookUri) ||
-            webhookUri.Scheme != Uri.UriSchemeHttps ||
-            (webhookUri.Host != "discord.com" && webhookUri.Host != "discordapp.com"))
+        // SSRF prevention: only allow HTTPS Discord webhook endpoints
+        if (!IsValidWebhookUrl(settings.WebhookUrl))
         {
             return new DiscordUploadResult(false, "Invalid or non-Discord webhook URL.");
         }
@@ -114,10 +112,7 @@ public sealed class DiscordWebhookService : IDiscordWebhookService
 
     public async Task<bool> ValidateWebhookUrlAsync(string webhookUrl, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(webhookUrl)) return false;
-        if (!Uri.TryCreate(webhookUrl, UriKind.Absolute, out var uri)) return false;
-        if (uri.Scheme != Uri.UriSchemeHttps) return false;
-        if (uri.Host != "discord.com" && uri.Host != "discordapp.com") return false;
+        if (!IsValidWebhookUrl(webhookUrl)) return false;
 
         try
         {
@@ -162,6 +157,16 @@ public sealed class DiscordWebhookService : IDiscordWebhookService
             .Replace("{HighlightType}", metadata.HighlightType?.ToString() ?? "Clip")
             .Replace("{Duration}", metadata.Duration.ToString(@"m\:ss"))
             .Replace("{FileName}", metadata.FileName);
+    }
+
+    private static bool IsValidWebhookUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return false;
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return false;
+        if (uri.Scheme != Uri.UriSchemeHttps) return false;
+        if (uri.Host != "discord.com" && uri.Host != "discordapp.com") return false;
+        if (!uri.AbsolutePath.StartsWith("/api/webhooks/", StringComparison.OrdinalIgnoreCase)) return false;
+        return true;
     }
 
     private static string TruncateError(string error) =>

@@ -62,7 +62,7 @@ cmd_build() {
     local config="${1:-Release}"
     local project="${2:-$DEFAULT_PROJECT}"
     preflight
-    run_remote "cd $REMOTE_PATH; dotnet build $project -c $config"
+    run_remote "cd $REMOTE_PATH; dotnet build \"$project\" -c \"$config\""
     ok "Build complete (${config})"
 }
 
