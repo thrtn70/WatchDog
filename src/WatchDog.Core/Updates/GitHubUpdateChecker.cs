@@ -226,7 +226,6 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
             int read;
             while ((read = await contentStream.ReadAsync(buffer, cts.Token)) > 0)
             {
-                await fileStream.WriteAsync(buffer.AsMemory(0, read), cts.Token);
                 bytesRead += read;
 
                 if (bytesRead > MaxInstallerBytes)
@@ -235,6 +234,8 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
                     try { File.Delete(tempPath); } catch { /* best-effort */ }
                     return null;
                 }
+
+                await fileStream.WriteAsync(buffer.AsMemory(0, read), cts.Token);
 
                 if (totalBytes > 0)
                     progress?.Report((double)bytesRead / totalBytes);
