@@ -295,6 +295,14 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
         }
     }
 
+    // Riot's local cert at 127.0.0.1 can trip both ChainErrors and NameMismatch
+    // simultaneously on some client versions. Use a bitwise mask so any
+    // combination of the two allowed flags is accepted (matches
+    // ValorantHighlightDetector's shared HttpClient callback).
+    private const SslPolicyErrors LoopbackAllowedErrors =
+        SslPolicyErrors.RemoteCertificateChainErrors |
+        SslPolicyErrors.RemoteCertificateNameMismatch;
+
     private static bool ValidateLoopbackHttpCertificate(
         HttpRequestMessage requestMessage,
         X509Certificate2? certificate,
@@ -307,10 +315,7 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
         if (certificate is null)
             return false;
 
-        // Riot local API commonly uses a self-signed loopback cert. Allow only chain errors
-        // for loopback and reject all other SSL errors.
-        return errors == SslPolicyErrors.None ||
-            errors == SslPolicyErrors.RemoteCertificateChainErrors;
+        return (errors & ~LoopbackAllowedErrors) == SslPolicyErrors.None;
     }
 
     private static bool ValidateLoopbackWebSocketCertificate(
@@ -325,7 +330,6 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
         if (certificate is null)
             return false;
 
-        return errors == SslPolicyErrors.None ||
-            errors == SslPolicyErrors.RemoteCertificateChainErrors;
+        return (errors & ~LoopbackAllowedErrors) == SslPolicyErrors.None;
     }
 }
