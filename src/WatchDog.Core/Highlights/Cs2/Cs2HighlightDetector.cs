@@ -105,22 +105,36 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
         }
     }
 
+    private const int MaxPayloadBytes = 65_536;
+
     private async Task ProcessRequestAsync(HttpListenerContext context)
     {
         // Reject oversized payloads (CS2 GSI is typically <2KB).
-        // ContentLength64 == -1 means "unknown" (chunked transfer); accept
-        // those and let the streaming reader handle bounding if needed.
-        if (context.Request.ContentLength64 > 65_536)
+        if (context.Request.ContentLength64 > MaxPayloadBytes)
         {
             context.Response.StatusCode = 413;
             context.Response.Close();
             return;
         }
 
+        // Bound the read for chunked transfers (ContentLength64 == -1)
+        // to prevent unbounded memory allocation from local spoofing.
         string body;
-        using (var reader = new System.IO.StreamReader(context.Request.InputStream, Encoding.UTF8))
+        using (var ms = new System.IO.MemoryStream())
         {
-            body = await reader.ReadToEndAsync();
+            var buf = new byte[8192];
+            int read;
+            while ((read = await context.Request.InputStream.ReadAsync(buf)) > 0)
+            {
+                ms.Write(buf, 0, read);
+                if (ms.Length > MaxPayloadBytes)
+                {
+                    context.Response.StatusCode = 413;
+                    context.Response.Close();
+                    return;
+                }
+            }
+            body = Encoding.UTF8.GetString(ms.GetBuffer(), 0, (int)ms.Length);
         }
 
         // Respond immediately (CS2 expects a quick 200)
