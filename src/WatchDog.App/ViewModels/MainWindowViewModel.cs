@@ -780,8 +780,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             Process.Start(new ProcessStartInfo
             {
                 FileName = resolvedInstaller,
-                UseShellExecute = true,
-                Arguments = "/SILENT /NORESTART",
+                UseShellExecute = false,
+                ArgumentList = { "/SILENT", "/NORESTART" },
             })?.Dispose();
 
             Application.Current.Shutdown(0);
