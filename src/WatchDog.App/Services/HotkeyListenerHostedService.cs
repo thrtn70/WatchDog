@@ -11,7 +11,7 @@ namespace WatchDog.App.Services;
 /// Registers global hotkeys and triggers replay buffer save / recording toggle on press.
 /// Re-registers hotkeys at runtime when settings change.
 /// </summary>
-public sealed class HotkeyListenerHostedService : IHostedService
+public sealed class HotkeyListenerHostedService : IHostedService, IDisposable
 {
     private const int SaveClipHotkeyId = 1;
     private const int ToggleRecordingHotkeyId = 2;
@@ -134,14 +134,21 @@ public sealed class HotkeyListenerHostedService : IHostedService
 
     private async void OnHotkeyPressed(int id)
     {
-        switch (id)
+        try
         {
-            case SaveClipHotkeyId:
-                await HandleSaveClipAsync();
-                break;
-            case ToggleRecordingHotkeyId:
-                HandleToggleRecording();
-                break;
+            switch (id)
+            {
+                case SaveClipHotkeyId:
+                    await HandleSaveClipAsync();
+                    break;
+                case ToggleRecordingHotkeyId:
+                    HandleToggleRecording();
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unhandled error in hotkey handler (id={Id})", id);
         }
     }
 
@@ -190,5 +197,11 @@ public sealed class HotkeyListenerHostedService : IHostedService
         {
             _logger.LogError(ex, "Failed to toggle recording");
         }
+    }
+
+    public void Dispose()
+    {
+        _settingsService.SettingsChanged -= OnSettingsChanged;
+        _hotkeyService.HotkeyPressed -= OnHotkeyPressed;
     }
 }

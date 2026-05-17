@@ -59,11 +59,19 @@ public sealed class AudioModelLoaderService : IHostedService
             var classifier = new AudioClassifier(ModelPath,
                 _loggerFactory.CreateLogger<AudioClassifier>());
 
-            var detector = new AudioHighlightDetector(classifier,
-                _loggerFactory.CreateLogger<AudioHighlightDetector>());
+            try
+            {
+                var detector = new AudioHighlightDetector(classifier,
+                    _loggerFactory.CreateLogger<AudioHighlightDetector>());
 
-            // Swap into the registry — replaces the NoOp fallback
-            _registry.SetAudioFallback(detector);
+                // Swap into the registry — replaces the NoOp fallback
+                _registry.SetAudioFallback(detector);
+            }
+            catch
+            {
+                classifier.Dispose();
+                throw;
+            }
 
             _logger.LogInformation("AI audio highlight detector ready");
         }
