@@ -3,7 +3,6 @@ using WatchDog.Core.Events;
 using WatchDog.Core.GameDetection;
 using WatchDog.Core.Highlights;
 using WatchDog.Core.Sessions;
-using WatchDog.Core.Tests.Helpers;
 
 namespace WatchDog.Core.Tests.Sessions;
 
@@ -38,7 +37,7 @@ public sealed class MatchTrackerTests : IDisposable
     {
         _tracker.Dispose();
         _repo.Dispose();
-        TestFs.DeleteDirectoryWithRetry(_tempDir);
+        Directory.Delete(_tempDir, recursive: true);
     }
 
     private void PublishHighlight(HighlightType type, string? description = null)
