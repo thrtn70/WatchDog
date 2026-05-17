@@ -123,6 +123,13 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
             body = await reader.ReadToEndAsync();
         }
 
+        if (body.Length > 65_536)
+        {
+            context.Response.StatusCode = 413;
+            context.Response.Close();
+            return;
+        }
+
         // Respond immediately (CS2 expects a quick 200)
         context.Response.StatusCode = 200;
         context.Response.Close();
