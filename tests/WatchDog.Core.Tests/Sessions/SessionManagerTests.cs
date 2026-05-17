@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using WatchDog.Core.Events;
 using WatchDog.Core.GameDetection;
 using WatchDog.Core.Sessions;
-using WatchDog.Core.Tests.Helpers;
 
 namespace WatchDog.Core.Tests.Sessions;
 
@@ -28,7 +27,7 @@ public sealed class SessionManagerTests : IDisposable
     public void Dispose()
     {
         _repo.Dispose();
-        TestFs.DeleteDirectoryWithRetry(_tempDir);
+        Directory.Delete(_tempDir, recursive: true);
     }
 
     private static GameInfo MakeGame(string name = "CS2", string exe = "cs2.exe") =>

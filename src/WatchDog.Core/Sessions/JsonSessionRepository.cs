@@ -156,7 +156,19 @@ public sealed class JsonSessionRepository : ISessionRepository, IDisposable
         {
             var index = new SessionIndex(CurrentSchemaVersion, [.. _sessions]);
             var json = JsonSerializer.Serialize(index, JsonOptions);
-            await File.WriteAllTextAsync(tmp, json, ct);
+            var encoded = System.Text.Encoding.UTF8.GetBytes(json);
+
+            // Explicit FileStream ensures the OS handle is fully closed (DisposeAsync)
+            // before File.Move runs. File.WriteAllTextAsync can return on Windows while
+            // the kernel still holds the handle, causing Directory.Delete to race with it.
+            {
+                await using var fs = new FileStream(
+                    tmp, FileMode.Create, FileAccess.Write, FileShare.None,
+                    bufferSize: 65536, useAsync: true);
+                await fs.WriteAsync(encoded, ct);
+                await fs.FlushAsync(ct);
+            } // DisposeAsync closes the handle before we rename
+
             File.Move(tmp, _indexPath, overwrite: true);
         }
         catch (Exception ex)

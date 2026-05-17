@@ -12,6 +12,12 @@ public sealed class MatchTracker : IDisposable
     private readonly IDisposable _subscription;
     private readonly object _stateLock = new();
 
+    // Tracks background persist tasks so Dispose() can drain them before the
+    // test (or host) tears down the filesystem. Fire-and-forget tasks that
+    // outlive their temp directory cause "file in use" races on Windows CI.
+    private readonly object _taskLock = new();
+    private readonly List<Task> _pendingPersists = [];
+
     private Guid? _trackedSessionId;
     private int _currentMatchNumber;
     private DateTimeOffset? _currentMatchStartedAt;
@@ -81,7 +87,7 @@ public sealed class MatchTracker : IDisposable
         // Snapshot values and persist asynchronously
         var matchNumber = _currentMatchNumber;
         var startedAt = e.Timestamp;
-        _ = PersistMatchStartAsync(sessionId, matchNumber, startedAt);
+        TrackPersistTask(PersistMatchStartAsync(sessionId, matchNumber, startedAt));
     }
 
     private void EndCurrentMatch(Guid sessionId, MatchResult result, HighlightDetectedEvent e)
@@ -98,7 +104,7 @@ public sealed class MatchTracker : IDisposable
         _currentMatchStartedAt = null;
 
         // Snapshot values and persist asynchronously
-        _ = PersistMatchEndAsync(sessionId, matchNumber, startedAt, result, score);
+        TrackPersistTask(PersistMatchEndAsync(sessionId, matchNumber, startedAt, result, score));
     }
 
     private async Task PersistMatchStartAsync(Guid sessionId, int matchNumber, DateTimeOffset startedAt)
@@ -162,6 +168,14 @@ public sealed class MatchTracker : IDisposable
         }
     }
 
+    private void TrackPersistTask(Task task)
+    {
+        lock (_taskLock)
+            _pendingPersists.Add(task);
+        task.ContinueWith(_ => { lock (_taskLock) _pendingPersists.Remove(task); },
+            TaskScheduler.Default);
+    }
+
     public void Reset()
     {
         lock (_stateLock)
@@ -172,5 +186,20 @@ public sealed class MatchTracker : IDisposable
         }
     }
 
-    public void Dispose() => _subscription.Dispose();
+    public void Dispose()
+    {
+        _subscription.Dispose();
+
+        // Drain any in-flight persistence tasks before returning so that callers
+        // (tests, hosted services) can safely delete the underlying directory.
+        Task[] snapshot;
+        lock (_taskLock)
+            snapshot = [.. _pendingPersists];
+
+        if (snapshot.Length > 0)
+        {
+            try { Task.WhenAll(snapshot).GetAwaiter().GetResult(); }
+            catch { /* Each Persist*Async already logs its own error. */ }
+        }
+    }
 }
