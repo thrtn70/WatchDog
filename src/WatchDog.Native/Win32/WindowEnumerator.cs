@@ -104,7 +104,8 @@ public static partial class WindowEnumerator
         var length = GetWindowTextLength(hWnd);
         if (length <= 0) return null;
 
-        var bufLen = length + 1;
+        const int maxTitleChars = 32768;
+        var bufLen = Math.Min(length + 1, maxTitleChars);
         char* buffer = stackalloc char[bufLen];
         var result = GetWindowText(hWnd, buffer, bufLen);
         return result > 0 ? new string(buffer, 0, result) : null;

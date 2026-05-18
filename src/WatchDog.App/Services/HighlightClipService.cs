@@ -106,7 +106,6 @@ public sealed class HighlightClipService : IHostedService, IDisposable
             try
             {
                 _cts?.Cancel();
-                _cts?.Dispose();
                 _cts = new CancellationTokenSource();
             }
             finally

@@ -33,37 +33,37 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        // Validate runtime dependencies before building the host
-        var validation = Core.Runtime.RuntimeValidator.Validate();
-        if (!validation.IsValid)
-        {
-            var msg = "WatchDog is missing required components:\n\n"
-                    + string.Join("\n", validation.MissingComponents)
-                    + "\n\nThe app will continue but some features may not work.";
-            MessageBox.Show(msg, "WatchDog — Missing Components",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-
-        _host = Host.CreateDefaultBuilder()
-            .ConfigureLogging(logging =>
-            {
-                logging.SetMinimumLevel(LogLevel.Debug);
-                logging.AddProvider(new Logging.FileLoggerProvider(LogLevel.Information));
-            })
-            .ConfigureServices(ConfigureServices)
-            .Build();
-
-        Services = _host.Services;
-
-        // Initialize hotkey service on UI thread (needs HWND message pump)
-        var hotkeyService = _host.Services.GetRequiredService<Win32HotkeyService>();
-        hotkeyService.Initialize();
-
-        // Create system tray icon
-        InitializeTrayIcon();
-
         try
         {
+            // Validate runtime dependencies before building the host
+            var validation = Core.Runtime.RuntimeValidator.Validate();
+            if (!validation.IsValid)
+            {
+                var msg = "WatchDog is missing required components:\n\n"
+                        + string.Join("\n", validation.MissingComponents)
+                        + "\n\nThe app will continue but some features may not work.";
+                MessageBox.Show(msg, "WatchDog — Missing Components",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+
+            _host = Host.CreateDefaultBuilder()
+                .ConfigureLogging(logging =>
+                {
+                    logging.SetMinimumLevel(LogLevel.Debug);
+                    logging.AddProvider(new Logging.FileLoggerProvider(LogLevel.Information));
+                })
+                .ConfigureServices(ConfigureServices)
+                .Build();
+
+            Services = _host.Services;
+
+            // Initialize hotkey service on UI thread (needs HWND message pump)
+            var hotkeyService = _host.Services.GetRequiredService<Win32HotkeyService>();
+            hotkeyService.Initialize();
+
+            // Create system tray icon
+            InitializeTrayIcon();
+
             // Recover orphaned sessions BEFORE starting hosted services —
             // CaptureSourceManager creates a new desktop session on start,
             // and RecoverOrphanedSessions would incorrectly mark it as Crashed.
