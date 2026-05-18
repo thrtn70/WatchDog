@@ -23,6 +23,7 @@ public static class AudioModelDownloader
     public static async Task<bool> EnsureModelAsync(
         string modelPath,
         ILogger logger,
+        HttpClient http,
         CancellationToken ct = default)
     {
         if (File.Exists(modelPath))
@@ -37,16 +38,11 @@ public static class AudioModelDownloader
 
         try
         {
-            // Validate URL before downloading
             if (!IsAllowedUrl(ModelUrl))
             {
                 logger.LogError("Model URL is not on the allowed host list");
                 return false;
             }
-
-            using var http = new HttpClient();
-            http.Timeout = TimeSpan.FromMinutes(5);
-            http.DefaultRequestHeaders.UserAgent.ParseAdd("WatchDog/1.3.0");
 
             using var response = await http.GetAsync(ModelUrl, HttpCompletionOption.ResponseHeadersRead, ct);
             response.EnsureSuccessStatusCode();

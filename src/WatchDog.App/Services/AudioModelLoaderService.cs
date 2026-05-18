@@ -17,6 +17,7 @@ public sealed class AudioModelLoaderService : IHostedService
     private readonly HighlightDetectorRegistry _registry;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<AudioModelLoaderService> _logger;
+    private readonly HttpClient _http;
 
     private static readonly string ModelPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -25,11 +26,13 @@ public sealed class AudioModelLoaderService : IHostedService
     public AudioModelLoaderService(
         HighlightDetectorRegistry registry,
         ILoggerFactory loggerFactory,
-        ILogger<AudioModelLoaderService> logger)
+        ILogger<AudioModelLoaderService> logger,
+        HttpClient http)
     {
         _registry = registry;
         _loggerFactory = loggerFactory;
         _logger = logger;
+        _http = http;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -47,7 +50,7 @@ public sealed class AudioModelLoaderService : IHostedService
             if (!File.Exists(ModelPath))
             {
                 _logger.LogInformation("Downloading AI audio model in background...");
-                var downloaded = await AudioModelDownloader.EnsureModelAsync(ModelPath, _logger, ct);
+                var downloaded = await AudioModelDownloader.EnsureModelAsync(ModelPath, _logger, _http, ct);
                 if (!downloaded)
                 {
                     _logger.LogWarning("ONNX model download failed — AI audio highlights unavailable");
