@@ -190,8 +190,8 @@ public sealed class ClipStorageManager : IClipStorage
 
         try
         {
-            if (File.Exists(filePath))
-                File.Delete(filePath);
+            if (File.Exists(fullPath))
+                File.Delete(fullPath);
             if (thumbnailPath is not null && File.Exists(thumbnailPath))
             {
                 var thumbFull = Path.GetFullPath(thumbnailPath);

@@ -108,8 +108,7 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
     private void UpdateState(CaptureState state)
     {
         // Cancel any pending saving→previous icon revert
-        _savingRevertTimer?.Dispose();
-        _savingRevertTimer = null;
+        Interlocked.Exchange(ref _savingRevertTimer, null)?.Dispose();
 
         switch (state)
         {
@@ -233,13 +232,13 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _disposed = true;
         _captureEngine.StateChanged -= _captureStateHandler;
         _clipSavedSub.Dispose();
         _sessionStartedSub.Dispose();
         _sessionStoppedSub.Dispose();
         _gameDetectedSub.Dispose();
         _gameExitedSub.Dispose();
-        _disposed = true;
-        _savingRevertTimer?.Dispose();
+        Interlocked.Exchange(ref _savingRevertTimer, null)?.Dispose();
     }
 }
