@@ -22,10 +22,10 @@ public partial class ClipSavedToast : Window
         Left = workArea.Right - 340;
         Top = workArea.Bottom - 100;
 
-        // Auto-close after 3 seconds
         _closeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(AutoCloseSeconds) };
         _closeTimer.Tick += (_, _) => FadeOutAndClose();
         _closeTimer.Start();
+        Closed += (_, _) => _closeTimer.Stop();
     }
 
     private void FadeOutAndClose()
