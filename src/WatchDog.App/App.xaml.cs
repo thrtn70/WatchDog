@@ -114,6 +114,9 @@ public partial class App : Application
         _overlayWindow?.Close();
         _trayIcon?.Dispose();
 
+        try { Services.GetService<MainWindowViewModel>()?.Dispose(); }
+        catch { /* best-effort */ }
+
         try
         {
             if (_host is not null)
