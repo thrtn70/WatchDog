@@ -83,7 +83,7 @@ public sealed class DiscordWebhookService : IDiscordWebhookService
                 content.Add(new StringContent(simplePayload, Encoding.UTF8, "application/json"), "payload_json");
             }
 
-            var response = await _httpClient.PostAsync(settings.WebhookUrl, content, ct);
+            using var response = await _httpClient.PostAsync(settings.WebhookUrl, content, ct);
 
             if (response.IsSuccessStatusCode)
             {
@@ -121,7 +121,7 @@ public sealed class DiscordWebhookService : IDiscordWebhookService
 
         try
         {
-            var response = await _httpClient.GetAsync(webhookUrl, ct);
+            using var response = await _httpClient.GetAsync(webhookUrl, ct);
             return response.IsSuccessStatusCode;
         }
         catch
