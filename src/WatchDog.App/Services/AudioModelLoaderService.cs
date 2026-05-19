@@ -17,6 +17,8 @@ public sealed class AudioModelLoaderService : IHostedService
     private readonly HighlightDetectorRegistry _registry;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<AudioModelLoaderService> _logger;
+    private AudioClassifier? _classifier;
+    private AudioHighlightDetector? _detector;
 
     private static readonly string ModelPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -56,14 +58,14 @@ public sealed class AudioModelLoaderService : IHostedService
             }
 
             // Load the classifier
-            var classifier = new AudioClassifier(ModelPath,
+            _classifier = new AudioClassifier(ModelPath,
                 _loggerFactory.CreateLogger<AudioClassifier>());
 
-            var detector = new AudioHighlightDetector(classifier,
+            _detector = new AudioHighlightDetector(_classifier,
                 _loggerFactory.CreateLogger<AudioHighlightDetector>());
 
             // Swap into the registry — replaces the NoOp fallback
-            _registry.SetAudioFallback(detector);
+            _registry.SetAudioFallback(_detector);
 
             _logger.LogInformation("AI audio highlight detector ready");
         }
@@ -77,5 +79,11 @@ public sealed class AudioModelLoaderService : IHostedService
         }
     }
 
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public async Task StopAsync(CancellationToken cancellationToken)
+    {
+        if (_detector is not null)
+            await _detector.DisposeAsync();
+
+        _classifier?.Dispose();
+    }
 }
