@@ -12,6 +12,7 @@ public sealed class ClipStorageManager : IClipStorage
     private readonly ILogger<ClipStorageManager> _logger;
     private readonly List<ClipMetadata> _clips = [];
     private readonly object _lock = new();
+    private readonly object _saveLock = new();
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -388,24 +389,27 @@ public sealed class ClipStorageManager : IClipStorage
 
     private void SaveIndex()
     {
-        var dir = Path.GetDirectoryName(IndexPath)!;
-        Directory.CreateDirectory(dir);
-        var tmp = Path.Combine(dir, $"clips-index.{Guid.NewGuid():N}.tmp");
-
-        try
+        lock (_saveLock)
         {
-            List<ClipMetadata> snapshot;
-            lock (_lock)
-                snapshot = [.. _clips];
+            var dir = Path.GetDirectoryName(IndexPath)!;
+            Directory.CreateDirectory(dir);
+            var tmp = Path.Combine(dir, $"clips-index.{Guid.NewGuid():N}.tmp");
 
-            var json = JsonSerializer.Serialize(snapshot, JsonOptions);
-            File.WriteAllText(tmp, json);
-            File.Move(tmp, IndexPath, overwrite: true);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to save clip index");
-            try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* best-effort */ }
+            try
+            {
+                List<ClipMetadata> snapshot;
+                lock (_lock)
+                    snapshot = [.. _clips];
+
+                var json = JsonSerializer.Serialize(snapshot, JsonOptions);
+                File.WriteAllText(tmp, json);
+                File.Move(tmp, IndexPath, overwrite: true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to save clip index");
+                try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* best-effort */ }
+            }
         }
     }
 }
