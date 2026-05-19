@@ -147,24 +147,33 @@ public sealed partial class FFmpegClipEditor : IClipEditor
         if (!process.Start())
             throw new InvalidOperationException($"Failed to start process: {Path.GetFileName(executable)}");
 
-        // Drain stdout and stderr concurrently to prevent pipe deadlock —
-        // FFmpeg writes heavily to stderr; sequential reads can deadlock if the pipe fills.
-        var stdoutTask = process.StandardOutput.ReadToEndAsync(ct);
-        var stderrTask = process.StandardError.ReadToEndAsync(ct);
-        await Task.WhenAll(stdoutTask, stderrTask);
-        await process.WaitForExitAsync(ct);
-
-        var stdout = await stdoutTask;
-        var stderr = await stderrTask;
-
-        if (process.ExitCode != 0)
+        try
         {
-            _logger.LogWarning("Process exited with code {Code}. Stderr: {Stderr}", process.ExitCode, stderr);
-            throw new InvalidOperationException(
-                $"{Path.GetFileName(executable)} exited with code {process.ExitCode}.");
-        }
+            // Drain stdout and stderr concurrently to prevent pipe deadlock —
+            // FFmpeg writes heavily to stderr; sequential reads can deadlock if the pipe fills.
+            var stdoutTask = process.StandardOutput.ReadToEndAsync(ct);
+            var stderrTask = process.StandardError.ReadToEndAsync(ct);
+            await Task.WhenAll(stdoutTask, stderrTask);
+            await process.WaitForExitAsync(ct);
 
-        return string.IsNullOrEmpty(stdout) ? stderr : stdout;
+            var stdout = await stdoutTask;
+            var stderr = await stderrTask;
+
+            if (process.ExitCode != 0)
+            {
+                _logger.LogWarning("Process exited with code {Code}. Stderr: {Stderr}", process.ExitCode, stderr);
+                throw new InvalidOperationException(
+                    $"{Path.GetFileName(executable)} exited with code {process.ExitCode}.");
+            }
+
+            return string.IsNullOrEmpty(stdout) ? stderr : stdout;
+        }
+        catch (OperationCanceledException)
+        {
+            try { if (!process.HasExited) process.Kill(true); }
+            catch { /* best-effort cleanup */ }
+            throw;
+        }
     }
 
     private static string FormatTime(TimeSpan ts)

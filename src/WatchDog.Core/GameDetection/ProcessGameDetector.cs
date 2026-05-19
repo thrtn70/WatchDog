@@ -75,6 +75,8 @@ public sealed class ProcessGameDetector : IGameDetector
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to start WMI watcher, relying on polling only");
+            _processWatcher?.Dispose();
+            _processWatcher = null;
         }
     }
 
