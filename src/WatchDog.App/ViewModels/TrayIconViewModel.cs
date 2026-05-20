@@ -233,13 +233,14 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _disposed = true;
+        _savingRevertTimer?.Dispose();
+        _savingRevertTimer = null;
         _captureEngine.StateChanged -= _captureStateHandler;
         _clipSavedSub.Dispose();
         _sessionStartedSub.Dispose();
         _sessionStoppedSub.Dispose();
         _gameDetectedSub.Dispose();
         _gameExitedSub.Dispose();
-        _disposed = true;
-        _savingRevertTimer?.Dispose();
     }
 }

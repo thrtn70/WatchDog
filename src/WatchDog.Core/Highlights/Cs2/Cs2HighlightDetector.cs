@@ -120,7 +120,9 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
         string body;
         using (var reader = new System.IO.StreamReader(context.Request.InputStream, Encoding.UTF8))
         {
-            body = await reader.ReadToEndAsync();
+            var buffer = new char[65_536];
+            var charCount = await reader.ReadBlockAsync(buffer, 0, buffer.Length);
+            body = new string(buffer, 0, charCount);
         }
 
         // Respond immediately (CS2 expects a quick 200)
