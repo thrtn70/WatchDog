@@ -71,7 +71,7 @@ public static partial class TrayIconGenerator
         var iconHandle = bmp.GetHicon();
         try
         {
-            var icon = Icon.FromHandle(iconHandle);
+            using var icon = Icon.FromHandle(iconHandle);
             using var fs = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
             icon.Save(fs);
         }
