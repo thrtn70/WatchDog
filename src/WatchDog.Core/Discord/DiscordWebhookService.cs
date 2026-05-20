@@ -60,8 +60,8 @@ public sealed class DiscordWebhookService : IDiscordWebhookService
         {
             using var content = new MultipartFormDataContent();
 
-            // File attachment with progress tracking (using ensures cleanup on failure)
-            using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            // ProgressStreamContent takes ownership of the stream and disposes it
+            var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
             var progressContent = new ProgressStreamContent(fileStream, ChunkSize, progress);
             progressContent.Headers.ContentType = new MediaTypeHeaderValue("video/mp4");
             content.Add(progressContent, "file", metadata.FileName);
@@ -83,7 +83,7 @@ public sealed class DiscordWebhookService : IDiscordWebhookService
                 content.Add(new StringContent(simplePayload, Encoding.UTF8, "application/json"), "payload_json");
             }
 
-            var response = await _httpClient.PostAsync(settings.WebhookUrl, content, ct);
+            using var response = await _httpClient.PostAsync(settings.WebhookUrl, content, ct);
 
             if (response.IsSuccessStatusCode)
             {
@@ -121,7 +121,7 @@ public sealed class DiscordWebhookService : IDiscordWebhookService
 
         try
         {
-            var response = await _httpClient.GetAsync(webhookUrl, ct);
+            using var response = await _httpClient.GetAsync(webhookUrl, ct);
             return response.IsSuccessStatusCode;
         }
         catch

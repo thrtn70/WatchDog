@@ -21,6 +21,8 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
     private CancellationTokenSource? _cts;
     private Task? _listenTask;
     private const int MaxWebSocketMessageBytes = 1_048_576; // 1 MB safety cap
+    private const SslPolicyErrors LoopbackAllowedErrors =
+        SslPolicyErrors.RemoteCertificateChainErrors | SslPolicyErrors.RemoteCertificateNameMismatch;
     private int _port;
     private string _password = string.Empty;
     private AuthenticationHeaderValue? _authHeader;
@@ -307,10 +309,8 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
         if (certificate is null)
             return false;
 
-        // Riot local API commonly uses a self-signed loopback cert. Allow only chain errors
-        // for loopback and reject all other SSL errors.
         return errors == SslPolicyErrors.None ||
-            errors == SslPolicyErrors.RemoteCertificateChainErrors;
+            (errors & ~LoopbackAllowedErrors) == SslPolicyErrors.None;
     }
 
     private static bool ValidateLoopbackWebSocketCertificate(
@@ -326,6 +326,6 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
             return false;
 
         return errors == SslPolicyErrors.None ||
-            errors == SslPolicyErrors.RemoteCertificateChainErrors;
+            (errors & ~LoopbackAllowedErrors) == SslPolicyErrors.None;
     }
 }

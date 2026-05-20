@@ -18,6 +18,9 @@ public sealed class AudioModelLoaderService : IHostedService
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<AudioModelLoaderService> _logger;
 
+    private AudioClassifier? _classifier;
+    private AudioHighlightDetector? _detector;
+
     private static readonly string ModelPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "WatchDog", "Models", "yamnet.onnx");
@@ -59,8 +62,20 @@ public sealed class AudioModelLoaderService : IHostedService
             var classifier = new AudioClassifier(ModelPath,
                 _loggerFactory.CreateLogger<AudioClassifier>());
 
-            var detector = new AudioHighlightDetector(classifier,
-                _loggerFactory.CreateLogger<AudioHighlightDetector>());
+            AudioHighlightDetector detector;
+            try
+            {
+                detector = new AudioHighlightDetector(classifier,
+                    _loggerFactory.CreateLogger<AudioHighlightDetector>());
+            }
+            catch
+            {
+                classifier.Dispose();
+                throw;
+            }
+
+            _classifier = classifier;
+            _detector = detector;
 
             // Swap into the registry — replaces the NoOp fallback
             _registry.SetAudioFallback(detector);
@@ -77,5 +92,14 @@ public sealed class AudioModelLoaderService : IHostedService
         }
     }
 
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public async Task StopAsync(CancellationToken cancellationToken)
+    {
+        if (_detector is not null)
+        {
+            await _detector.DisposeAsync();
+            _detector = null;
+        }
+        _classifier?.Dispose();
+        _classifier = null;
+    }
 }
