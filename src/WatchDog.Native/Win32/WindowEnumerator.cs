@@ -103,6 +103,7 @@ public static partial class WindowEnumerator
     {
         var length = GetWindowTextLength(hWnd);
         if (length <= 0) return null;
+        if (length > 32768) return null;
 
         var bufLen = length + 1;
         char* buffer = stackalloc char[bufLen];
