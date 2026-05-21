@@ -21,6 +21,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+if ($ObsVersion -notmatch '^\d+\.\d+\.\d+$') {
+    Write-Host "ERROR: Invalid OBS version format '$ObsVersion'. Expected X.Y.Z (e.g. 31.0.1)" -ForegroundColor Red
+    exit 1
+}
+
 $ProjectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 if (-not (Test-Path (Join-Path $ProjectRoot "WatchDog.sln"))) {
     $ProjectRoot = Split-Path -Parent $PSScriptRoot
