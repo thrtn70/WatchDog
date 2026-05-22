@@ -102,7 +102,7 @@ public static partial class WindowEnumerator
     private static unsafe string? GetWindowTitle(IntPtr hWnd)
     {
         var length = GetWindowTextLength(hWnd);
-        if (length <= 0) return null;
+        if (length <= 0 || length > 32768) return null;
 
         var bufLen = length + 1;
         char* buffer = stackalloc char[bufLen];
