@@ -17,6 +17,7 @@ public sealed class ProcessGameDetector : IGameDetector
     private Process? _trackedProcess;
     private bool _disposed;
     private bool _running;
+    private readonly object _stateLock = new();
 
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
 
@@ -52,7 +53,11 @@ public sealed class ProcessGameDetector : IGameDetector
 
         StopWmiWatcher();
         StopPolling();
-        StopTracking();
+
+        lock (_stateLock)
+        {
+            StopTracking();
+        }
 
         _logger.LogInformation("Game detector stopped");
     }
@@ -102,9 +107,6 @@ public sealed class ProcessGameDetector : IGameDetector
 
     private void OnProcessCreated(object sender, EventArrivedEventArgs e)
     {
-        if (CurrentGame is not null)
-            return; // Already tracking a game
-
         try
         {
             var targetInstance = (ManagementBaseObject)e.NewEvent["TargetInstance"];
@@ -117,8 +119,12 @@ public sealed class ProcessGameDetector : IGameDetector
             var game = _gameDatabase.TryMatch(processName, processId);
             if (game is not null)
             {
-                _logger.LogInformation("WMI detected game: {Game} (PID {Pid})", game.DisplayName, game.ProcessId);
-                TrackGame(game);
+                lock (_stateLock)
+                {
+                    if (CurrentGame is not null) return;
+                    _logger.LogInformation("WMI detected game: {Game} (PID {Pid})", game.DisplayName, game.ProcessId);
+                    TrackGame(game);
+                }
             }
         }
         catch (Exception ex)
@@ -131,10 +137,13 @@ public sealed class ProcessGameDetector : IGameDetector
     {
         if (!_running) return;
 
-        if (CurrentGame is not null)
-            return; // Already tracking
+        lock (_stateLock)
+        {
+            if (CurrentGame is not null)
+                return;
 
-        ScanRunningProcesses();
+            ScanRunningProcesses();
+        }
     }
 
     private void ScanRunningProcesses()
@@ -177,9 +186,6 @@ public sealed class ProcessGameDetector : IGameDetector
 
     private void TrackGame(GameInfo game)
     {
-        if (CurrentGame is not null)
-            return;
-
         CurrentGame = game;
 
         try
@@ -200,11 +206,16 @@ public sealed class ProcessGameDetector : IGameDetector
 
     private void OnGameProcessExited(object? sender, EventArgs e)
     {
-        var game = CurrentGame;
-        if (game is null) return;
+        GameInfo? game;
+        lock (_stateLock)
+        {
+            game = CurrentGame;
+            if (game is null) return;
 
-        _logger.LogInformation("Game process exited: {Game} (PID {Pid})", game.DisplayName, game.ProcessId);
-        StopTracking();
+            _logger.LogInformation("Game process exited: {Game} (PID {Pid})", game.DisplayName, game.ProcessId);
+            StopTracking();
+        }
+
         GameStopped?.Invoke(game);
     }
 

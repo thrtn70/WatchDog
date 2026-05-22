@@ -83,11 +83,15 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
 
     private async Task ListenLoopAsync(CancellationToken ct)
     {
-        while (!ct.IsCancellationRequested && _listener?.IsListening == true)
+        while (!ct.IsCancellationRequested)
         {
+            var listener = _listener;
+            if (listener is null || !listener.IsListening)
+                break;
+
             try
             {
-                var context = await _listener.GetContextAsync().WaitAsync(ct);
+                var context = await listener.GetContextAsync().WaitAsync(ct);
                 await ProcessRequestAsync(context);
             }
             catch (OperationCanceledException)
@@ -117,10 +121,19 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
             return;
         }
 
+        const int maxBodyBytes = 65_536;
         string body;
         using (var reader = new System.IO.StreamReader(context.Request.InputStream, Encoding.UTF8))
         {
-            body = await reader.ReadToEndAsync();
+            var buffer = new char[maxBodyBytes + 1];
+            var charsRead = await reader.ReadBlockAsync(buffer, 0, buffer.Length);
+            if (charsRead > maxBodyBytes)
+            {
+                context.Response.StatusCode = 413;
+                context.Response.Close();
+                return;
+            }
+            body = new string(buffer, 0, charsRead);
         }
 
         // Respond immediately (CS2 expects a quick 200)
