@@ -39,7 +39,7 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
         _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 
         _listener = new HttpListener();
-        _listener.Prefixes.Add($"http://localhost:{Port}/");
+        _listener.Prefixes.Add($"http://127.0.0.1:{Port}/");
 
         try
         {

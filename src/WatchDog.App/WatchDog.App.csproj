@@ -46,7 +46,8 @@
   <ItemGroup>
     <Content Include="$(MSBuildThisFileDirectory)..\..\obs-runtime\**\*"
              CopyToOutputDirectory="PreserveNewest"
-             Link="%(RecursiveDir)%(Filename)%(Extension)" />
+             Link="%(RecursiveDir)%(Filename)%(Extension)"
+             Condition="Exists('$(MSBuildThisFileDirectory)..\..\obs-runtime')" />
   </ItemGroup>
 
   <!-- Copy FFmpeg binaries to output/ffmpeg/ subdirectory -->
