@@ -14,7 +14,7 @@
 $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-if (-not (Test-Path (Join-Path $ProjectRoot "WatchDog.sln"))) {
+if (-not (Test-Path (Join-Path $ProjectRoot "WatchDog.slnx"))) {
     $ProjectRoot = Split-Path -Parent $PSScriptRoot
 }
 
@@ -40,7 +40,7 @@ if (Test-Path $TempDir) { Remove-Item $TempDir -Recurse -Force }
 New-Item -ItemType Directory -Path $TempDir | Out-Null
 
 # Download
-Write-Host "Downloading FFmpeg $FfmpegVersion..." -ForegroundColor Green
+Write-Host "Downloading FFmpeg..." -ForegroundColor Green
 try {
     $ProgressPreference = 'SilentlyContinue'
     Invoke-WebRequest -Uri $ZipUrl -OutFile $ZipPath -UseBasicParsing
