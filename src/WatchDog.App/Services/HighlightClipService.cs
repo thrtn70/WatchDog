@@ -82,6 +82,8 @@ public sealed class HighlightClipService : IHostedService, IDisposable
         _gameDetectedSub?.Dispose();
         _gameExitedSub?.Dispose();
         _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
         await _registry.StopActiveDetectorAsync(cancellationToken);
     }
 
