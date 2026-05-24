@@ -4,6 +4,30 @@ using WatchDog.Core.Highlights.Cs2;
 
 namespace WatchDog.Core.Tests.Highlights;
 
+/// <summary>
+/// Stream that drip-feeds data in fixed-size chunks to exercise multi-read loops.
+/// </summary>
+file sealed class ChunkedStream(byte[] data, int chunkSize) : System.IO.Stream
+{
+    private int _pos;
+    public override bool CanRead => true;
+    public override bool CanSeek => false;
+    public override bool CanWrite => false;
+    public override long Length => throw new NotSupportedException();
+    public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+    public override void Flush() { }
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        var toRead = Math.Min(Math.Min(count, chunkSize), data.Length - _pos);
+        data.AsSpan(_pos, toRead).CopyTo(buffer.AsSpan(offset));
+        _pos += toRead;
+        return toRead;
+    }
+    public override long Seek(long offset, System.IO.SeekOrigin origin) => throw new NotSupportedException();
+    public override void SetLength(long value) => throw new NotSupportedException();
+    public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+}
+
 public sealed class Cs2HighlightDetectorTests
 {
     private readonly Cs2HighlightDetector _detector = new(NullLogger<Cs2HighlightDetector>.Instance);
@@ -159,6 +183,32 @@ public sealed class Cs2HighlightDetectorTests
     {
         const string content = "{\"auth\":{\"token\":\"watchdog_gsi_v1\"}}";
         using var stream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(content));
+
+        var (body, oversize) = await Cs2HighlightDetector.ReadBodyCappedAsync(stream, Cs2HighlightDetector.MaxPayloadBytes);
+
+        Assert.False(oversize);
+        Assert.Equal(content, body);
+    }
+
+    [Fact]
+    public async Task ReadBodyCappedAsync_ChunkedStreamExceedsCap_ReturnsOversize()
+    {
+        // Deliver 1000-byte chunks to exercise the accumulation loop (not a single ReadAsync).
+        var data = new byte[Cs2HighlightDetector.MaxPayloadBytes + 1];
+        using var stream = new ChunkedStream(data, chunkSize: 1000);
+
+        var (body, oversize) = await Cs2HighlightDetector.ReadBodyCappedAsync(stream, Cs2HighlightDetector.MaxPayloadBytes);
+
+        Assert.True(oversize);
+        Assert.Null(body);
+    }
+
+    [Fact]
+    public async Task ReadBodyCappedAsync_ChunkedStreamWithinCap_ReturnsBody()
+    {
+        const string content = "chunked payload that arrives in pieces";
+        var bytes = System.Text.Encoding.UTF8.GetBytes(content);
+        using var stream = new ChunkedStream(bytes, chunkSize: 5);
 
         var (body, oversize) = await Cs2HighlightDetector.ReadBodyCappedAsync(stream, Cs2HighlightDetector.MaxPayloadBytes);
 

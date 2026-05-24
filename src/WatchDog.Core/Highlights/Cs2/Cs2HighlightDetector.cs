@@ -89,7 +89,7 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
             try
             {
                 var context = await _listener.GetContextAsync().WaitAsync(ct);
-                await ProcessRequestAsync(context);
+                await ProcessRequestAsync(context, ct);
             }
             catch (OperationCanceledException)
             {
@@ -106,7 +106,7 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
         }
     }
 
-    private async Task ProcessRequestAsync(HttpListenerContext context)
+    private async Task ProcessRequestAsync(HttpListenerContext context, CancellationToken ct = default)
     {
         // Fast-reject when Content-Length declares an oversized payload.
         // ContentLength64 == -1 means chunked transfer; the streaming cap below handles that.
@@ -117,7 +117,7 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
             return;
         }
 
-        var (body, oversize) = await ReadBodyCappedAsync(context.Request.InputStream, MaxPayloadBytes);
+        var (body, oversize) = await ReadBodyCappedAsync(context.Request.InputStream, MaxPayloadBytes, ct);
         if (oversize)
         {
             _logger.LogWarning("Rejected GSI payload: chunked body exceeded {MaxBytes} bytes", MaxPayloadBytes);
