@@ -167,8 +167,8 @@ public sealed class ClipStorageManager : IClipStorage
     {
         // Path containment: only allow deleting files under the configured base directory
         var fullPath = Path.GetFullPath(filePath);
-        var baseFull = Path.GetFullPath(_config.BasePath);
-        if (!fullPath.StartsWith(baseFull + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+        var baseFull = Path.GetFullPath(_config.BasePath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        if (!fullPath.StartsWith(baseFull, StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogWarning("Blocked DeleteClip attempt outside base path: {Path}", filePath);
             return;
@@ -195,7 +195,7 @@ public sealed class ClipStorageManager : IClipStorage
             if (thumbnailPath is not null && File.Exists(thumbnailPath))
             {
                 var thumbFull = Path.GetFullPath(thumbnailPath);
-                if (thumbFull.StartsWith(baseFull + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                if (thumbFull.StartsWith(baseFull, StringComparison.OrdinalIgnoreCase))
                     File.Delete(thumbnailPath);
                 else
                     _logger.LogWarning("Blocked thumbnail deletion outside base path: {Path}", thumbnailPath);

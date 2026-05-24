@@ -46,9 +46,16 @@ public sealed class FileLoggerProvider : ILoggerProvider
             {
                 _writer?.Dispose();
                 _writer = null;
-                var logPath = Path.Combine(_logDirectory, $"watchdog-{today}.log");
-                _writer = new StreamWriter(logPath, append: true) { AutoFlush = true };
-                _currentDate = today;
+                try
+                {
+                    var logPath = Path.Combine(_logDirectory, $"watchdog-{today}.log");
+                    _writer = new StreamWriter(logPath, append: true) { AutoFlush = true };
+                    _currentDate = today;
+                }
+                catch
+                {
+                    return;
+                }
             }
 
             _writer?.WriteLine(message);

@@ -58,9 +58,28 @@ run_remote() {
     ssh "$SSH_HOST" "$remote_cmd" 2> >(filter_pq_warning >&2)
 }
 
+validate_config() {
+    case "$1" in
+        Release|Debug) return 0 ;;
+        *)
+            fail "Invalid build configuration: '$1' (allowed: Release, Debug)"
+            exit 2
+            ;;
+    esac
+}
+
+validate_project() {
+    if [[ "$1" =~ [^a-zA-Z0-9._/\\-] ]]; then
+        fail "Invalid project path: '$1' (contains disallowed characters)"
+        exit 2
+    fi
+}
+
 cmd_build() {
     local config="${1:-Release}"
     local project="${2:-$DEFAULT_PROJECT}"
+    validate_config "$config"
+    validate_project "$project"
     preflight
     run_remote "cd $REMOTE_PATH; dotnet build $project -c $config"
     ok "Build complete (${config})"
