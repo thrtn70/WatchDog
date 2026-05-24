@@ -25,6 +25,7 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
     public event Action<HighlightDetectedEventArgs>? HighlightDetected;
 
     private const int Port = 35847;
+    internal const int MaxPayloadBytes = 65_536;
 
     public Cs2HighlightDetector(ILogger<Cs2HighlightDetector> logger)
     {
@@ -107,20 +108,22 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
 
     private async Task ProcessRequestAsync(HttpListenerContext context)
     {
-        // Reject oversized payloads (CS2 GSI is typically <2KB).
-        // ContentLength64 == -1 means "unknown" (chunked transfer); accept
-        // those and let the streaming reader handle bounding if needed.
-        if (context.Request.ContentLength64 > 65_536)
+        // Fast-reject when Content-Length declares an oversized payload.
+        // ContentLength64 == -1 means chunked transfer; the streaming cap below handles that.
+        if (context.Request.ContentLength64 > MaxPayloadBytes)
         {
             context.Response.StatusCode = 413;
             context.Response.Close();
             return;
         }
 
-        string body;
-        using (var reader = new System.IO.StreamReader(context.Request.InputStream, Encoding.UTF8))
+        var (body, oversize) = await ReadBodyCappedAsync(context.Request.InputStream, MaxPayloadBytes);
+        if (oversize)
         {
-            body = await reader.ReadToEndAsync();
+            _logger.LogWarning("Rejected GSI payload: chunked body exceeded {MaxBytes} bytes", MaxPayloadBytes);
+            context.Response.StatusCode = 413;
+            context.Response.Close();
+            return;
         }
 
         // Respond immediately (CS2 expects a quick 200)
@@ -129,7 +132,7 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
 
         // Validate auth token to prevent local spoofing from other processes.
         // CS2 GSI sends "auth": {"token": "..."} in every payload.
-        if (!body.Contains($"\"token\":\"{GsiAuthToken}\"", StringComparison.Ordinal)
+        if (!body!.Contains($"\"token\":\"{GsiAuthToken}\"", StringComparison.Ordinal)
             && !body.Contains($"\"token\": \"{GsiAuthToken}\"", StringComparison.Ordinal))
         {
             _logger.LogDebug("Rejected GSI payload: auth token mismatch");
@@ -141,6 +144,27 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
 
         DetectHighlights(_previousState, newState);
         _previousState = newState;
+    }
+
+    /// <summary>
+    /// Reads <paramref name="input"/> into a string, stopping with <c>oversize = true</c>
+    /// if more than <paramref name="maxBytes"/> bytes arrive before EOF.
+    /// </summary>
+    internal static async Task<(string? Body, bool Oversize)> ReadBodyCappedAsync(
+        System.IO.Stream input, int maxBytes, CancellationToken ct = default)
+    {
+        var ms = new System.IO.MemoryStream(Math.Min(maxBytes, 4096));
+        var buf = new byte[4096];
+        int total = 0;
+        int n;
+        while ((n = await input.ReadAsync(buf, 0, buf.Length, ct)) > 0)
+        {
+            total += n;
+            if (total > maxBytes)
+                return (null, true);
+            ms.Write(buf, 0, n);
+        }
+        return (Encoding.UTF8.GetString(ms.GetBuffer(), 0, (int)ms.Length), false);
     }
 
     internal void DetectHighlights(Cs2GameState? previous, Cs2GameState current)

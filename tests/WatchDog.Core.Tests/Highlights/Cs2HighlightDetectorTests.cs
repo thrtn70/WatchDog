@@ -127,4 +127,42 @@ public sealed class Cs2HighlightDetectorTests
     {
         Assert.Equal("cs2.exe", _detector.GameExecutableName);
     }
+
+    // ── Streaming-cap tests ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ReadBodyCappedAsync_StreamExceedsCap_ReturnsOversize()
+    {
+        var data = new byte[Cs2HighlightDetector.MaxPayloadBytes + 1];
+        using var stream = new System.IO.MemoryStream(data);
+
+        var (body, oversize) = await Cs2HighlightDetector.ReadBodyCappedAsync(stream, Cs2HighlightDetector.MaxPayloadBytes);
+
+        Assert.True(oversize);
+        Assert.Null(body);
+    }
+
+    [Fact]
+    public async Task ReadBodyCappedAsync_StreamExactlyAtCap_ReturnsBody()
+    {
+        var data = new byte[Cs2HighlightDetector.MaxPayloadBytes];
+        using var stream = new System.IO.MemoryStream(data);
+
+        var (body, oversize) = await Cs2HighlightDetector.ReadBodyCappedAsync(stream, Cs2HighlightDetector.MaxPayloadBytes);
+
+        Assert.False(oversize);
+        Assert.NotNull(body);
+    }
+
+    [Fact]
+    public async Task ReadBodyCappedAsync_SmallPayload_ReturnsCorrectBody()
+    {
+        const string content = "{\"auth\":{\"token\":\"watchdog_gsi_v1\"}}";
+        using var stream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(content));
+
+        var (body, oversize) = await Cs2HighlightDetector.ReadBodyCappedAsync(stream, Cs2HighlightDetector.MaxPayloadBytes);
+
+        Assert.False(oversize);
+        Assert.Equal(content, body);
+    }
 }
