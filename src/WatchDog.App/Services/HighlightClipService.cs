@@ -101,13 +101,12 @@ public sealed class HighlightClipService : IHostedService, IDisposable
     {
         try
         {
-            // Cancel pending saves and replace CTS under lock
             await _saveLock.WaitAsync();
             try
             {
-                _cts?.Cancel();
-                _cts?.Dispose();
+                var oldCts = _cts;
                 _cts = new CancellationTokenSource();
+                oldCts?.Cancel();
             }
             finally
             {

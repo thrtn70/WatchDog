@@ -7,6 +7,7 @@ namespace WatchDog.Core.Highlights.Cs2;
 public sealed class Cs2HighlightDetector : IHighlightDetector
 {
     private readonly ILogger<Cs2HighlightDetector> _logger;
+    private readonly object _stateLock = new();
     private HttpListener? _listener;
     private CancellationTokenSource? _cts;
     private Task? _listenTask;
@@ -107,10 +108,9 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
 
     private async Task ProcessRequestAsync(HttpListenerContext context)
     {
-        // Reject oversized payloads (CS2 GSI is typically <2KB).
-        // ContentLength64 == -1 means "unknown" (chunked transfer); accept
-        // those and let the streaming reader handle bounding if needed.
-        if (context.Request.ContentLength64 > 65_536)
+        const int maxBodyBytes = 65_536;
+
+        if (context.Request.ContentLength64 > maxBodyBytes)
         {
             context.Response.StatusCode = 413;
             context.Response.Close();
@@ -118,29 +118,61 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
         }
 
         string body;
-        using (var reader = new System.IO.StreamReader(context.Request.InputStream, Encoding.UTF8))
+        using (var ms = new System.IO.MemoryStream())
         {
-            body = await reader.ReadToEndAsync();
+            var buffer = new byte[8192];
+            int bytesRead;
+            var totalRead = 0;
+            while ((bytesRead = await context.Request.InputStream.ReadAsync(buffer)) > 0)
+            {
+                totalRead += bytesRead;
+                if (totalRead > maxBodyBytes)
+                {
+                    context.Response.StatusCode = 413;
+                    context.Response.Close();
+                    return;
+                }
+                ms.Write(buffer, 0, bytesRead);
+            }
+            body = Encoding.UTF8.GetString(ms.GetBuffer(), 0, (int)ms.Length);
         }
 
-        // Respond immediately (CS2 expects a quick 200)
         context.Response.StatusCode = 200;
         context.Response.Close();
 
-        // Validate auth token to prevent local spoofing from other processes.
-        // CS2 GSI sends "auth": {"token": "..."} in every payload.
-        if (!body.Contains($"\"token\":\"{GsiAuthToken}\"", StringComparison.Ordinal)
-            && !body.Contains($"\"token\": \"{GsiAuthToken}\"", StringComparison.Ordinal))
+        if (!ValidateGsiAuthToken(body))
         {
             _logger.LogDebug("Rejected GSI payload: auth token mismatch");
             return;
         }
 
-        var newState = Cs2GsiPayloadParser.Parse(body);
-        if (newState is null) return;
+        lock (_stateLock)
+        {
+            var newState = Cs2GsiPayloadParser.Parse(body);
+            if (newState is null) return;
 
-        DetectHighlights(_previousState, newState);
-        _previousState = newState;
+            DetectHighlights(_previousState, newState);
+            _previousState = newState;
+        }
+    }
+
+    private static bool ValidateGsiAuthToken(string body)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("auth", out var auth)
+                && auth.TryGetProperty("token", out var token)
+                && token.ValueKind == System.Text.Json.JsonValueKind.String)
+            {
+                return string.Equals(token.GetString(), GsiAuthToken, StringComparison.Ordinal);
+            }
+        }
+        catch
+        {
+            // Malformed JSON
+        }
+        return false;
     }
 
     internal void DetectHighlights(Cs2GameState? previous, Cs2GameState current)
