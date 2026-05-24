@@ -86,6 +86,7 @@ public sealed class HighlightDetectorRegistry
         _activeDetector = detector;
         _activeGame = game;
 
+        detector.HighlightDetected -= OnHighlightDetected;
         detector.HighlightDetected += OnHighlightDetected;
         await detector.StartAsync(ct);
 

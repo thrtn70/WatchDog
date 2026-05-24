@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 
 namespace WatchDog.Core.Highlights.Cs2;
@@ -127,10 +128,7 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
         context.Response.StatusCode = 200;
         context.Response.Close();
 
-        // Validate auth token to prevent local spoofing from other processes.
-        // CS2 GSI sends "auth": {"token": "..."} in every payload.
-        if (!body.Contains($"\"token\":\"{GsiAuthToken}\"", StringComparison.Ordinal)
-            && !body.Contains($"\"token\": \"{GsiAuthToken}\"", StringComparison.Ordinal))
+        if (!ValidateAuthToken(body))
         {
             _logger.LogDebug("Rejected GSI payload: auth token mismatch");
             return;
@@ -205,6 +203,25 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
                     HighlightType.MatchLoss, $"Match lost {current.TeamScore}-{current.EnemyScore}"));
             }
         }
+    }
+
+    internal static bool ValidateAuthToken(string body)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("auth", out var auth)
+                && auth.TryGetProperty("token", out var token)
+                && string.Equals(token.GetString(), GsiAuthToken, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+        catch (JsonException)
+        {
+        }
+
+        return false;
     }
 
     public async ValueTask DisposeAsync()
