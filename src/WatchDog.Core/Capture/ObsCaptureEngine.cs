@@ -732,7 +732,7 @@ public sealed class ObsCaptureEngine : ICaptureEngine
         if (_disposed) return;
         _disposed = true;
 
-        FullCleanupAsync().GetAwaiter().GetResult();
+        Task.Run(() => FullCleanupAsync()).GetAwaiter().GetResult();
         _stateLock.Dispose();
     }
 }
