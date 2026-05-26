@@ -116,6 +116,21 @@ jobs:
             Write-Host "ERROR: WatchDog-Setup.exe not found"; exit 1
           }
 
+      # ── Create release (if it doesn't already exist) ────────
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
+        shell: pwsh
+        run: |
+          $existing = gh release view "$env:TAG_NAME" 2>&1
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Creating release for $env:TAG_NAME"
+            gh release create "$env:TAG_NAME" --title "$env:TAG_NAME" --generate-notes
+          } else {
+            Write-Host "Release $env:TAG_NAME already exists"
+          }
+
       # ── Upload assets to release ─────────────────────────────
       - name: Upload release assets
         env:
