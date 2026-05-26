@@ -14,7 +14,7 @@ public sealed class SessionManager
     private readonly ILogger<SessionManager> _logger;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
-    private GameSession? _currentSession;
+    private volatile GameSession? _currentSession;
 
     public Guid? CurrentSessionId => _currentSession?.Id;
     public GameSession? CurrentSession => _currentSession;

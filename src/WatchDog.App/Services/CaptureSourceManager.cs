@@ -114,15 +114,24 @@ public sealed class CaptureSourceManager : IHostedService
         }
     }
 
-    public Task StopAsync(CancellationToken cancellationToken)
+    public async Task StopAsync(CancellationToken cancellationToken)
     {
         _gameDetector.GameStarted -= OnGameStarted;
         _gameDetector.GameStopped -= OnGameStopped;
         _settingsService.SettingsChanged -= OnSettingsChanged;
         _gameDetector.Stop();
-        ActiveSource = null;
 
-        return Task.CompletedTask;
+        _activeToast?.Close();
+        _activeToast = null;
+
+        if (ActiveSource is not null)
+        {
+            var gameInfo = ActiveSource.ToGameInfo();
+            await _sessionManager.EndSessionAsync(gameInfo, cancellationToken);
+            await _captureEngine.StopAsync(cancellationToken);
+        }
+
+        ActiveSource = null;
     }
 
     // ── Manual Capture ──────────────────────────────────────────────────

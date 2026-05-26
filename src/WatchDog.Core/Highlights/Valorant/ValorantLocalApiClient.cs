@@ -163,7 +163,8 @@ internal sealed class ValorantLocalApiClient : IAsyncDisposable
 
                 // Format: name:pid:port:password:protocol
                 var parts = content.Split(':');
-                if (parts.Length >= 5 && int.TryParse(parts[2], out var port))
+                if (parts.Length >= 5 && int.TryParse(parts[2], out var port)
+                    && port is >= 1 and <= 65535)
                 {
                     return (port, parts[3]);
                 }

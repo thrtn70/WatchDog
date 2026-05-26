@@ -27,8 +27,7 @@ public sealed class ValorantHighlightDetector : IHighlightDetector
         // RemoteCertificateChainErrors and RemoteCertificateNameMismatch on loopback only.
         // Use bitwise mask so combined-flag values (e.g. ChainErrors | NameMismatch) are also accepted.
         const SslPolicyErrors LoopbackAllowedErrors =
-            SslPolicyErrors.RemoteCertificateChainErrors |
-            SslPolicyErrors.RemoteCertificateNameMismatch;
+            SslPolicyErrors.RemoteCertificateChainErrors;
 
         var handler = new HttpClientHandler
         {
