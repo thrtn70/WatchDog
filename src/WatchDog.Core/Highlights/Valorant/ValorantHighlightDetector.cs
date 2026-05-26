@@ -24,12 +24,7 @@ public sealed class ValorantHighlightDetector : IHighlightDetector
 
         // Shared HttpClient with SSL bypass scoped to localhost only — reused across game sessions.
         // Riot's local API uses a self-signed cert at 127.0.0.1, so we tolerate
-        // RemoteCertificateChainErrors and RemoteCertificateNameMismatch on loopback only.
-        // Use bitwise mask so combined-flag values (e.g. ChainErrors | NameMismatch) are also accepted.
-        const SslPolicyErrors LoopbackAllowedErrors =
-            SslPolicyErrors.RemoteCertificateChainErrors |
-            SslPolicyErrors.RemoteCertificateNameMismatch;
-
+        // RemoteCertificateChainErrors on loopback only (matching ValorantLocalApiClient).
         var handler = new HttpClientHandler
         {
             ServerCertificateCustomValidationCallback = (message, cert, _, errors) =>
@@ -38,7 +33,8 @@ public sealed class ValorantHighlightDetector : IHighlightDetector
                     return false;
                 if (cert is null)
                     return false;
-                return (errors & ~LoopbackAllowedErrors) == SslPolicyErrors.None;
+                return errors == SslPolicyErrors.None ||
+                    errors == SslPolicyErrors.RemoteCertificateChainErrors;
             }
         };
         _sharedHttpClient = new HttpClient(handler);
