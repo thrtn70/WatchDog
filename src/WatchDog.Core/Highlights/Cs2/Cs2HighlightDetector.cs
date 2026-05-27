@@ -83,11 +83,15 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
 
     private async Task ListenLoopAsync(CancellationToken ct)
     {
-        while (!ct.IsCancellationRequested && _listener?.IsListening == true)
+        while (!ct.IsCancellationRequested)
         {
+            var listener = _listener;
+            if (listener is null || !listener.IsListening)
+                break;
+
             try
             {
-                var context = await _listener.GetContextAsync().WaitAsync(ct);
+                var context = await listener.GetContextAsync().WaitAsync(ct);
                 await ProcessRequestAsync(context);
             }
             catch (OperationCanceledException)
