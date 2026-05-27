@@ -118,9 +118,22 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
         }
 
         string body;
-        using (var reader = new System.IO.StreamReader(context.Request.InputStream, Encoding.UTF8))
+        using (var ms = new System.IO.MemoryStream())
         {
-            body = await reader.ReadToEndAsync();
+            var buf = new byte[4096];
+            int totalRead = 0, bytesRead;
+            while ((bytesRead = await context.Request.InputStream.ReadAsync(buf)) > 0)
+            {
+                totalRead += bytesRead;
+                if (totalRead > 65_536)
+                {
+                    context.Response.StatusCode = 413;
+                    context.Response.Close();
+                    return;
+                }
+                ms.Write(buf, 0, bytesRead);
+            }
+            body = Encoding.UTF8.GetString(ms.GetBuffer(), 0, (int)ms.Length);
         }
 
         // Respond immediately (CS2 expects a quick 200)
