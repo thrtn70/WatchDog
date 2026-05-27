@@ -65,6 +65,8 @@ public partial class StatusOverlayWindow : Window
     private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         DragMove();
+        _settings.PositionX = Left;
+        _settings.PositionY = Top;
     }
 
     private void Window_MouseRightButtonDown(object sender, MouseButtonEventArgs e)

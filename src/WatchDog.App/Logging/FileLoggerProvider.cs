@@ -49,10 +49,25 @@ public sealed class FileLoggerProvider : ILoggerProvider
                 var logPath = Path.Combine(_logDirectory, $"watchdog-{today}.log");
                 _writer = new StreamWriter(logPath, append: true) { AutoFlush = true };
                 _currentDate = today;
+                PurgeOldLogs();
             }
 
             _writer?.WriteLine(message);
         }
+    }
+
+    private void PurgeOldLogs()
+    {
+        try
+        {
+            var cutoff = DateTime.UtcNow.AddDays(-14);
+            foreach (var file in Directory.GetFiles(_logDirectory, "watchdog-*.log"))
+            {
+                if (File.GetLastWriteTimeUtc(file) < cutoff)
+                    File.Delete(file);
+            }
+        }
+        catch { /* log cleanup is best-effort */ }
     }
 
     private sealed class FileLogger(FileLoggerProvider provider, string category, LogLevel minLevel) : ILogger

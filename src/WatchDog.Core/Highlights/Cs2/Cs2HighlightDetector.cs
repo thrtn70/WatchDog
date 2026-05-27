@@ -117,10 +117,19 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
             return;
         }
 
+        const int maxPayload = 65_536;
         string body;
         using (var reader = new System.IO.StreamReader(context.Request.InputStream, Encoding.UTF8))
         {
-            body = await reader.ReadToEndAsync();
+            var buf = new char[maxPayload + 1];
+            var len = await reader.ReadBlockAsync(buf.AsMemory());
+            if (len > maxPayload)
+            {
+                context.Response.StatusCode = 413;
+                context.Response.Close();
+                return;
+            }
+            body = new string(buf, 0, len);
         }
 
         // Respond immediately (CS2 expects a quick 200)
