@@ -21,7 +21,7 @@ public sealed class JsonSettingsService : ISettingsService
 
     private readonly ILogger<JsonSettingsService> _logger;
     private readonly object _saveLock = new();
-    private AppSettings _cached;
+    private volatile AppSettings _cached;
 
     public event Action<AppSettings>? SettingsChanged;
 

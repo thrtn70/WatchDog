@@ -17,6 +17,7 @@ public sealed class ProcessGameDetector : IGameDetector
     private Process? _trackedProcess;
     private bool _disposed;
     private bool _running;
+    private readonly object _trackingLock = new();
 
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
 
@@ -177,22 +178,24 @@ public sealed class ProcessGameDetector : IGameDetector
 
     private void TrackGame(GameInfo game)
     {
-        if (CurrentGame is not null)
-            return;
-
-        CurrentGame = game;
-
-        try
+        lock (_trackingLock)
         {
-            _trackedProcess = Process.GetProcessById(game.ProcessId);
-            _trackedProcess.EnableRaisingEvents = true;
-            _trackedProcess.Exited += OnGameProcessExited;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Could not attach to process {Pid}, will rely on polling for exit detection", game.ProcessId);
-            // Start a polling-based exit check
-            _pollTimer?.Change(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
+            if (CurrentGame is not null)
+                return;
+
+            CurrentGame = game;
+
+            try
+            {
+                _trackedProcess = Process.GetProcessById(game.ProcessId);
+                _trackedProcess.EnableRaisingEvents = true;
+                _trackedProcess.Exited += OnGameProcessExited;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not attach to process {Pid}, will rely on polling for exit detection", game.ProcessId);
+                _pollTimer?.Change(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
+            }
         }
 
         GameStarted?.Invoke(game);
@@ -210,17 +213,19 @@ public sealed class ProcessGameDetector : IGameDetector
 
     private void StopTracking()
     {
-        if (_trackedProcess is not null)
+        lock (_trackingLock)
         {
-            _trackedProcess.Exited -= OnGameProcessExited;
-            _trackedProcess.Dispose();
-            _trackedProcess = null;
+            if (_trackedProcess is not null)
+            {
+                _trackedProcess.Exited -= OnGameProcessExited;
+                _trackedProcess.Dispose();
+                _trackedProcess = null;
+            }
+
+            CurrentGame = null;
+
+            _pollTimer?.Change(PollInterval, PollInterval);
         }
-
-        CurrentGame = null;
-
-        // Restore normal poll interval
-        _pollTimer?.Change(PollInterval, PollInterval);
     }
 
     private static string? GetWindowTitle(Process process)
