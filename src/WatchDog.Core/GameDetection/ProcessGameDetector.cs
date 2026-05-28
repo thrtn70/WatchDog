@@ -132,7 +132,19 @@ public sealed class ProcessGameDetector : IGameDetector
         if (!_running) return;
 
         if (CurrentGame is not null)
-            return; // Already tracking
+        {
+            // Fallback exit detection when EnableRaisingEvents failed
+            try
+            {
+                using var check = Process.GetProcessById(CurrentGame.ProcessId);
+            }
+            catch (ArgumentException)
+            {
+                OnGameProcessExited(null, EventArgs.Empty);
+            }
+            catch { }
+            return;
+        }
 
         ScanRunningProcesses();
     }
