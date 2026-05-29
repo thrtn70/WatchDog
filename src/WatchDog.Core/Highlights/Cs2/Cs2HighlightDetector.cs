@@ -112,6 +112,7 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
         // those and let the streaming reader handle bounding if needed.
         if (context.Request.ContentLength64 > 65_536)
         {
+            _logger.LogWarning("Rejected oversized GSI payload ({Size} bytes)", context.Request.ContentLength64);
             context.Response.StatusCode = 413;
             context.Response.Close();
             return;

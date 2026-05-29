@@ -140,7 +140,7 @@ public sealed class HotkeyListenerHostedService : IHostedService
                 await HandleSaveClipAsync();
                 break;
             case ToggleRecordingHotkeyId:
-                HandleToggleRecording();
+                await HandleToggleRecordingAsync();
                 break;
         }
     }
@@ -169,7 +169,7 @@ public sealed class HotkeyListenerHostedService : IHostedService
         }
     }
 
-    private async void HandleToggleRecording()
+    private async Task HandleToggleRecordingAsync()
     {
         _logger.LogInformation("Toggle recording hotkey pressed (state={State})", _captureEngine.State);
 
