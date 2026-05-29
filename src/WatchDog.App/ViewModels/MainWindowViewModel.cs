@@ -646,7 +646,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             }
 
             var dialog = new Views.DiscordUploadWindow(target.Metadata);
-            dialog.Owner = System.Windows.Application.Current.MainWindow;
+            dialog.Owner = System.Windows.Application.Current?.MainWindow;
             dialog.ShowDialog();
         }
         catch (Exception ex)

@@ -89,9 +89,9 @@ public partial class App : Application
                 {
                     var checker = _host!.Services.GetRequiredService<Core.Updates.IUpdateChecker>();
                     var update = await checker.CheckForUpdateAsync();
-                    if (update?.IsUpdateAvailable == true)
+                    if (update?.IsUpdateAvailable == true && Application.Current is { } app)
                     {
-                        await Application.Current!.Dispatcher.InvokeAsync(() =>
+                        await app.Dispatcher.InvokeAsync(() =>
                         {
                             var vm = _host.Services.GetRequiredService<MainWindowViewModel>();
                             vm.SetUpdateAvailable(update);
