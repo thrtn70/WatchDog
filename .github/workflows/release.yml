@@ -116,7 +116,14 @@ jobs:
             Write-Host "ERROR: WatchDog-Setup.exe not found"; exit 1
           }
 
-      # ── Upload assets to release ─────────────────────────────
+      # ── Create release if needed, then upload assets ─────────
+      - name: Create release (if needed)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
+        shell: pwsh
+        run: gh release create "$env:TAG_NAME" --generate-notes --draft 2>$null; $true
+
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

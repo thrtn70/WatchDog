@@ -101,6 +101,7 @@ public partial class GameLaunchToast : Window
         _selectedMode = mode;
         var remember = RememberCheckBox.IsChecked == true;
         ModeSelected?.Invoke(_selectedMode, remember);
+        ModeSelected = null;
         FadeOutAndClose();
     }
 

@@ -6,7 +6,7 @@ using WatchDog.Core.Storage;
 
 namespace WatchDog.Core.Sessions;
 
-public sealed class SessionManager
+public sealed class SessionManager : IDisposable
 {
     private readonly ISessionRepository _repository;
     private readonly IClipStorage _clipStorage;
@@ -375,5 +375,10 @@ public sealed class SessionManager
         _currentSession = null;
 
         return new SessionEndedEvent(ended.Id, gameInfo, duration);
+    }
+
+    public void Dispose()
+    {
+        _lock.Dispose();
     }
 }

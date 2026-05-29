@@ -25,10 +25,34 @@ public sealed class HighlightDetectorRegistry
     /// Sets (or upgrades) the audio fallback detector at runtime.
     /// Called by AudioModelLoaderService after the ONNX model downloads in the background.
     /// </summary>
-    public void SetAudioFallback(IHighlightDetector detector)
+    public async void SetAudioFallback(IHighlightDetector detector)
     {
-        _audioFallback = detector;
-        _logger.LogInformation("AI audio fallback detector activated");
+        try
+        {
+            var wasActive = _activeDetector is not null && _activeDetector == _audioFallback;
+            var activeGame = _activeGame;
+
+            if (wasActive && activeGame is not null)
+            {
+                _activeDetector!.HighlightDetected -= OnHighlightDetected;
+                await _activeDetector.StopAsync();
+                _activeDetector = null;
+            }
+
+            _audioFallback = detector;
+            _logger.LogInformation("AI audio fallback detector activated");
+
+            if (wasActive && activeGame is not null)
+            {
+                _activeDetector = detector;
+                detector.HighlightDetected += OnHighlightDetected;
+                await detector.StartAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to swap audio fallback detector");
+        }
     }
 
     public HighlightDetectorRegistry(

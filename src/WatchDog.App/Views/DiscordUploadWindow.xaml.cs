@@ -16,8 +16,14 @@ public partial class DiscordUploadWindow : Window
         var vm = new DiscordUploadViewModel(service);
         DataContext = vm;
 
-        // Auto-close window when upload completes or is cancelled
-        vm.RequestClose += () => { if (IsLoaded) Dispatcher.InvokeAsync(Close); };
+        Action closeHandler = () => { if (IsLoaded) Dispatcher.InvokeAsync(Close); };
+        vm.RequestClose += closeHandler;
+
+        Closed += (_, _) =>
+        {
+            vm.RequestClose -= closeHandler;
+            vm.CancelCommand.Execute(null);
+        };
 
         Loaded += (_, _) => vm.UploadCommand.Execute(metadata);
     }
