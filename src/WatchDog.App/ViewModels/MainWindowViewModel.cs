@@ -137,7 +137,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                     await _clipStorage.IndexClipAsync(e.FilePath, e.Game?.DisplayName,
                         highlightType: null, sessionId, matchNumber);
                 }
-                catch { /* already indexed or missing file */ }
+                catch (Exception ex) { Debug.WriteLine($"Clip index failed: {ex.Message}"); }
 
                 Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(RefreshClips));
             });
@@ -183,7 +183,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 {
                     await _clipStorage.ScanAndIndexAsync();
                 }
-                catch { /* scan failure is non-fatal */ }
+                catch (Exception ex) { Debug.WriteLine($"Clip scan failed: {ex.Message}"); }
                 finally
                 {
                     Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() =>

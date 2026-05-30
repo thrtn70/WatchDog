@@ -188,7 +188,11 @@ public partial class SettingsViewModel : ObservableObject
         if (updated.StartWithWindows != _settings.StartWithWindows)
         {
             try { Services.StartupRegistration.SetStartWithWindows(updated.StartWithWindows); }
-            catch { StatusMessage = "Settings saved, but startup registration failed."; }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.TraceError($"Startup registration failed: {ex.Message}");
+                StatusMessage = "Settings saved, but startup registration failed.";
+            }
         }
 
         _settings = updated;
