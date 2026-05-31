@@ -117,24 +117,28 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
             return;
         }
 
+        const int maxPayloadBytes = 65_536;
         string body;
-        using (var reader = new System.IO.StreamReader(context.Request.InputStream, Encoding.UTF8))
+        var buffer = new byte[maxPayloadBytes];
+        int totalRead = 0, bytesRead;
+        while (totalRead < maxPayloadBytes &&
+               (bytesRead = await context.Request.InputStream.ReadAsync(buffer.AsMemory(totalRead, maxPayloadBytes - totalRead))) > 0)
         {
-            body = await reader.ReadToEndAsync();
+            totalRead += bytesRead;
         }
+        body = Encoding.UTF8.GetString(buffer, 0, totalRead);
 
-        // Respond immediately (CS2 expects a quick 200)
-        context.Response.StatusCode = 200;
-        context.Response.Close();
-
-        // Validate auth token to prevent local spoofing from other processes.
-        // CS2 GSI sends "auth": {"token": "..."} in every payload.
         if (!body.Contains($"\"token\":\"{GsiAuthToken}\"", StringComparison.Ordinal)
             && !body.Contains($"\"token\": \"{GsiAuthToken}\"", StringComparison.Ordinal))
         {
             _logger.LogDebug("Rejected GSI payload: auth token mismatch");
+            context.Response.StatusCode = 401;
+            context.Response.Close();
             return;
         }
+
+        context.Response.StatusCode = 200;
+        context.Response.Close();
 
         var newState = Cs2GsiPayloadParser.Parse(body);
         if (newState is null) return;
