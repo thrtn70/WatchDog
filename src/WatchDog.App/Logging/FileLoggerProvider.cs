@@ -44,7 +44,7 @@ public sealed class FileLoggerProvider : ILoggerProvider
             var today = DateTime.Now.ToString("yyyy-MM-dd");
             if (today != _currentDate)
             {
-                _writer?.Dispose();
+                try { _writer?.Dispose(); } catch { /* best-effort close of previous day's writer */ }
                 _writer = null;
                 var logPath = Path.Combine(_logDirectory, $"watchdog-{today}.log");
                 _writer = new StreamWriter(logPath, append: true) { AutoFlush = true };

@@ -43,8 +43,8 @@ public partial class PerformanceViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _disposed = true;
         _monitor.SnapshotUpdated -= OnSnapshot;
         _monitor.Stop();
-        _disposed = true;
     }
 }

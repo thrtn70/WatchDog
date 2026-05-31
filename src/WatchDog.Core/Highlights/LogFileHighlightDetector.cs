@@ -14,7 +14,7 @@ public abstract class LogFileHighlightDetector : IHighlightDetector
     private Task? _tailTask;
     private string? _currentLogFile;
     private long _lastReadPosition;
-    private bool _watching;
+    private volatile bool _watching;
     private readonly SemaphoreSlim _readLock = new(1, 1);
 
     protected abstract string LogDirectoryPath { get; }
@@ -177,19 +177,17 @@ public abstract class LogFileHighlightDetector : IHighlightDetector
 
     private async Task ReadNewLinesAsync()
     {
-        if (_currentLogFile is null) return;
-        if (!File.Exists(_currentLogFile))
-        {
-            // File may have been rotated; try to find the new one
-            var newFile = FindMostRecentLogFile();
-            if (newFile is null || newFile == _currentLogFile) return;
-            _currentLogFile = newFile;
-            _lastReadPosition = 0;
-        }
-
         if (!await _readLock.WaitAsync(0)) return; // Skip if already reading
         try
         {
+            if (_currentLogFile is null) return;
+            if (!File.Exists(_currentLogFile))
+            {
+                var newFile = FindMostRecentLogFile();
+                if (newFile is null || newFile == _currentLogFile) return;
+                _currentLogFile = newFile;
+                _lastReadPosition = 0;
+            }
             using var fs = new FileStream(_currentLogFile, FileMode.Open, FileAccess.Read,
                 FileShare.ReadWrite | FileShare.Delete);
 

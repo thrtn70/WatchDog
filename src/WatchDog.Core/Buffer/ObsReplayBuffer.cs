@@ -99,6 +99,7 @@ public sealed class ObsReplayBuffer : IReplayBuffer
             return null;
         }
 
+        var previousPath = _buffer.GetLastReplayPath();
         _buffer.Save();
 
         // Poll for the saved path (ObsKit.NET fires the signal async)
@@ -106,7 +107,7 @@ public sealed class ObsReplayBuffer : IReplayBuffer
         {
             await Task.Delay(100, ct);
             var path = _buffer.GetLastReplayPath();
-            if (path is not null)
+            if (path is not null && path != previousPath)
                 return path;
         }
 
