@@ -71,11 +71,11 @@ public static partial class WindowEnumerator
 
     private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
-    [LibraryImport("user32.dll")]
+    [LibraryImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
 
-    [LibraryImport("user32.dll")]
+    [LibraryImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool IsWindowVisible(IntPtr hWnd);
 
@@ -104,7 +104,8 @@ public static partial class WindowEnumerator
         var length = GetWindowTextLength(hWnd);
         if (length <= 0) return null;
 
-        var bufLen = length + 1;
+        const int maxStackChars = 512;
+        var bufLen = Math.Min(length + 1, maxStackChars);
         char* buffer = stackalloc char[bufLen];
         var result = GetWindowText(hWnd, buffer, bufLen);
         return result > 0 ? new string(buffer, 0, result) : null;

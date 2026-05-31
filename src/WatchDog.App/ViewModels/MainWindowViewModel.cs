@@ -819,9 +819,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _disposed = true;
         _captureEngine.StateChanged -= _stateChangedHandler;
         _clipSavedSub.Dispose();
-        _disposed = true;
     }
 }
 

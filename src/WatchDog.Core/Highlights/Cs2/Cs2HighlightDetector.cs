@@ -39,7 +39,7 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
         _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 
         _listener = new HttpListener();
-        _listener.Prefixes.Add($"http://localhost:{Port}/");
+        _listener.Prefixes.Add($"http://127.0.0.1:{Port}/");
 
         try
         {
@@ -118,9 +118,18 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
         }
 
         string body;
+        const int maxBodyChars = 65_536;
         using (var reader = new System.IO.StreamReader(context.Request.InputStream, Encoding.UTF8))
         {
-            body = await reader.ReadToEndAsync();
+            var buffer = new char[maxBodyChars + 1];
+            int charsRead = await reader.ReadBlockAsync(buffer.AsMemory());
+            if (charsRead > maxBodyChars)
+            {
+                context.Response.StatusCode = 413;
+                context.Response.Close();
+                return;
+            }
+            body = new string(buffer, 0, charsRead);
         }
 
         // Respond immediately (CS2 expects a quick 200)
