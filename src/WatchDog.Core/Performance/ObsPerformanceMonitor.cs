@@ -49,6 +49,8 @@ public sealed class ObsPerformanceMonitor : IPerformanceMonitor
 
     private void Poll()
     {
+        if (_disposed) return;
+
         try
         {
             _currentProcess.Refresh();

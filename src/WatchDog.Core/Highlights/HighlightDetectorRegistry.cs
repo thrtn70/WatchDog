@@ -11,6 +11,7 @@ public sealed class HighlightDetectorRegistry
     private volatile IHighlightDetector? _audioFallback;
     private readonly IEventBus _eventBus;
     private readonly ILogger<HighlightDetectorRegistry> _logger;
+    private readonly SemaphoreSlim _startStopLock = new(1, 1);
     private IHighlightDetector? _activeDetector;
     private GameInfo? _activeGame;
 
@@ -65,34 +66,54 @@ public sealed class HighlightDetectorRegistry
 
     public async Task StartDetectorForGameAsync(GameInfo game, CancellationToken ct = default)
     {
-        await StopActiveDetectorAsync(ct);
-
-        if (!_detectors.TryGetValue(game.ExecutableName, out var detector))
+        await _startStopLock.WaitAsync(ct);
+        try
         {
-            // No dedicated detector — try the AI audio fallback
-            if (_audioFallback is not null)
+            await StopActiveDetectorLockedAsync(ct);
+
+            if (!_detectors.TryGetValue(game.ExecutableName, out var detector))
             {
-                detector = _audioFallback;
-                _logger.LogInformation("No dedicated detector for {Game}, using AI audio fallback",
-                    game.DisplayName);
+                if (_audioFallback is not null)
+                {
+                    detector = _audioFallback;
+                    _logger.LogInformation("No dedicated detector for {Game}, using AI audio fallback",
+                        game.DisplayName);
+                }
+                else
+                {
+                    _logger.LogInformation("No highlight detector available for {Game}", game.DisplayName);
+                    return;
+                }
             }
-            else
-            {
-                _logger.LogInformation("No highlight detector available for {Game}", game.DisplayName);
-                return;
-            }
+
+            _activeDetector = detector;
+            _activeGame = game;
+
+            detector.HighlightDetected += OnHighlightDetected;
+            await detector.StartAsync(ct);
+
+            _logger.LogInformation("Highlight detector started for {Game}", game.DisplayName);
         }
-
-        _activeDetector = detector;
-        _activeGame = game;
-
-        detector.HighlightDetected += OnHighlightDetected;
-        await detector.StartAsync(ct);
-
-        _logger.LogInformation("Highlight detector started for {Game}", game.DisplayName);
+        finally
+        {
+            _startStopLock.Release();
+        }
     }
 
     public async Task StopActiveDetectorAsync(CancellationToken ct = default)
+    {
+        await _startStopLock.WaitAsync(ct);
+        try
+        {
+            await StopActiveDetectorLockedAsync(ct);
+        }
+        finally
+        {
+            _startStopLock.Release();
+        }
+    }
+
+    private async Task StopActiveDetectorLockedAsync(CancellationToken ct)
     {
         if (_activeDetector is null) return;
 
