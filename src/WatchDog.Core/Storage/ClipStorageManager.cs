@@ -190,13 +190,13 @@ public sealed class ClipStorageManager : IClipStorage
 
         try
         {
-            if (File.Exists(filePath))
-                File.Delete(filePath);
+            if (File.Exists(fullPath))
+                File.Delete(fullPath);
             if (thumbnailPath is not null && File.Exists(thumbnailPath))
             {
                 var thumbFull = Path.GetFullPath(thumbnailPath);
                 if (thumbFull.StartsWith(baseFull + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
-                    File.Delete(thumbnailPath);
+                    File.Delete(thumbFull);
                 else
                     _logger.LogWarning("Blocked thumbnail deletion outside base path: {Path}", thumbnailPath);
             }
