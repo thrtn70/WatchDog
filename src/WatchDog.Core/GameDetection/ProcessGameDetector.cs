@@ -17,6 +17,7 @@ public sealed class ProcessGameDetector : IGameDetector
     private Process? _trackedProcess;
     private bool _disposed;
     private bool _running;
+    private readonly object _trackLock = new();
 
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
 
@@ -177,10 +178,12 @@ public sealed class ProcessGameDetector : IGameDetector
 
     private void TrackGame(GameInfo game)
     {
-        if (CurrentGame is not null)
-            return;
-
-        CurrentGame = game;
+        lock (_trackLock)
+        {
+            if (CurrentGame is not null)
+                return;
+            CurrentGame = game;
+        }
 
         try
         {

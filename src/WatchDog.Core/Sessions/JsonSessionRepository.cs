@@ -166,5 +166,9 @@ public sealed class JsonSessionRepository : ISessionRepository, IDisposable
         }
     }
 
-    public void Dispose() => _lock.Dispose();
+    public void Dispose()
+    {
+        _lock.Wait();
+        _lock.Dispose();
+    }
 }

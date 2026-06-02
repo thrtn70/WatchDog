@@ -250,6 +250,7 @@ public sealed class AudioHighlightDetector : IHighlightDetector
         _cts?.Dispose();
         _cts = null;
         CleanupCapture();
+        (_classifier as IDisposable)?.Dispose();
         return ValueTask.CompletedTask;
     }
 }
