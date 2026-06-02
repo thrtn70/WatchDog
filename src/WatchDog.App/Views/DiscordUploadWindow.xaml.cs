@@ -20,6 +20,12 @@ public partial class DiscordUploadWindow : Window
         vm.RequestClose += () => { if (IsLoaded) Dispatcher.InvokeAsync(Close); };
 
         Loaded += (_, _) => vm.UploadCommand.Execute(metadata);
+
+        Closing += (_, _) =>
+        {
+            if (vm.IsUploading)
+                vm.CancelCommand.Execute(null);
+        };
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)

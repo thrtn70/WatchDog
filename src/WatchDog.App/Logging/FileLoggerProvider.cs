@@ -22,7 +22,15 @@ public sealed class FileLoggerProvider : ILoggerProvider
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "WatchDog", "logs");
 
-        Directory.CreateDirectory(_logDirectory);
+        try
+        {
+            Directory.CreateDirectory(_logDirectory);
+        }
+        catch (Exception)
+        {
+            _logDirectory = Path.Combine(Path.GetTempPath(), "WatchDog", "logs");
+            Directory.CreateDirectory(_logDirectory);
+        }
     }
 
     public ILogger CreateLogger(string categoryName)
