@@ -17,6 +17,7 @@ public sealed class ProcessGameDetector : IGameDetector
     private Process? _trackedProcess;
     private bool _disposed;
     private bool _running;
+    private readonly object _trackLock = new();
 
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
 
@@ -200,24 +201,31 @@ public sealed class ProcessGameDetector : IGameDetector
 
     private void OnGameProcessExited(object? sender, EventArgs e)
     {
-        var game = CurrentGame;
-        if (game is null) return;
+        GameInfo? game;
+        lock (_trackLock)
+        {
+            game = CurrentGame;
+            if (game is null) return;
+            StopTracking();
+        }
 
         _logger.LogInformation("Game process exited: {Game} (PID {Pid})", game.DisplayName, game.ProcessId);
-        StopTracking();
         GameStopped?.Invoke(game);
     }
 
     private void StopTracking()
     {
-        if (_trackedProcess is not null)
+        lock (_trackLock)
         {
-            _trackedProcess.Exited -= OnGameProcessExited;
-            _trackedProcess.Dispose();
-            _trackedProcess = null;
-        }
+            if (_trackedProcess is not null)
+            {
+                _trackedProcess.Exited -= OnGameProcessExited;
+                _trackedProcess.Dispose();
+                _trackedProcess = null;
+            }
 
-        CurrentGame = null;
+            CurrentGame = null;
+        }
 
         // Restore normal poll interval
         _pollTimer?.Change(PollInterval, PollInterval);

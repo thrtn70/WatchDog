@@ -16,6 +16,7 @@ public abstract class LogFileHighlightDetector : IHighlightDetector
     private long _lastReadPosition;
     private bool _watching;
     private readonly SemaphoreSlim _readLock = new(1, 1);
+    private volatile string? _pendingNewLogFile;
 
     protected abstract string LogDirectoryPath { get; }
     protected abstract string LogFilePattern { get; }
@@ -136,23 +137,12 @@ public abstract class LogFileHighlightDetector : IHighlightDetector
 
     private void OnNewLogFileCreated(object sender, FileSystemEventArgs e)
     {
-        // Validate new file is still within the watched directory
         var resolvedBase = Path.GetFullPath(LogDirectoryPath);
         var resolvedNew = Path.GetFullPath(e.FullPath);
         if (!resolvedNew.StartsWith(resolvedBase, StringComparison.OrdinalIgnoreCase)) return;
 
-        // Synchronize with ReadNewLinesAsync to prevent torn reads
-        if (!_readLock.Wait(0)) return;
-        try
-        {
-            _currentLogFile = resolvedNew;
-            _lastReadPosition = 0;
-            _logger.LogInformation("Switched to new log file: {File}", e.FullPath);
-        }
-        finally
-        {
-            _readLock.Release();
-        }
+        _pendingNewLogFile = resolvedNew;
+        _logger.LogInformation("Detected new log file: {File}", e.FullPath);
     }
 
     private async Task PollTailLoopAsync(CancellationToken ct)
@@ -177,19 +167,26 @@ public abstract class LogFileHighlightDetector : IHighlightDetector
 
     private async Task ReadNewLinesAsync()
     {
-        if (_currentLogFile is null) return;
-        if (!File.Exists(_currentLogFile))
-        {
-            // File may have been rotated; try to find the new one
-            var newFile = FindMostRecentLogFile();
-            if (newFile is null || newFile == _currentLogFile) return;
-            _currentLogFile = newFile;
-            _lastReadPosition = 0;
-        }
-
         if (!await _readLock.WaitAsync(0)) return; // Skip if already reading
         try
         {
+            var pending = Interlocked.Exchange(ref _pendingNewLogFile, null);
+            if (pending is not null)
+            {
+                _currentLogFile = pending;
+                _lastReadPosition = 0;
+                _logger.LogInformation("Switched to new log file: {File}", pending);
+            }
+
+            if (_currentLogFile is null) return;
+            if (!File.Exists(_currentLogFile))
+            {
+                var newFile = FindMostRecentLogFile();
+                if (newFile is null || newFile == _currentLogFile) return;
+                _currentLogFile = newFile;
+                _lastReadPosition = 0;
+            }
+
             using var fs = new FileStream(_currentLogFile, FileMode.Open, FileAccess.Read,
                 FileShare.ReadWrite | FileShare.Delete);
 

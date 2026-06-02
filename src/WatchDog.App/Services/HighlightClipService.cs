@@ -32,6 +32,7 @@ public sealed class HighlightClipService : IHostedService, IDisposable
     private readonly SemaphoreSlim _saveLock = new(1, 1);
     private CancellationTokenSource? _cts;
     private DateTimeOffset _lastSaveTime = DateTimeOffset.MinValue;
+    private volatile bool _disposed;
 
     public HighlightClipService(
         ICaptureEngine captureEngine,
@@ -87,10 +88,12 @@ public sealed class HighlightClipService : IHostedService, IDisposable
 
     private async void OnGameDetected(GameDetectedEvent e)
     {
+        if (_disposed) return;
         try
         {
             await _registry.StartDetectorForGameAsync(e.Game, _cts?.Token ?? default);
         }
+        catch (ObjectDisposedException) { }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to start highlight detector for {Game}", e.Game.DisplayName);
@@ -99,6 +102,7 @@ public sealed class HighlightClipService : IHostedService, IDisposable
 
     private async void OnGameExited(GameExitedEvent e)
     {
+        if (_disposed) return;
         try
         {
             // Cancel pending saves and replace CTS under lock
@@ -116,6 +120,7 @@ public sealed class HighlightClipService : IHostedService, IDisposable
 
             await _registry.StopActiveDetectorAsync();
         }
+        catch (ObjectDisposedException) { }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to stop highlight detector for {Game}", e.Game.DisplayName);
@@ -124,6 +129,7 @@ public sealed class HighlightClipService : IHostedService, IDisposable
 
     private async void OnHighlightDetected(HighlightDetectedEvent e)
     {
+        if (_disposed) return;
         try
         {
             // MatchStarted is a session signal, not a clip-worthy event
@@ -200,6 +206,7 @@ public sealed class HighlightClipService : IHostedService, IDisposable
 
     public void Dispose()
     {
+        _disposed = true;
         _highlightSub?.Dispose();
         _gameDetectedSub?.Dispose();
         _gameExitedSub?.Dispose();

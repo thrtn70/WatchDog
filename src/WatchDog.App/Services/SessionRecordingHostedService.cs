@@ -24,6 +24,7 @@ public sealed class SessionRecordingHostedService : IHostedService, IDisposable
 
     private IDisposable? _gameDetectedSub;
     private IDisposable? _gameExitedSub;
+    private volatile bool _disposed;
 
     public SessionRecordingHostedService(
         ISessionRecorder recorder,
@@ -76,6 +77,7 @@ public sealed class SessionRecordingHostedService : IHostedService, IDisposable
 
     private async void OnGameDetected(GameDetectedEvent e)
     {
+        if (_disposed) return;
         if (_recorder.IsRecording)
         {
             _logger.LogInformation("Game changed to {Game} — session recording already active", e.Game.DisplayName);
@@ -115,6 +117,7 @@ public sealed class SessionRecordingHostedService : IHostedService, IDisposable
 
     private async void OnGameExited(GameExitedEvent e)
     {
+        if (_disposed) return;
         if (!_recorder.IsRecording)
             return;
 
@@ -135,6 +138,7 @@ public sealed class SessionRecordingHostedService : IHostedService, IDisposable
 
     private async void OnSegmentSaved(string filePath)
     {
+        if (_disposed) return;
         try
         {
             _eventBus.Publish(new SessionRecordingSegmentSavedEvent(
@@ -156,6 +160,7 @@ public sealed class SessionRecordingHostedService : IHostedService, IDisposable
 
     public void Dispose()
     {
+        _disposed = true;
         _recorder.SegmentSaved -= OnSegmentSaved;
         _recorder.Error -= OnRecorderError;
         _gameDetectedSub?.Dispose();
