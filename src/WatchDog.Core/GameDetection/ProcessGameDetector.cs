@@ -17,6 +17,7 @@ public sealed class ProcessGameDetector : IGameDetector
     private Process? _trackedProcess;
     private bool _disposed;
     private bool _running;
+    private readonly object _trackLock = new();
 
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
 
@@ -102,8 +103,7 @@ public sealed class ProcessGameDetector : IGameDetector
 
     private void OnProcessCreated(object sender, EventArrivedEventArgs e)
     {
-        if (CurrentGame is not null)
-            return; // Already tracking a game
+        if (CurrentGame is not null) return;
 
         try
         {
@@ -129,10 +129,8 @@ public sealed class ProcessGameDetector : IGameDetector
 
     private void OnPollTick(object? state)
     {
-        if (!_running) return;
-
-        if (CurrentGame is not null)
-            return; // Already tracking
+        if (!_running || CurrentGame is not null)
+            return;
 
         ScanRunningProcesses();
     }
@@ -177,10 +175,13 @@ public sealed class ProcessGameDetector : IGameDetector
 
     private void TrackGame(GameInfo game)
     {
-        if (CurrentGame is not null)
-            return;
+        lock (_trackLock)
+        {
+            if (CurrentGame is not null)
+                return;
 
-        CurrentGame = game;
+            CurrentGame = game;
+        }
 
         try
         {
@@ -191,7 +192,6 @@ public sealed class ProcessGameDetector : IGameDetector
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Could not attach to process {Pid}, will rely on polling for exit detection", game.ProcessId);
-            // Start a polling-based exit check
             _pollTimer?.Change(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
         }
 
