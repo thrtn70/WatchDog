@@ -67,6 +67,8 @@ $RECYCLE.BIN/
 **/appsettings.Development.json
 **/secrets.json
 **/*.pfx
+.env
+.env.*
 
 # Claude Code / AI artifacts
 .claude/

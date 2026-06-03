@@ -114,15 +114,25 @@ public sealed class CaptureSourceManager : IHostedService
         }
     }
 
-    public Task StopAsync(CancellationToken cancellationToken)
+    public async Task StopAsync(CancellationToken cancellationToken)
     {
         _gameDetector.GameStarted -= OnGameStarted;
         _gameDetector.GameStopped -= OnGameStopped;
         _settingsService.SettingsChanged -= OnSettingsChanged;
         _gameDetector.Stop();
-        ActiveSource = null;
 
-        return Task.CompletedTask;
+        if (ActiveSource is not null)
+        {
+            try
+            {
+                await StopActiveSourceAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error stopping active capture during shutdown");
+                ActiveSource = null;
+            }
+        }
     }
 
     // ── Manual Capture ──────────────────────────────────────────────────
