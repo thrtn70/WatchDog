@@ -4,13 +4,14 @@ using WatchDog.Core.Highlights;
 
 namespace WatchDog.Core.Sessions;
 
-public sealed class MatchTracker : IDisposable
+public sealed class MatchTracker : IDisposable, IAsyncDisposable
 {
     private readonly SessionManager _sessionManager;
     private readonly IEventBus _eventBus;
     private readonly ILogger<MatchTracker> _logger;
     private readonly IDisposable _subscription;
     private readonly object _stateLock = new();
+    private readonly List<Task> _pendingPersistTasks = [];
 
     private Guid? _trackedSessionId;
     private int _currentMatchNumber;
@@ -81,7 +82,7 @@ public sealed class MatchTracker : IDisposable
         // Snapshot values and persist asynchronously
         var matchNumber = _currentMatchNumber;
         var startedAt = e.Timestamp;
-        _ = PersistMatchStartAsync(sessionId, matchNumber, startedAt);
+        TrackPersistTask(PersistMatchStartAsync(sessionId, matchNumber, startedAt));
     }
 
     private void EndCurrentMatch(Guid sessionId, MatchResult result, HighlightDetectedEvent e)
@@ -98,7 +99,7 @@ public sealed class MatchTracker : IDisposable
         _currentMatchStartedAt = null;
 
         // Snapshot values and persist asynchronously
-        _ = PersistMatchEndAsync(sessionId, matchNumber, startedAt, result, score);
+        TrackPersistTask(PersistMatchEndAsync(sessionId, matchNumber, startedAt, result, score));
     }
 
     private async Task PersistMatchStartAsync(Guid sessionId, int matchNumber, DateTimeOffset startedAt)
@@ -170,6 +171,29 @@ public sealed class MatchTracker : IDisposable
             _currentMatchNumber = 0;
             _currentMatchStartedAt = null;
         }
+    }
+
+    private void TrackPersistTask(Task task)
+    {
+        lock (_stateLock)
+        {
+            _pendingPersistTasks.RemoveAll(t => t.IsCompleted);
+            _pendingPersistTasks.Add(task);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _subscription.Dispose();
+
+        Task[] pending;
+        lock (_stateLock)
+        {
+            pending = [.. _pendingPersistTasks];
+            _pendingPersistTasks.Clear();
+        }
+
+        await Task.WhenAll(pending).ConfigureAwait(false);
     }
 
     public void Dispose() => _subscription.Dispose();
