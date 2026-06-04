@@ -91,11 +91,11 @@ public partial class App : Application
                     var update = await checker.CheckForUpdateAsync();
                     if (update?.IsUpdateAvailable == true)
                     {
-                        await Application.Current!.Dispatcher.InvokeAsync(() =>
+                        await (Application.Current?.Dispatcher.InvokeAsync(() =>
                         {
                             var vm = _host.Services.GetRequiredService<MainWindowViewModel>();
                             vm.SetUpdateAvailable(update);
-                        });
+                        }) ?? Task.CompletedTask);
                     }
                 }
                 catch { /* update check failure is non-fatal */ }
