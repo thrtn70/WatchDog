@@ -28,6 +28,12 @@ public partial class ClipSavedToast : Window
         _closeTimer.Start();
     }
 
+    protected override void OnClosed(EventArgs e)
+    {
+        _closeTimer.Stop();
+        base.OnClosed(e);
+    }
+
     private void FadeOutAndClose()
     {
         _closeTimer.Stop();
