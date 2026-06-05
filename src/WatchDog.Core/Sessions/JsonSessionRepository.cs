@@ -138,7 +138,7 @@ public sealed class JsonSessionRepository : ISessionRepository, IDisposable
                     index.SchemaVersion, CurrentSchemaVersion);
             }
 
-            _sessions.AddRange(index.Sessions);
+            _sessions.AddRange(index.Sessions.Where(s => s is not null));
             _logger.LogInformation("Loaded {Count} sessions from index", _sessions.Count);
         }
         catch (Exception ex)
