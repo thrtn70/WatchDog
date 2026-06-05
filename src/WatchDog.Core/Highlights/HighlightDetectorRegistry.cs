@@ -106,15 +106,16 @@ public sealed class HighlightDetectorRegistry
 
     private void OnHighlightDetected(HighlightDetectedEventArgs args)
     {
-        if (_activeGame is null) return;
+        var game = _activeGame;
+        if (game is null) return;
 
         _eventBus.Publish(new HighlightDetectedEvent(
             args.Type,
-            _activeGame,
+            game,
             DateTimeOffset.UtcNow,
             args.Description));
 
         _logger.LogInformation("Highlight detected: {Type} in {Game} — {Description}",
-            args.Type, _activeGame.DisplayName, args.Description ?? "");
+            args.Type, game.DisplayName, args.Description ?? "");
     }
 }

@@ -66,17 +66,22 @@ public sealed class Cs2HighlightDetector : IHighlightDetector
         _cts?.Cancel();
         _listener.Stop();
 
-        if (_listenTask is not null)
+        try
         {
-            try { await _listenTask; }
-            catch (OperationCanceledException) { }
+            if (_listenTask is not null)
+            {
+                try { await _listenTask; }
+                catch (OperationCanceledException) { }
+            }
         }
-
-        _listener.Close();
-        _listener = null;
-        _cts?.Dispose();
-        _cts = null;
-        _previousState = null;
+        finally
+        {
+            _listener.Close();
+            _listener = null;
+            _cts?.Dispose();
+            _cts = null;
+            _previousState = null;
+        }
 
         _logger.LogInformation("CS2 GSI listener stopped");
     }
