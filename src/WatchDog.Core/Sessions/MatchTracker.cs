@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using WatchDog.Core.Events;
 using WatchDog.Core.Highlights;
@@ -11,6 +12,7 @@ public sealed class MatchTracker : IDisposable
     private readonly ILogger<MatchTracker> _logger;
     private readonly IDisposable _subscription;
     private readonly object _stateLock = new();
+    private readonly ConcurrentQueue<Task> _pendingPersists = new();
 
     private Guid? _trackedSessionId;
     private int _currentMatchNumber;
@@ -81,7 +83,7 @@ public sealed class MatchTracker : IDisposable
         // Snapshot values and persist asynchronously
         var matchNumber = _currentMatchNumber;
         var startedAt = e.Timestamp;
-        _ = PersistMatchStartAsync(sessionId, matchNumber, startedAt);
+        EnqueuePersist(PersistMatchStartAsync(sessionId, matchNumber, startedAt));
     }
 
     private void EndCurrentMatch(Guid sessionId, MatchResult result, HighlightDetectedEvent e)
@@ -98,7 +100,7 @@ public sealed class MatchTracker : IDisposable
         _currentMatchStartedAt = null;
 
         // Snapshot values and persist asynchronously
-        _ = PersistMatchEndAsync(sessionId, matchNumber, startedAt, result, score);
+        EnqueuePersist(PersistMatchEndAsync(sessionId, matchNumber, startedAt, result, score));
     }
 
     private async Task PersistMatchStartAsync(Guid sessionId, int matchNumber, DateTimeOffset startedAt)
@@ -172,5 +174,21 @@ public sealed class MatchTracker : IDisposable
         }
     }
 
-    public void Dispose() => _subscription.Dispose();
+    private void EnqueuePersist(Task task)
+    {
+        _pendingPersists.Enqueue(task);
+        while (_pendingPersists.TryPeek(out var t) && t.IsCompleted)
+            _pendingPersists.TryDequeue(out _);
+    }
+
+    public void Dispose()
+    {
+        _subscription.Dispose();
+
+        var pending = new List<Task>();
+        while (_pendingPersists.TryDequeue(out var t))
+            pending.Add(t);
+        if (pending.Count > 0)
+            Task.WhenAll(pending).Wait(TimeSpan.FromSeconds(5));
+    }
 }
