@@ -15,7 +15,7 @@ internal static class TestFs
     {
         if (!Directory.Exists(path)) return;
 
-        const int maxAttempts = 10;
+        const int maxAttempts = 20;
         for (var attempt = 0; attempt < maxAttempts; attempt++)
         {
             try
@@ -25,11 +25,11 @@ internal static class TestFs
             }
             catch (IOException) when (attempt < maxAttempts - 1)
             {
-                Thread.Sleep(50);
+                Thread.Sleep(100);
             }
             catch (UnauthorizedAccessException) when (attempt < maxAttempts - 1)
             {
-                Thread.Sleep(50);
+                Thread.Sleep(100);
             }
         }
     }
