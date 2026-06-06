@@ -11,6 +11,7 @@ public sealed class MatchTracker : IDisposable
     private readonly ILogger<MatchTracker> _logger;
     private readonly IDisposable _subscription;
     private readonly object _stateLock = new();
+    private readonly List<Task> _pendingPersistence = [];
 
     private Guid? _trackedSessionId;
     private int _currentMatchNumber;
@@ -81,7 +82,7 @@ public sealed class MatchTracker : IDisposable
         // Snapshot values and persist asynchronously
         var matchNumber = _currentMatchNumber;
         var startedAt = e.Timestamp;
-        _ = PersistMatchStartAsync(sessionId, matchNumber, startedAt);
+        TrackPersistTask(PersistMatchStartAsync(sessionId, matchNumber, startedAt));
     }
 
     private void EndCurrentMatch(Guid sessionId, MatchResult result, HighlightDetectedEvent e)
@@ -98,7 +99,7 @@ public sealed class MatchTracker : IDisposable
         _currentMatchStartedAt = null;
 
         // Snapshot values and persist asynchronously
-        _ = PersistMatchEndAsync(sessionId, matchNumber, startedAt, result, score);
+        TrackPersistTask(PersistMatchEndAsync(sessionId, matchNumber, startedAt, result, score));
     }
 
     private async Task PersistMatchStartAsync(Guid sessionId, int matchNumber, DateTimeOffset startedAt)
@@ -172,5 +173,23 @@ public sealed class MatchTracker : IDisposable
         }
     }
 
-    public void Dispose() => _subscription.Dispose();
+    private void TrackPersistTask(Task task)
+    {
+        _pendingPersistence.RemoveAll(t => t.IsCompleted);
+        _pendingPersistence.Add(task);
+    }
+
+    internal void DrainPendingPersistence(TimeSpan timeout)
+    {
+        Task[] snapshot;
+        lock (_stateLock) { snapshot = [.. _pendingPersistence]; }
+        if (snapshot.Length > 0)
+            Task.WaitAll(snapshot, timeout);
+    }
+
+    public void Dispose()
+    {
+        _subscription.Dispose();
+        DrainPendingPersistence(TimeSpan.FromSeconds(2));
+    }
 }
