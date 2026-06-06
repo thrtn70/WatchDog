@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using WatchDog.App.ViewModels;
@@ -20,6 +21,13 @@ public partial class DiscordUploadWindow : Window
         vm.RequestClose += () => { if (IsLoaded) Dispatcher.InvokeAsync(Close); };
 
         Loaded += (_, _) => vm.UploadCommand.Execute(metadata);
+    }
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        if (DataContext is DiscordUploadViewModel vm)
+            vm.CancelCommand.Execute(null);
+        base.OnClosing(e);
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
