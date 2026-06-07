@@ -15,6 +15,7 @@ public sealed class MatchTracker : IDisposable
     private Guid? _trackedSessionId;
     private int _currentMatchNumber;
     private DateTimeOffset? _currentMatchStartedAt;
+    private readonly List<Task> _pendingPersists = [];
 
     public int? CurrentMatchNumber
     {
@@ -78,10 +79,9 @@ public sealed class MatchTracker : IDisposable
         _eventBus.Publish(new MatchStartedEvent(sessionId, _currentMatchNumber, e.Game));
         _logger.LogInformation("Match {Number} started in session {SessionId}", _currentMatchNumber, sessionId);
 
-        // Snapshot values and persist asynchronously
         var matchNumber = _currentMatchNumber;
         var startedAt = e.Timestamp;
-        _ = PersistMatchStartAsync(sessionId, matchNumber, startedAt);
+        _pendingPersists.Add(PersistMatchStartAsync(sessionId, matchNumber, startedAt));
     }
 
     private void EndCurrentMatch(Guid sessionId, MatchResult result, HighlightDetectedEvent e)
@@ -97,8 +97,7 @@ public sealed class MatchTracker : IDisposable
 
         _currentMatchStartedAt = null;
 
-        // Snapshot values and persist asynchronously
-        _ = PersistMatchEndAsync(sessionId, matchNumber, startedAt, result, score);
+        _pendingPersists.Add(PersistMatchEndAsync(sessionId, matchNumber, startedAt, result, score));
     }
 
     private async Task PersistMatchStartAsync(Guid sessionId, int matchNumber, DateTimeOffset startedAt)
@@ -172,5 +171,10 @@ public sealed class MatchTracker : IDisposable
         }
     }
 
-    public void Dispose() => _subscription.Dispose();
+    public void Dispose()
+    {
+        _subscription.Dispose();
+        try { Task.WhenAll(_pendingPersists).GetAwaiter().GetResult(); }
+        catch { /* already logged inside persist methods */ }
+    }
 }
