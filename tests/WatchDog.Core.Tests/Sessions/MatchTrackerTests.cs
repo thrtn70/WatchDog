@@ -7,7 +7,7 @@ using WatchDog.Core.Tests.Helpers;
 
 namespace WatchDog.Core.Tests.Sessions;
 
-public sealed class MatchTrackerTests : IDisposable
+public sealed class MatchTrackerTests : IAsyncLifetime
 {
     private readonly string _tempDir;
     private readonly InMemoryEventBus _eventBus;
@@ -34,9 +34,11 @@ public sealed class MatchTrackerTests : IDisposable
         _tracker = new MatchTracker(_sessionManager, _eventBus, NullLogger<MatchTracker>.Instance);
     }
 
-    public void Dispose()
+    public Task InitializeAsync() => Task.CompletedTask;
+
+    public async Task DisposeAsync()
     {
-        _tracker.Dispose();
+        await _tracker.DisposeAsync();
         _repo.Dispose();
         TestFs.DeleteDirectoryWithRetry(_tempDir);
     }

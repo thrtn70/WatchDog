@@ -4,13 +4,14 @@ using WatchDog.Core.Highlights;
 
 namespace WatchDog.Core.Sessions;
 
-public sealed class MatchTracker : IDisposable
+public sealed class MatchTracker : IDisposable, IAsyncDisposable
 {
     private readonly SessionManager _sessionManager;
     private readonly IEventBus _eventBus;
     private readonly ILogger<MatchTracker> _logger;
     private readonly IDisposable _subscription;
     private readonly object _stateLock = new();
+    private readonly List<Task> _pendingPersists = [];
 
     private Guid? _trackedSessionId;
     private int _currentMatchNumber;
@@ -78,10 +79,12 @@ public sealed class MatchTracker : IDisposable
         _eventBus.Publish(new MatchStartedEvent(sessionId, _currentMatchNumber, e.Game));
         _logger.LogInformation("Match {Number} started in session {SessionId}", _currentMatchNumber, sessionId);
 
-        // Snapshot values and persist asynchronously
+        // Snapshot values and persist asynchronously (tracked for DisposeAsync)
         var matchNumber = _currentMatchNumber;
         var startedAt = e.Timestamp;
-        _ = PersistMatchStartAsync(sessionId, matchNumber, startedAt);
+        var task = PersistMatchStartAsync(sessionId, matchNumber, startedAt);
+        _pendingPersists.RemoveAll(t => t.IsCompleted);
+        _pendingPersists.Add(task);
     }
 
     private void EndCurrentMatch(Guid sessionId, MatchResult result, HighlightDetectedEvent e)
@@ -97,8 +100,10 @@ public sealed class MatchTracker : IDisposable
 
         _currentMatchStartedAt = null;
 
-        // Snapshot values and persist asynchronously
-        _ = PersistMatchEndAsync(sessionId, matchNumber, startedAt, result, score);
+        // Snapshot values and persist asynchronously (tracked for DisposeAsync)
+        var task = PersistMatchEndAsync(sessionId, matchNumber, startedAt, result, score);
+        _pendingPersists.RemoveAll(t => t.IsCompleted);
+        _pendingPersists.Add(task);
     }
 
     private async Task PersistMatchStartAsync(Guid sessionId, int matchNumber, DateTimeOffset startedAt)
@@ -173,4 +178,19 @@ public sealed class MatchTracker : IDisposable
     }
 
     public void Dispose() => _subscription.Dispose();
+
+    public async ValueTask DisposeAsync()
+    {
+        _subscription.Dispose();
+
+        Task[] pending;
+        lock (_stateLock)
+        {
+            pending = [.. _pendingPersists];
+            _pendingPersists.Clear();
+        }
+
+        if (pending.Length > 0)
+            await Task.WhenAll(pending);
+    }
 }
