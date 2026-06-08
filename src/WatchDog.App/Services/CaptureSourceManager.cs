@@ -153,10 +153,7 @@ public sealed class CaptureSourceManager : IHostedService
             var source = CaptureSource.FromWindow(
                 executableName, windowTitle, processId, windowHandle, windowClass);
 
-            // Initialize OBS if not already done
-            _captureEngine.EnsureInitialized();
-
-            // Start window capture via OBS
+            // Start window capture via OBS (handles OBS initialization internally on cold start)
             await _captureEngine.StartWindowCaptureAsync(source, ct);
 
             // Start session
