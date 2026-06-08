@@ -73,11 +73,14 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void ShowMainWindow()
     {
-        var mainWindow = Application.Current.MainWindow;
+        var app = Application.Current;
+        if (app is null) return;
+
+        var mainWindow = app.MainWindow;
         if (mainWindow is null)
         {
             mainWindow = new MainWindow();
-            Application.Current.MainWindow = mainWindow;
+            app.MainWindow = mainWindow;
         }
 
         mainWindow.Show();
@@ -102,7 +105,7 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void ExitApplication()
     {
-        Application.Current.Shutdown();
+        Application.Current?.Shutdown();
     }
 
     private void UpdateState(CaptureState state)
