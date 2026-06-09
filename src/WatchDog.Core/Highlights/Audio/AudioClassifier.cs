@@ -51,6 +51,8 @@ public sealed class AudioClassifier : IDisposable
 
         options.GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL;
         _session = new InferenceSession(modelPath, options);
+        if (_session.InputMetadata.Count == 0)
+            throw new InvalidOperationException("ONNX model has no input tensors defined.");
         _inputName = _session.InputMetadata.Keys.First();
         _outputNames = _session.OutputMetadata.Keys.ToArray();
 

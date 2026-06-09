@@ -8,6 +8,7 @@ public sealed class ValorantHighlightDetector : IHighlightDetector
 {
     private readonly ILogger<ValorantHighlightDetector> _logger;
     private readonly HttpClient _sharedHttpClient;
+    private readonly object _stateLock = new();
     private ValorantLocalApiClient? _client;
     private ValorantGameState? _previousState;
 
@@ -84,8 +85,11 @@ public sealed class ValorantHighlightDetector : IHighlightDetector
 
         if (newState is null) return;
 
-        DetectHighlights(_previousState, newState);
-        _previousState = newState;
+        lock (_stateLock)
+        {
+            DetectHighlights(_previousState, newState);
+            _previousState = newState;
+        }
     }
 
     internal void DetectHighlights(ValorantGameState? previous, ValorantGameState current)
