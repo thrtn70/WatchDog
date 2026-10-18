@@ -40,7 +40,14 @@ public sealed class MatchTracker : IDisposable
     private void OnHighlightDetected(HighlightDetectedEvent e)
     {
         var sessionId = _sessionManager.CurrentSessionId;
-        if (sessionId is null) return;
+        if (sessionId is null || e.Context?.SessionId != sessionId.Value)
+        {
+            _logger.LogDebug(
+                "Ignoring unowned or stale highlight for session {EventSession}; current session is {CurrentSession}",
+                e.Context?.SessionId,
+                sessionId);
+            return;
+        }
 
         lock (_stateLock)
         {

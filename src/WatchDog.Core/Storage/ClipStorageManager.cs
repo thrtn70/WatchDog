@@ -5,13 +5,17 @@ using WatchDog.Core.ClipEditor;
 
 namespace WatchDog.Core.Storage;
 
-public sealed class ClipStorageManager : IClipStorage
+public sealed class ClipStorageManager : IClipStorage, IStorageMaintenance
 {
     private readonly StorageConfig _config;
     private readonly IClipEditor _clipEditor;
     private readonly ILogger<ClipStorageManager> _logger;
+    private readonly IProtectedMediaRegistry _protectedMedia;
     private readonly List<ClipMetadata> _clips = [];
+    private List<ClipMetadata> _persistedClips = [];
     private readonly object _lock = new();
+    private readonly object _deletionLock = new();
+    private bool _primaryNeedsRecovery;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -21,13 +25,26 @@ public sealed class ClipStorageManager : IClipStorage
     };
 
     public ClipStorageManager(StorageConfig config, IClipEditor clipEditor, ILogger<ClipStorageManager> logger)
+        : this(config, clipEditor, logger, new ProtectedMediaRegistry())
     {
-        _config = config;
-        _clipEditor = clipEditor;
-        _logger = logger;
+    }
+
+    public ClipStorageManager(
+        StorageConfig config,
+        IClipEditor clipEditor,
+        ILogger<ClipStorageManager> logger,
+        IProtectedMediaRegistry protectedMedia)
+    {
+        _config = config ?? throw new ArgumentNullException(nameof(config));
+        _clipEditor = clipEditor ?? throw new ArgumentNullException(nameof(clipEditor));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _protectedMedia = protectedMedia ?? throw new ArgumentNullException(nameof(protectedMedia));
 
         Directory.CreateDirectory(config.BasePath);
         LoadIndex();
+        _persistedClips = [.. _clips];
+        ReconcilePendingDeletion();
+        _persistedClips = [.. _clips];
     }
 
     public IReadOnlyList<ClipMetadata> GetAllClips()
@@ -59,45 +76,97 @@ public sealed class ClipStorageManager : IClipStorage
         => IndexClipAsync(filePath, gameName, highlightType, sessionId: null, matchNumber: null, ct);
 
     public async Task<ClipMetadata> IndexClipAsync(string filePath, string? gameName, Highlights.HighlightType? highlightType, Guid? sessionId, int? matchNumber, CancellationToken ct = default)
+        => await IndexClipCoreAsync(
+            filePath,
+            gameName,
+            highlightType,
+            sessionId,
+            captureRequestId: null,
+            captureGeneration: null,
+            matchNumber,
+            createdAt: null,
+            ct);
+
+    public Task<ClipMetadata> IndexCompletedMediaAsync(
+        CompletedMediaReceipt media,
+        Highlights.HighlightType? highlightType = null,
+        CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(media);
+        return IndexClipCoreAsync(
+            media.FilePath,
+            media.GameName,
+            highlightType,
+            media.SessionId,
+            media.CaptureRequestId,
+            media.CaptureGeneration,
+            media.MatchNumber,
+            media.CompletedAt,
+            ct);
+    }
+
+    private async Task<ClipMetadata> IndexClipCoreAsync(
+        string filePath,
+        string? gameName,
+        Highlights.HighlightType? highlightType,
+        Guid? sessionId,
+        Guid? captureRequestId,
+        long? captureGeneration,
+        int? matchNumber,
+        DateTimeOffset? createdAt,
+        CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        var canonicalPath = StoragePath.Canonicalize(filePath);
+
         // Deduplicate: if this file is already indexed, return existing metadata
         lock (_lock)
         {
             var existing = _clips.FirstOrDefault(c =>
-                string.Equals(c.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+                PathsEqual(c.FilePath, canonicalPath));
             if (existing is not null)
-                return existing;
+                return Enrich(
+                    existing,
+                    gameName,
+                    highlightType,
+                    sessionId,
+                    captureRequestId,
+                    captureGeneration,
+                    matchNumber);
         }
 
-        var fileInfo = new FileInfo(filePath);
+        var fileInfo = new FileInfo(canonicalPath);
         if (!fileInfo.Exists)
-            throw new FileNotFoundException("Clip file not found", filePath);
+            throw new FileNotFoundException("Clip file not found", canonicalPath);
 
-        var duration = await _clipEditor.GetDurationAsync(filePath, ct);
+        var duration = await _clipEditor.GetDurationAsync(canonicalPath, ct);
 
         // Generate thumbnail at 1 second in (or start if shorter)
         var thumbTs = duration.TotalSeconds > 1 ? TimeSpan.FromSeconds(1) : TimeSpan.Zero;
         string? thumbPath = null;
         try
         {
-            thumbPath = await _clipEditor.GenerateThumbnailAsync(filePath, thumbTs, ct);
+            if (IsManagedPath(canonicalPath))
+                thumbPath = await _clipEditor.GenerateThumbnailAsync(canonicalPath, thumbTs, ct);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to generate thumbnail for {File}", filePath);
+            _logger.LogWarning(ex, "Failed to generate thumbnail for {File}", canonicalPath);
         }
 
         var metadata = new ClipMetadata
         {
-            FilePath = filePath,
+            FilePath = canonicalPath,
             FileName = fileInfo.Name,
             GameName = gameName,
-            CreatedAt = fileInfo.CreationTimeUtc,
+            CreatedAt = createdAt ?? fileInfo.CreationTimeUtc,
             Duration = duration,
             FileSizeBytes = fileInfo.Length,
             ThumbnailPath = thumbPath,
             HighlightType = highlightType,
             SessionId = sessionId,
+            CaptureRequestId = captureRequestId,
+            CaptureGeneration = captureGeneration,
             MatchNumber = matchNumber,
         };
 
@@ -106,14 +175,21 @@ public sealed class ClipStorageManager : IClipStorage
             // Second dedup check under lock — guards against concurrent IndexClipAsync calls
             // that both passed the first check before either added the clip
             var duplicate = _clips.FirstOrDefault(c =>
-                string.Equals(c.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+                PathsEqual(c.FilePath, canonicalPath));
             if (duplicate is not null)
-                return duplicate;
+                return Enrich(
+                    duplicate,
+                    gameName,
+                    highlightType,
+                    sessionId,
+                    captureRequestId,
+                    captureGeneration,
+                    matchNumber);
 
             _clips.Add(metadata);
+            SaveIndex();
         }
 
-        SaveIndex();
         var highlightTag = highlightType is not null ? $" [{highlightType}]" : "";
         _logger.LogInformation("Indexed clip: {File} ({Duration:mm\\:ss}, {Size:F1}MB){Tag}",
             metadata.FileName, duration, fileInfo.Length / (1024.0 * 1024.0), highlightTag);
@@ -121,20 +197,23 @@ public sealed class ClipStorageManager : IClipStorage
         return metadata;
     }
 
-    public async Task<int> ScanAndIndexAsync(CancellationToken ct = default)
+    public IReadOnlyList<string> FindUnindexedMediaFiles()
     {
-        if (!Directory.Exists(_config.BasePath))
-            return 0;
-
         HashSet<string> indexed;
         lock (_lock)
-            indexed = _clips.Select(c => c.FilePath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            indexed = _clips.Select(c => StoragePath.Canonicalize(c.FilePath)).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var extensions = new[] { "*.mp4", "*.mkv", "*.flv" };
-        var newFiles = extensions
-            .SelectMany(ext => Directory.EnumerateFiles(_config.BasePath, ext, SearchOption.AllDirectories))
-            .Where(f => !indexed.Contains(f))
-            .ToList();
+        return EnumerateMedia(_config.BasePath, extensions)
+            .Select(StoragePath.Canonicalize)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(path => !indexed.Contains(path))
+            .ToArray();
+    }
+
+    public async Task<int> ScanAndIndexAsync(CancellationToken ct = default)
+    {
+        var newFiles = FindUnindexedMediaFiles();
 
         var count = 0;
         foreach (var file in newFiles)
@@ -165,48 +244,57 @@ public sealed class ClipStorageManager : IClipStorage
 
     public void DeleteClip(string filePath)
     {
+        var canonicalPath = StoragePath.Canonicalize(filePath);
         // Path containment: only allow deleting files under the configured base directory
-        var fullPath = Path.GetFullPath(filePath);
-        var baseFull = Path.GetFullPath(_config.BasePath);
-        if (!fullPath.StartsWith(baseFull + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+        if (!IsManagedPath(canonicalPath))
         {
-            _logger.LogWarning("Blocked DeleteClip attempt outside base path: {Path}", filePath);
-            return;
+            _logger.LogWarning("Blocked DeleteClip attempt outside base path: {Path}", canonicalPath);
+            throw new InvalidOperationException("Recordings in previous folders are read-only. Open the folder to manage the original file.");
         }
 
-        string? thumbnailPath;
+        lock (_deletionLock)
+        {
+            ReconcilePendingDeletion();
+            DeleteClipCore(canonicalPath);
+        }
+
+        _logger.LogInformation("Deleted clip: {File}", canonicalPath);
+    }
+
+    private void DeleteClipCore(string canonicalPath)
+    {
+        using var deletionReservation = _protectedMedia.TryReserveDeletion(canonicalPath);
+        if (deletionReservation is null)
+            throw new InvalidOperationException("This clip is currently in use and cannot be deleted safely.");
+
         lock (_lock)
         {
             var clip = _clips.FirstOrDefault(c =>
-                string.Equals(c.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+                PathsEqual(c.FilePath, canonicalPath));
             if (clip is null) return;
 
-            thumbnailPath = clip.ThumbnailPath;
-            _clips.Remove(clip);
-        }
-
-        // Persist index first (atomic write), then best-effort delete files
-        SaveIndex();
-
-        try
-        {
-            if (File.Exists(filePath))
-                File.Delete(filePath);
-            if (thumbnailPath is not null && File.Exists(thumbnailPath))
+            // Prove that the index replacement path is currently writable before the
+            // irreversible file deletion. A later external failure is still reconciled
+            // from the durable intent on the next startup.
+            SaveIndex();
+            var intent = new DeletionIntent(canonicalPath, clip.ThumbnailPath);
+            PersistDeletionIntent(intent);
+            try
             {
-                var thumbFull = Path.GetFullPath(thumbnailPath);
-                if (thumbFull.StartsWith(baseFull + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
-                    File.Delete(thumbnailPath);
-                else
-                    _logger.LogWarning("Blocked thumbnail deletion outside base path: {Path}", thumbnailPath);
+                if (File.Exists(canonicalPath))
+                    File.Delete(canonicalPath);
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to delete clip file(s) for {File}", filePath);
-        }
+            catch
+            {
+                ClearDeletionIntent();
+                throw;
+            }
 
-        _logger.LogInformation("Deleted clip: {File}", filePath);
+            _clips.Remove(clip);
+            SaveIndex();
+            DeleteThumbnail(intent.ThumbnailPath);
+            ClearDeletionIntent();
+        }
     }
 
     public void ToggleFavorite(string filePath)
@@ -214,13 +302,12 @@ public sealed class ClipStorageManager : IClipStorage
         lock (_lock)
         {
             var idx = _clips.FindIndex(c =>
-                string.Equals(c.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+                PathsEqual(c.FilePath, filePath));
             if (idx < 0) return;
 
             _clips[idx] = _clips[idx] with { IsFavorite = !_clips[idx].IsFavorite };
+            SaveIndex();
         }
-
-        SaveIndex();
     }
 
     public void AddTags(string filePath, IEnumerable<string> tags)
@@ -235,7 +322,7 @@ public sealed class ClipStorageManager : IClipStorage
         lock (_lock)
         {
             var idx = _clips.FindIndex(c =>
-                string.Equals(c.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+                PathsEqual(c.FilePath, filePath));
             if (idx < 0) return;
 
             var existing = _clips[idx].Tags.ToList();
@@ -250,9 +337,8 @@ public sealed class ClipStorageManager : IClipStorage
                 existing = existing.Take(20).ToList();
 
             _clips[idx] = _clips[idx] with { Tags = existing.AsReadOnly() };
+            SaveIndex();
         }
-
-        SaveIndex();
     }
 
     public void RemoveTags(string filePath, IEnumerable<string> tags)
@@ -262,7 +348,7 @@ public sealed class ClipStorageManager : IClipStorage
         lock (_lock)
         {
             var idx = _clips.FindIndex(c =>
-                string.Equals(c.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+                PathsEqual(c.FilePath, filePath));
             if (idx < 0) return;
 
             var filtered = _clips[idx].Tags
@@ -270,9 +356,8 @@ public sealed class ClipStorageManager : IClipStorage
                 .ToList();
 
             _clips[idx] = _clips[idx] with { Tags = filtered.AsReadOnly() };
+            SaveIndex();
         }
-
-        SaveIndex();
     }
 
     public IReadOnlySet<string> GetAllTags()
@@ -297,115 +382,777 @@ public sealed class ClipStorageManager : IClipStorage
         }
     }
 
-    public async Task RunCleanupAsync(CancellationToken ct = default)
+    public async Task RunCleanupAsync(CancellationToken ct = default) =>
+        _ = await RunCleanupWithResultAsync(ct);
+
+    Task<StorageCleanupResult> IStorageMaintenance.RunCleanupAsync(CancellationToken ct) =>
+        RunCleanupWithResultAsync(0, ct);
+
+    Task<StorageCleanupResult> IStorageMaintenance.RunCleanupAsync(
+        long protectedExternalBytes,
+        CancellationToken ct) => RunCleanupWithResultAsync(protectedExternalBytes, ct);
+
+    Task<StorageCleanupResult> IStorageMaintenance.RunCleanupAsync(
+        IReadOnlyDictionary<string, long> protectedExternalFiles,
+        CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(protectedExternalFiles);
+        if (protectedExternalFiles.Values.Any(size => size < 0))
+            throw new ArgumentOutOfRangeException(nameof(protectedExternalFiles));
+        lock (_deletionLock)
+        {
+            HashSet<string> indexedPaths;
+            lock (_lock)
+            {
+                indexedPaths = _clips
+                    .Where(clip => IsManagedPath(clip.FilePath))
+                    .Select(clip => StoragePath.Canonicalize(clip.FilePath))
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            }
+
+            var uniqueExternalBytes = protectedExternalFiles
+                .Where(item => !indexedPaths.Contains(StoragePath.Canonicalize(item.Key)))
+                .Select(item => item.Value)
+                .Aggregate(0L, (total, size) => checked(total + size));
+            return RunCleanupWithResultLocked(uniqueExternalBytes, ct);
+        }
+    }
+
+    public Task<StorageCleanupResult> RunCleanupWithResultAsync(CancellationToken ct = default)
+        => RunCleanupWithResultAsync(0, ct);
+
+    private Task<StorageCleanupResult> RunCleanupWithResultAsync(
+        long protectedExternalBytes,
+        CancellationToken ct)
+    {
+        lock (_deletionLock)
+            return RunCleanupWithResultLocked(protectedExternalBytes, ct);
+    }
+
+    private Task<StorageCleanupResult> RunCleanupWithResultLocked(
+        long protectedExternalBytes,
+        CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        if (protectedExternalBytes < 0)
+            throw new ArgumentOutOfRangeException(nameof(protectedExternalBytes));
         var now = DateTimeOffset.UtcNow;
         var maxAge = TimeSpan.FromDays(_config.AutoDeleteDays);
-        var minAge = TimeSpan.FromHours(24); // Never delete clips less than 24 hours old
-        var maxBytes = (long)_config.MaxStorageGb * 1024 * 1024 * 1024;
+        var minAge = TimeSpan.FromHours(24);
+        var maxBytes = GetMaxStorageBytes();
+        var attemptedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var failures = new List<StorageCleanupFailure>();
+        var deletedCount = 0;
+        long deletedBytes = 0;
 
-        List<ClipMetadata> toDelete;
+        try
+        {
+            ReconcilePendingDeletion();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            long blockedBytes;
+            lock (_lock)
+                blockedBytes = CalculateRemainingIndexedBytes();
+            return Task.FromResult(new StorageCleanupResult(
+                0,
+                0,
+                [new StorageCleanupFailure(DeletionIntentPath, ex.Message, true)],
+                blockedBytes,
+                false,
+                protectedExternalBytes));
+        }
+
+        List<string> expiredCandidates;
         lock (_lock)
         {
-            // Delete clips older than max age (unless favorited or too new)
-            toDelete = _clips
-                .Where(c => !c.IsFavorite
-                    && now - c.CreatedAt > maxAge
-                    && now - c.CreatedAt > minAge)
+            expiredCandidates = _clips
+                .Where(clip => IsManagedPath(clip.FilePath) &&
+                    now - clip.CreatedAt > maxAge &&
+                    now - clip.CreatedAt > minAge)
+                .Select(clip => clip.FilePath)
                 .ToList();
         }
 
-        foreach (var clip in toDelete)
-            DeleteClip(clip.FilePath);
-
-        if (toDelete.Count > 0)
-            _logger.LogInformation("Cleanup: deleted {Count} clips older than {Days} days", toDelete.Count, _config.AutoDeleteDays);
-
-        // Check total size and delete oldest non-favorite clips if over limit
-        List<ClipMetadata> overBudget;
-        lock (_lock)
+        foreach (var candidatePath in expiredCandidates)
         {
-            var totalSize = _clips.Sum(c => c.FileSizeBytes);
-            if (totalSize <= maxBytes)
-            {
-                overBudget = [];
-            }
-            else
-            {
-                var running = totalSize;
-                overBudget = _clips
-                    .Where(c => !c.IsFavorite && now - c.CreatedAt > minAge)
-                    .OrderBy(c => c.CreatedAt)
-                    .TakeWhile(c =>
-                    {
-                        if (running <= maxBytes) return false;
-                        running -= c.FileSizeBytes;
-                        return true;
-                    })
-                    .ToList();
-            }
+            ct.ThrowIfCancellationRequested();
+            attemptedPaths.Add(StoragePath.Canonicalize(candidatePath));
+            var outcome = TryDeleteForCleanup(candidatePath, now, minAge, maxAge, requireExpired: true, ct);
+            RecordCleanupOutcome(
+                outcome,
+                failures,
+                ref deletedCount,
+                ref deletedBytes);
+            if (outcome.AbortCleanup)
+                break;
         }
 
-        foreach (var clip in overBudget)
-            DeleteClip(clip.FilePath);
+        while (failures.All(failure => !failure.AbortCleanup))
+        {
+            ct.ThrowIfCancellationRequested();
+            string? candidatePath;
+            lock (_lock)
+            {
+                if (IsQuotaMet(CalculateRemainingIndexedBytes(), protectedExternalBytes, maxBytes))
+                    break;
 
-        await Task.CompletedTask;
+                candidatePath = _clips
+                    .Where(clip => IsManagedPath(clip.FilePath) &&
+                        now - clip.CreatedAt > minAge &&
+                        !attemptedPaths.Contains(StoragePath.Canonicalize(clip.FilePath)))
+                    .OrderBy(clip => clip.CreatedAt)
+                    .Select(clip => clip.FilePath)
+                    .FirstOrDefault();
+            }
+
+            if (candidatePath is null)
+                break;
+
+            attemptedPaths.Add(StoragePath.Canonicalize(candidatePath));
+            var outcome = TryDeleteForCleanup(candidatePath, now, minAge, maxAge, requireExpired: false, ct);
+            RecordCleanupOutcome(
+                outcome,
+                failures,
+                ref deletedCount,
+                ref deletedBytes);
+            if (outcome.AbortCleanup)
+                break;
+        }
+
+        ct.ThrowIfCancellationRequested();
+        long remainingBytes;
+        lock (_lock)
+            remainingBytes = CalculateRemainingIndexedBytes();
+
+        var result = new StorageCleanupResult(
+            deletedCount,
+            deletedBytes,
+            failures.AsReadOnly(),
+            remainingBytes,
+            IsQuotaMet(remainingBytes, protectedExternalBytes, maxBytes),
+            protectedExternalBytes);
+        if (deletedCount > 0 || failures.Count > 0)
+        {
+            _logger.LogInformation(
+                "Cleanup completed: {DeletedCount} clips and {DeletedBytes} bytes deleted; " +
+                "{FailureCount} failures; {RemainingBytes} indexed bytes remain; quota met: {QuotaMet}",
+                result.DeletedCount,
+                result.DeletedBytes,
+                result.Failures.Count,
+                result.RemainingIndexedBytes,
+                result.QuotaMet);
+        }
+
+        return Task.FromResult(result);
     }
 
-    private string IndexPath => Path.Combine(_config.BasePath, "clips-index.json");
+    private CleanupDeletionOutcome TryDeleteForCleanup(
+        string candidatePath,
+        DateTimeOffset now,
+        TimeSpan minAge,
+        TimeSpan maxAge,
+        bool requireExpired,
+        CancellationToken ct)
+    {
+        using var deletionReservation = _protectedMedia.TryReserveDeletion(candidatePath);
+        if (deletionReservation is null)
+            return CleanupDeletionOutcome.Skipped;
 
-    private void LoadIndex()
+        lock (_lock)
+        {
+            var clip = _clips.FirstOrDefault(current => PathsEqual(current.FilePath, candidatePath));
+            if (clip is null ||
+                !IsManagedPath(clip.FilePath) ||
+                clip.IsFavorite ||
+                now - clip.CreatedAt <= minAge ||
+                (requireExpired && now - clip.CreatedAt <= maxAge) ||
+                !File.Exists(clip.FilePath))
+            {
+                return CleanupDeletionOutcome.Skipped;
+            }
+
+            ct.ThrowIfCancellationRequested();
+            long fileSize;
+            var intent = new DeletionIntent(clip.FilePath, clip.ThumbnailPath);
+            try
+            {
+                PersistDeletionIntent(intent);
+                fileSize = new FileInfo(clip.FilePath).Length;
+                File.Delete(clip.FilePath);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                try { ClearDeletionIntent(); }
+                catch (Exception clearFailure)
+                {
+                    return CleanupDeletionOutcome.Failed(
+                        clip.FilePath,
+                        $"{ex.Message} Deletion intent cleanup also failed: {clearFailure.Message}",
+                        abortCleanup: true);
+                }
+                _logger.LogWarning(ex, "Cleanup could not delete {File}; metadata was retained", clip.FilePath);
+                return CleanupDeletionOutcome.Failed(clip.FilePath, ex.Message);
+            }
+
+            _clips.Remove(clip);
+            try
+            {
+                SaveIndex();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Cleanup deleted {File} but could not commit its metadata removal", clip.FilePath);
+                return CleanupDeletionOutcome.Failed(clip.FilePath, ex.Message, abortCleanup: true);
+            }
+
+            StorageCleanupFailure? thumbnailFailure = null;
+            try
+            {
+                DeleteThumbnail(clip.ThumbnailPath);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                _logger.LogWarning(ex, "Cleanup could not delete thumbnail {File}", clip.ThumbnailPath);
+                thumbnailFailure = new StorageCleanupFailure(clip.ThumbnailPath!, ex.Message);
+            }
+
+            try
+            {
+                ClearDeletionIntent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Cleanup committed deletion of {File} but could not clear its recovery intent", clip.FilePath);
+                return new CleanupDeletionOutcome(
+                    true,
+                    fileSize,
+                    new StorageCleanupFailure(DeletionIntentPath, ex.Message, true),
+                    true);
+            }
+
+            return new CleanupDeletionOutcome(true, fileSize, thumbnailFailure, false);
+        }
+    }
+
+    private static void RecordCleanupOutcome(
+        CleanupDeletionOutcome outcome,
+        List<StorageCleanupFailure> failures,
+        ref int deletedCount,
+        ref long deletedBytes)
+    {
+        if (outcome.Deleted)
+        {
+            deletedCount++;
+            deletedBytes = checked(deletedBytes + outcome.DeletedBytes);
+        }
+
+        if (outcome.Failure is not null)
+            failures.Add(outcome.Failure);
+    }
+
+    private long CalculateRemainingIndexedBytes() =>
+        _clips.Where(clip => IsManagedPath(clip.FilePath)).Sum(clip => clip.FileSizeBytes);
+
+    private static bool IsQuotaMet(long indexedBytes, long protectedExternalBytes, long maxBytes) =>
+        protectedExternalBytes <= maxBytes && indexedBytes <= maxBytes - protectedExternalBytes;
+
+    private void DeleteThumbnail(string? thumbnailPath)
+    {
+        if (thumbnailPath is null || !File.Exists(thumbnailPath)) return;
+        if (!IsManagedPath(thumbnailPath))
+        {
+            _logger.LogWarning("Blocked thumbnail deletion outside base path: {Path}", thumbnailPath);
+            return;
+        }
+        File.Delete(thumbnailPath);
+    }
+
+    private void PersistDeletionIntent(DeletionIntent intent)
+    {
+        var directory = Path.GetDirectoryName(DeletionIntentPath)!;
+        Directory.CreateDirectory(directory);
+        var temp = Path.Combine(directory, $"storage-deletion.{Guid.NewGuid():N}.tmp");
+        try
+        {
+            File.WriteAllText(temp, JsonSerializer.Serialize(intent, JsonOptions));
+            File.Move(temp, DeletionIntentPath, overwrite: false);
+        }
+        finally
+        {
+            try { if (File.Exists(temp)) File.Delete(temp); } catch { /* best effort */ }
+        }
+    }
+
+    private void ClearDeletionIntent()
+    {
+        if (File.Exists(DeletionIntentPath))
+            File.Delete(DeletionIntentPath);
+    }
+
+    private void ReconcilePendingDeletion()
+    {
+        if (!File.Exists(DeletionIntentPath)) return;
+
+        DeletionIntent intent;
+        try
+        {
+            intent = JsonSerializer.Deserialize<DeletionIntent>(
+                File.ReadAllText(DeletionIntentPath),
+                JsonOptions) ?? throw new InvalidDataException("Storage deletion intent contained null.");
+            if (string.IsNullOrWhiteSpace(intent.FilePath) ||
+                !Path.IsPathFullyQualified(intent.FilePath) ||
+                !IsManagedPath(intent.FilePath))
+            {
+                throw new InvalidDataException("Storage deletion intent contains an invalid media path.");
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or
+            JsonException or InvalidDataException or ArgumentException or NotSupportedException)
+        {
+            throw new InvalidDataException(
+                "A pending storage deletion could not be reconciled safely.",
+                ex);
+        }
+
+        if (File.Exists(intent.FilePath))
+        {
+            // The process stopped before physical deletion. Retain both media and metadata.
+            ClearDeletionIntent();
+            return;
+        }
+
+        lock (_lock)
+        {
+            var clip = _clips.FirstOrDefault(item => PathsEqual(item.FilePath, intent.FilePath));
+            if (clip is not null)
+            {
+                _clips.Remove(clip);
+                SaveIndex();
+            }
+            DeleteThumbnail(intent.ThumbnailPath);
+            ClearDeletionIntent();
+        }
+    }
+
+    private long GetMaxStorageBytes()
+    {
+        if (_config.MaxStorageBytesOverride is < 0)
+            throw new InvalidOperationException("Storage byte quota must not be negative.");
+        if (_config.MaxStorageBytesOverride is long exactBytes)
+            return exactBytes;
+        if (_config.MaxStorageGb < 0)
+            throw new InvalidOperationException("Storage quota must not be negative.");
+        return checked((long)_config.MaxStorageGb * 1024 * 1024 * 1024);
+    }
+
+    private sealed record CleanupDeletionOutcome(
+        bool Deleted,
+        long DeletedBytes,
+        StorageCleanupFailure? Failure,
+        bool AbortCleanup)
+    {
+        public static CleanupDeletionOutcome Skipped { get; } = new(false, 0, null, false);
+
+        public static CleanupDeletionOutcome Failed(
+            string filePath,
+            string message,
+            bool abortCleanup = false) =>
+            new(false, 0, new StorageCleanupFailure(filePath, message, abortCleanup), abortCleanup);
+    }
+
+    private sealed record DeletionIntent(string FilePath, string? ThumbnailPath);
+
+    private string IndexPath => Path.Combine(StoragePath.Canonicalize(_config.BasePath), "clips-index.json");
+    private string DeletionIntentPath => Path.Combine(
+        StoragePath.Canonicalize(_config.BasePath),
+        "storage-deletion-pending.json");
+    private bool IsManagedPath(string path)
+    {
+        var full = StoragePath.Canonicalize(path);
+        var activeRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(_config.BasePath)) + Path.DirectorySeparatorChar;
+        if (!full.StartsWith(activeRoot, StringComparison.OrdinalIgnoreCase)) return false;
+        // A legacy folder inside the new root remains protected. An older parent
+        // of the new root does not make newly recorded media read-only.
+        return !_config.LegacyReadOnlyPaths.Any(root =>
+        {
+            var legacy = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root)) + Path.DirectorySeparatorChar;
+            return legacy.StartsWith(activeRoot, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(legacy, activeRoot, StringComparison.OrdinalIgnoreCase) &&
+                full.StartsWith(legacy, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+    private static bool PathsEqual(string left, string right) =>
+        string.Equals(
+            StoragePath.Canonicalize(left),
+            StoragePath.Canonicalize(right),
+            StringComparison.OrdinalIgnoreCase);
+    private IEnumerable<string> MediaRoots => new[] { _config.BasePath }
+        .Concat(_config.LegacyReadOnlyPaths).Distinct(StringComparer.OrdinalIgnoreCase);
+
+    private IEnumerable<string> EnumerateMedia(string root, string[] extensions)
     {
         try
         {
-            if (!File.Exists(IndexPath))
-                return;
+            return Directory.Exists(root)
+                ? extensions.SelectMany(ext => Directory.EnumerateFiles(root, ext, SearchOption.AllDirectories)).ToArray()
+                : [];
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarning(ex, "Recording folder is unavailable: {Folder}", root);
+            return [];
+        }
+    }
 
-            var json = File.ReadAllText(IndexPath);
-            var clips = JsonSerializer.Deserialize<List<ClipMetadata>>(json, JsonOptions);
+    // Called under _lock. Repeated ingestion may add context, but must never erase
+    // user edits or richer metadata merely because a second producer lacks it.
+    private ClipMetadata Enrich(
+        ClipMetadata existing,
+        string? gameName,
+        Highlights.HighlightType? highlightType,
+        Guid? sessionId,
+        Guid? captureRequestId,
+        long? captureGeneration,
+        int? matchNumber)
+    {
+        RequireCompatibleAttribution(
+            existing,
+            gameName,
+            sessionId,
+            captureRequestId,
+            captureGeneration,
+            matchNumber);
+        var enriched = existing with
+        {
+            GameName = gameName ?? existing.GameName,
+            HighlightType = highlightType ?? existing.HighlightType,
+            SessionId = sessionId ?? existing.SessionId,
+            CaptureRequestId = captureRequestId ?? existing.CaptureRequestId,
+            CaptureGeneration = captureGeneration ?? existing.CaptureGeneration,
+            MatchNumber = matchNumber ?? existing.MatchNumber,
+        };
+        if (enriched != existing)
+        {
+            _clips[_clips.IndexOf(existing)] = enriched;
+            SaveIndex();
+        }
+        return enriched;
+    }
 
-            int count;
-            if (clips is not null)
+    private static void RequireCompatibleAttribution(
+        ClipMetadata existing,
+        string? gameName,
+        Guid? sessionId,
+        Guid? captureRequestId,
+        long? captureGeneration,
+        int? matchNumber)
+    {
+        if (existing.GameName is not null && gameName is not null &&
+            !string.Equals(existing.GameName, gameName, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("A clip path cannot be reassigned to another game.");
+        if (existing.SessionId is not null && sessionId is not null && existing.SessionId != sessionId)
+            throw new InvalidOperationException("A clip path cannot be reassigned to another session.");
+        if (existing.CaptureRequestId is not null && captureRequestId is not null &&
+            existing.CaptureRequestId != captureRequestId)
+            throw new InvalidOperationException("A clip path cannot be reassigned to another capture request.");
+        if (existing.CaptureGeneration is not null && captureGeneration is not null &&
+            existing.CaptureGeneration != captureGeneration)
+            throw new InvalidOperationException("A clip path cannot be reassigned to another capture generation.");
+        if (existing.MatchNumber is not null && matchNumber is not null && existing.MatchNumber != matchNumber)
+            throw new InvalidOperationException("A clip path cannot be reassigned to another match.");
+    }
+
+    private void LoadIndex()
+    {
+        var activeRoot = StoragePath.Canonicalize(_config.BasePath);
+        foreach (var root in MediaRoots
+            .Select(StoragePath.Canonicalize)
+            .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var primary = Path.Combine(root, "clips-index.json");
+            if (string.Equals(root, activeRoot, StringComparison.OrdinalIgnoreCase))
+                LoadActiveIndex(primary);
+            else
+                LoadLegacyIndex(primary);
+        }
+    }
+
+    private void LoadActiveIndex(string primaryPath)
+    {
+        var primary = ReadIndexCandidate(primaryPath);
+        var backup = ReadIndexCandidate(primaryPath + ".bak");
+
+        PreserveCorruptCandidate(primary);
+        PreserveCorruptCandidate(backup);
+
+        if (primary.State == IndexCandidateState.Valid)
+        {
+            if (backup.State == IndexCandidateState.Invalid)
             {
-                lock (_lock)
+                try
                 {
-                    _clips.AddRange(clips.Where(c => File.Exists(c.FilePath)));
-                    count = _clips.Count;
+                    RepairIndexFromBytes(backup.Path, primary.Bytes!);
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidDataException(
+                        "The primary clip index is valid, but its corrupt recovery backup could not be repaired.",
+                        ex);
                 }
             }
-            else
+
+            AddLoadedClips(primary.Clips!);
+            _primaryNeedsRecovery = false;
+            _logger.LogInformation("Loaded metadata from {Index}", primary.Path);
+            return;
+        }
+
+        if (backup.State == IndexCandidateState.Valid)
+        {
+            try
             {
-                count = 0;
+                RepairIndexFromBytes(primaryPath, backup.Bytes!);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidDataException(
+                    "The clip index backup was valid, but the primary index could not be repaired. " +
+                    "Storage mutations and cleanup are disabled until recovery succeeds.",
+                    ex);
             }
 
-            _logger.LogInformation("Loaded {Count} clips from index", count);
+            AddLoadedClips(backup.Clips!);
+            _primaryNeedsRecovery = false;
+            _logger.LogWarning(
+                "Recovered metadata from {Backup} and atomically repaired {Primary}",
+                backup.Path,
+                primaryPath);
+            return;
         }
-        catch (Exception ex)
+
+        if (primary.State == IndexCandidateState.Missing && backup.State == IndexCandidateState.Missing)
+            return;
+
+        throw new InvalidDataException(
+            "No valid active clip index or recovery backup is available. " +
+            "Corrupt bytes were preserved and storage mutations and cleanup are disabled.",
+            primary.Error ?? backup.Error);
+    }
+
+    private void LoadLegacyIndex(string primaryPath)
+    {
+        var primary = ReadIndexCandidate(primaryPath);
+        var backup = ReadIndexCandidate(primaryPath + ".bak");
+        var selected = primary.State == IndexCandidateState.Valid
+            ? primary
+            : backup.State == IndexCandidateState.Valid
+                ? backup
+                : null;
+        if (selected is not null)
         {
-            _logger.LogWarning(ex, "Failed to load clip index, starting fresh");
+            AddLoadedClips(selected.Clips!);
+            _logger.LogInformation("Loaded legacy metadata from {Index}", selected.Path);
+            return;
+        }
+
+        if (primary.State == IndexCandidateState.Invalid || backup.State == IndexCandidateState.Invalid)
+        {
+            _logger.LogWarning(
+                primary.Error ?? backup.Error,
+                "Legacy clip index under {Root} is corrupt; its bytes were left untouched",
+                Path.GetDirectoryName(primaryPath));
+        }
+    }
+
+    private IndexCandidate ReadIndexCandidate(string path)
+    {
+        byte[]? bytes = null;
+        try
+        {
+            bytes = File.ReadAllBytes(path);
+            var deserialized = JsonSerializer.Deserialize<List<ClipMetadata?>>(bytes, JsonOptions)
+                ?? throw new JsonException("Clip index contains null instead of a list.");
+            var clips = ValidateIndexSnapshot(deserialized, path);
+            return IndexCandidate.Valid(path, bytes, clips);
+        }
+        catch (FileNotFoundException)
+        {
+            return IndexCandidate.Missing(path);
+        }
+        catch (DirectoryNotFoundException)
+        {
+            return IndexCandidate.Missing(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or
+            JsonException or InvalidDataException or ArgumentException or NotSupportedException)
+        {
+            _logger.LogWarning(ex, "Clip index candidate {Index} is invalid", path);
+            return IndexCandidate.Invalid(path, bytes, ex);
+        }
+    }
+
+    private static IReadOnlyList<ClipMetadata> ValidateIndexSnapshot(
+        IReadOnlyList<ClipMetadata?> clips,
+        string sourcePath)
+    {
+        var normalized = new List<ClipMetadata>(clips.Count);
+        var knownPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (var index = 0; index < clips.Count; index++)
+        {
+            var clip = clips[index]
+                ?? throw new InvalidDataException($"Clip index {sourcePath} contains a null entry at position {index}.");
+            if (string.IsNullOrWhiteSpace(clip.FilePath) || !Path.IsPathFullyQualified(clip.FilePath))
+                throw new InvalidDataException($"Clip index {sourcePath} contains an invalid media path at position {index}.");
+            if (string.IsNullOrWhiteSpace(clip.FileName))
+                throw new InvalidDataException($"Clip index {sourcePath} contains an invalid file name at position {index}.");
+            if (clip.CreatedAt == default || clip.Duration < TimeSpan.Zero || clip.FileSizeBytes < 0)
+                throw new InvalidDataException($"Clip index {sourcePath} contains invalid metadata at position {index}.");
+            if (clip.Tags is null || clip.Tags.Any(tag => tag is null))
+                throw new InvalidDataException($"Clip index {sourcePath} contains invalid tags at position {index}.");
+            if (clip.CaptureGeneration is < 0)
+                throw new InvalidDataException($"Clip index {sourcePath} contains an invalid capture generation at position {index}.");
+
+            var canonicalPath = StoragePath.Canonicalize(clip.FilePath);
+            if (!knownPaths.Add(canonicalPath))
+                throw new InvalidDataException($"Clip index {sourcePath} contains duplicate equivalent media paths.");
+            normalized.Add(clip with { FilePath = canonicalPath });
+        }
+
+        return normalized;
+    }
+
+    private void AddLoadedClips(IReadOnlyList<ClipMetadata> clips)
+    {
+        lock (_lock)
+        {
+            var known = _clips
+                .Select(clip => StoragePath.Canonicalize(clip.FilePath))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            // An unplugged drive is not evidence that a clip was deleted. Retain its
+            // metadata until an explicit library operation removes it.
+            _clips.AddRange(clips.Where(clip => known.Add(StoragePath.Canonicalize(clip.FilePath))));
+        }
+    }
+
+    private void PreserveCorruptCandidate(IndexCandidate candidate)
+    {
+        if (candidate.State != IndexCandidateState.Invalid)
+            return;
+        if (candidate.Bytes is null)
+        {
+            throw new InvalidDataException(
+                $"The corrupt clip index {candidate.Path} could not be read for recovery preservation.",
+                candidate.Error);
+        }
+
+        var evidencePath = $"{candidate.Path}.corrupt-{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}";
+        using var evidence = new FileStream(
+            evidencePath,
+            FileMode.CreateNew,
+            FileAccess.Write,
+            FileShare.Read,
+            bufferSize: 4096,
+            FileOptions.WriteThrough);
+        evidence.Write(candidate.Bytes);
+        evidence.Flush(flushToDisk: true);
+        _logger.LogWarning("Preserved corrupt clip index bytes at {Evidence}", evidencePath);
+    }
+
+    private static void RepairIndexFromBytes(string indexPath, byte[] validBytes)
+    {
+        var directory = Path.GetDirectoryName(indexPath)
+            ?? throw new InvalidDataException("The active clip index has no parent directory.");
+        var temporaryPath = Path.Combine(directory, $"clips-index.recovery-{Guid.NewGuid():N}.tmp");
+        try
+        {
+            using (var temporary = new FileStream(
+                temporaryPath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: 4096,
+                FileOptions.WriteThrough))
+            {
+                temporary.Write(validBytes);
+                temporary.Flush(flushToDisk: true);
+            }
+
+            if (File.Exists(indexPath))
+                File.Replace(temporaryPath, indexPath, destinationBackupFileName: null);
+            else
+                File.Move(temporaryPath, indexPath, overwrite: false);
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(temporaryPath))
+                    File.Delete(temporaryPath);
+            }
+            catch
+            {
+                // The repair failure remains primary; a unique temporary file is safe
+                // recovery evidence and must not hide that failure.
+            }
         }
     }
 
     private void SaveIndex()
     {
-        var dir = Path.GetDirectoryName(IndexPath)!;
-        Directory.CreateDirectory(dir);
-        var tmp = Path.Combine(dir, $"clips-index.{Guid.NewGuid():N}.tmp");
-
-        try
+        // Serialize snapshot creation AND replacement. Otherwise an older snapshot
+        // can finish writing after a newer one and silently discard indexed clips.
+        lock (_lock)
         {
-            List<ClipMetadata> snapshot;
-            lock (_lock)
-                snapshot = [.. _clips];
+            var dir = Path.GetDirectoryName(IndexPath)!;
+            var tmp = Path.Combine(dir, $"clips-index.{Guid.NewGuid():N}.tmp");
+            try
+            {
+                _ = ValidateIndexSnapshot(_clips.Cast<ClipMetadata?>().ToArray(), IndexPath);
+                Directory.CreateDirectory(dir);
+                File.WriteAllText(tmp, JsonSerializer.Serialize(_clips, JsonOptions));
+                if (File.Exists(IndexPath) && !_primaryNeedsRecovery)
+                    File.Replace(tmp, IndexPath, IndexPath + ".bak");
+                else
+                    File.Move(tmp, IndexPath, overwrite: true);
+                _primaryNeedsRecovery = false;
+                _persistedClips = [.. _clips];
+            }
+            catch (Exception ex)
+            {
+                _clips.Clear();
+                _clips.AddRange(_persistedClips);
+                _logger.LogError(ex, "Failed to save clip index; media files were retained");
+                try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* best-effort */ }
+                throw;
+            }
+        }
+    }
 
-            var json = JsonSerializer.Serialize(snapshot, JsonOptions);
-            File.WriteAllText(tmp, json);
-            File.Move(tmp, IndexPath, overwrite: true);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to save clip index");
-            try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* best-effort */ }
-        }
+    private enum IndexCandidateState
+    {
+        Missing,
+        Valid,
+        Invalid,
+    }
+
+    private sealed record IndexCandidate(
+        string Path,
+        IndexCandidateState State,
+        byte[]? Bytes,
+        IReadOnlyList<ClipMetadata>? Clips,
+        Exception? Error)
+    {
+        public static IndexCandidate Missing(string path) =>
+            new(path, IndexCandidateState.Missing, null, null, null);
+
+        public static IndexCandidate Valid(
+            string path,
+            byte[] bytes,
+            IReadOnlyList<ClipMetadata> clips) =>
+            new(path, IndexCandidateState.Valid, bytes, clips, null);
+
+        public static IndexCandidate Invalid(string path, byte[]? bytes, Exception error) =>
+            new(path, IndexCandidateState.Invalid, bytes, null, error);
     }
 }

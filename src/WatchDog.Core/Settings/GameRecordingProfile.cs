@@ -1,8 +1,8 @@
 namespace WatchDog.Core.Settings;
 
 /// <summary>
-/// Per-game recording configuration. Overrides the default capture settings
-/// when this game is detected. Stored in AppSettings.GameProfiles.
+/// Saved next-automatic-start overrides for an exact executable. GameCapturePolicy validates
+/// output support before effects; canvas/highlight overrides currently remain unsupported.
 /// </summary>
 public sealed record GameRecordingProfile
 {

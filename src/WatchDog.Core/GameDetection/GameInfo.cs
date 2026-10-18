@@ -5,6 +5,7 @@ public sealed record GameInfo
     public required string ExecutableName { get; init; }
     public required string DisplayName { get; init; }
     public int ProcessId { get; init; }
+    public DateTimeOffset? ProcessStartedAt { get; init; }
     public string? WindowTitle { get; init; }
     public GameGenre Genre { get; init; } = GameGenre.Unknown;
 }

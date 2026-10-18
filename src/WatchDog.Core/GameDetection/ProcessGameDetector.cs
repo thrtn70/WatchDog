@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Management;
 using Microsoft.Extensions.Logging;
+using WatchDog.Core.Capture;
 
 namespace WatchDog.Core.GameDetection;
 
@@ -15,12 +16,21 @@ public sealed class ProcessGameDetector : IGameDetector
     private ManagementEventWatcher? _processWatcher;
     private Timer? _pollTimer;
     private Process? _trackedProcess;
+    private readonly object _trackingSync = new();
+    private GameInfo? _currentGame;
     private bool _disposed;
-    private bool _running;
+    private volatile bool _running;
 
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
 
-    public GameInfo? CurrentGame { get; private set; }
+    public GameInfo? CurrentGame
+    {
+        get
+        {
+            lock (_trackingSync)
+                return _currentGame;
+        }
+    }
 
     public event Action<GameInfo>? GameStarted;
     public event Action<GameInfo>? GameStopped;
@@ -33,8 +43,11 @@ public sealed class ProcessGameDetector : IGameDetector
 
     public void Start()
     {
-        if (_running) return;
-        _running = true;
+        lock (_trackingSync)
+        {
+            if (_running) return;
+            _running = true;
+        }
 
         StartWmiWatcher();
         StartPolling();
@@ -47,12 +60,21 @@ public sealed class ProcessGameDetector : IGameDetector
 
     public void Stop()
     {
-        if (!_running) return;
-        _running = false;
+        lock (_trackingSync)
+        {
+            if (!_running) return;
+            _running = false;
+        }
 
-        StopWmiWatcher();
-        StopPolling();
-        StopTracking();
+        try
+        {
+            StopWmiWatcher();
+        }
+        finally
+        {
+            try { StopPolling(); }
+            finally { StopTracking(); }
+        }
 
         _logger.LogInformation("Game detector stopped");
     }
@@ -117,6 +139,17 @@ public sealed class ProcessGameDetector : IGameDetector
             var game = _gameDatabase.TryMatch(processName, processId);
             if (game is not null)
             {
+                var processStartedAt = GetProcessStartedAt(processId);
+                if (processStartedAt is null)
+                {
+                    _logger.LogDebug(
+                        "Could not capture process identity for {Game} PID {Pid}; deferring detection to polling",
+                        game.DisplayName,
+                        game.ProcessId);
+                    return;
+                }
+
+                game = game with { ProcessStartedAt = processStartedAt };
                 _logger.LogInformation("WMI detected game: {Game} (PID {Pid})", game.DisplayName, game.ProcessId);
                 TrackGame(game);
             }
@@ -131,8 +164,21 @@ public sealed class ProcessGameDetector : IGameDetector
     {
         if (!_running) return;
 
-        if (CurrentGame is not null)
-            return; // Already tracking
+        var currentGame = CurrentGame;
+        if (currentGame is not null)
+        {
+            if (!IsCurrentProcess(currentGame) && ReferenceEquals(CurrentGame, currentGame))
+            {
+                _logger.LogInformation(
+                    "Polling detected game exit: {Game} (PID {Pid})",
+                    currentGame.DisplayName,
+                    currentGame.ProcessId);
+                if (StopTracking(currentGame) is not null)
+                    GameStopped?.Invoke(currentGame);
+            }
+
+            return;
+        }
 
         ScanRunningProcesses();
     }
@@ -152,6 +198,11 @@ public sealed class ProcessGameDetector : IGameDetector
 
                     if (game is not null)
                     {
+                        var processStartedAt = GetProcessStartedAt(process);
+                        if (processStartedAt is null)
+                            continue;
+
+                        game = game with { ProcessStartedAt = processStartedAt };
                         _logger.LogInformation("Poll detected game: {Game} (PID {Pid})", game.DisplayName, game.ProcessId);
                         TrackGame(game);
                         return;
@@ -175,24 +226,65 @@ public sealed class ProcessGameDetector : IGameDetector
         }
     }
 
-    private void TrackGame(GameInfo game)
+    internal void TrackGame(GameInfo game)
     {
-        if (CurrentGame is not null)
-            return;
+        lock (_trackingSync)
+        {
+            if (!_running || _currentGame is not null)
+                return;
+        }
 
-        CurrentGame = game;
-
+        Process? process = null;
         try
         {
-            _trackedProcess = Process.GetProcessById(game.ProcessId);
-            _trackedProcess.EnableRaisingEvents = true;
-            _trackedProcess.Exited += OnGameProcessExited;
+            process = Process.GetProcessById(game.ProcessId);
+            var currentTarget = new GameCaptureTarget(
+                game.ExecutableName,
+                game.ProcessId,
+                game.ExecutableName,
+                game.ProcessStartedAt);
+            if (!GameProcessIdentity.Matches(
+                    process.Id,
+                    GetProcessStartedAt(process),
+                    process.ProcessName + ".exe",
+                    currentTarget))
+            {
+                _logger.LogDebug(
+                    "Ignoring changed process identity for {Game} PID {Pid}",
+                    game.DisplayName,
+                    game.ProcessId);
+                process.Dispose();
+                return;
+            }
+
+            process.EnableRaisingEvents = true;
+            process.Exited += OnGameProcessExited;
         }
         catch (Exception ex)
         {
+            process?.Dispose();
+            process = null;
             _logger.LogWarning(ex, "Could not attach to process {Pid}, will rely on polling for exit detection", game.ProcessId);
             // Start a polling-based exit check
-            _pollTimer?.Change(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
+            try { _pollTimer?.Change(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2)); }
+            catch (ObjectDisposedException) { }
+        }
+
+        lock (_trackingSync)
+        {
+            if (!_running || _currentGame is not null)
+            {
+                if (process is not null)
+                {
+                    process.Exited -= OnGameProcessExited;
+                    process.Dispose();
+                }
+                return;
+            }
+
+            _trackedProcess = process;
+            process = null;
+            _currentGame = game;
         }
 
         GameStarted?.Invoke(game);
@@ -200,27 +292,73 @@ public sealed class ProcessGameDetector : IGameDetector
 
     private void OnGameProcessExited(object? sender, EventArgs e)
     {
-        var game = CurrentGame;
-        if (game is null) return;
+        if (sender is not Process exitedProcess)
+            return;
+
+        int exitedProcessId;
+        try
+        {
+            exitedProcessId = exitedProcess.Id;
+        }
+        catch (InvalidOperationException)
+        {
+            return;
+        }
+
+        GameInfo? game;
+        lock (_trackingSync)
+            game = _currentGame;
+        if (game is null || exitedProcessId != game.ProcessId)
+            return;
+
+        if (StopTracking(game, exitedProcess) is null)
+        {
+            _logger.LogDebug(
+                "Ignoring stale process-exit callback for PID {ExitedPid}; active game is PID {ActivePid}",
+                exitedProcessId, game.ProcessId);
+            return;
+        }
 
         _logger.LogInformation("Game process exited: {Game} (PID {Pid})", game.DisplayName, game.ProcessId);
-        StopTracking();
         GameStopped?.Invoke(game);
     }
 
-    private void StopTracking()
+    private GameInfo? StopTracking(GameInfo? expectedGame = null, Process? expectedProcess = null)
     {
-        if (_trackedProcess is not null)
+        Process? trackedProcess;
+        GameInfo? stoppedGame;
+        Timer? pollTimer;
+        bool restorePolling;
+        lock (_trackingSync)
         {
-            _trackedProcess.Exited -= OnGameProcessExited;
-            _trackedProcess.Dispose();
+            if ((expectedGame is not null && !ReferenceEquals(_currentGame, expectedGame)) ||
+                (expectedProcess is not null && !ReferenceEquals(_trackedProcess, expectedProcess)))
+            {
+                return null;
+            }
+
+            trackedProcess = _trackedProcess;
             _trackedProcess = null;
+            stoppedGame = _currentGame;
+            _currentGame = null;
+            pollTimer = _pollTimer;
+            restorePolling = _running;
         }
 
-        CurrentGame = null;
+        if (trackedProcess is not null)
+        {
+            trackedProcess.Exited -= OnGameProcessExited;
+            trackedProcess.Dispose();
+        }
 
         // Restore normal poll interval
-        _pollTimer?.Change(PollInterval, PollInterval);
+        if (restorePolling)
+        {
+            try { pollTimer?.Change(PollInterval, PollInterval); }
+            catch (ObjectDisposedException) { }
+        }
+
+        return stoppedGame;
     }
 
     private static string? GetWindowTitle(Process process)
@@ -232,6 +370,53 @@ public sealed class ProcessGameDetector : IGameDetector
         catch
         {
             return null;
+        }
+    }
+
+    private static DateTimeOffset? GetProcessStartedAt(int processId)
+    {
+        try
+        {
+            using var process = Process.GetProcessById(processId);
+            return GetProcessStartedAt(process);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static DateTimeOffset? GetProcessStartedAt(Process process)
+    {
+        try
+        {
+            return process.StartTime.ToUniversalTime();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static bool IsCurrentProcess(GameInfo game)
+    {
+        try
+        {
+            using var process = Process.GetProcessById(game.ProcessId);
+            var target = new GameCaptureTarget(
+                game.ExecutableName,
+                game.ProcessId,
+                game.ExecutableName,
+                game.ProcessStartedAt);
+            return !process.HasExited && GameProcessIdentity.Matches(
+                process.Id,
+                GetProcessStartedAt(process),
+                process.ProcessName + ".exe",
+                target);
+        }
+        catch
+        {
+            return false;
         }
     }
 

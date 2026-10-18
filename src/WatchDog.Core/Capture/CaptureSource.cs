@@ -17,6 +17,9 @@ public enum CaptureSourceKind
 
     /// <summary>Desktop/monitor fallback capture.</summary>
     Desktop,
+
+    /// <summary>User selected an exact physical region of one display.</summary>
+    Region,
 }
 
 public sealed record CaptureSource(

@@ -1,96 +1,99 @@
 using Microsoft.Extensions.Logging;
-using ObsKit.NET.Sources;
 
 namespace WatchDog.Core.Audio;
 
 public sealed class ObsAudioMixer : IAudioMixer
 {
     private readonly ILogger<ObsAudioMixer> _logger;
-    private readonly AudioOutputCapture? _desktopAudio;
-    private readonly AudioInputCapture? _micAudio;
+    private readonly Action<float, bool, float, bool> _applyAudioState;
+    private readonly object _sync = new();
 
     private float _desktopVolume = 1.0f;
     private float _micVolume = 1.0f;
     private bool _isDesktopMuted;
     private bool _isMicMuted;
 
-    public float DesktopVolume => _desktopVolume;
-    public float MicVolume => _micVolume;
-    public bool IsMicMuted => _isMicMuted;
-    public bool IsDesktopMuted => _isDesktopMuted;
+    public float DesktopVolume { get { lock (_sync) return _desktopVolume; } }
+    public float MicVolume { get { lock (_sync) return _micVolume; } }
+    public bool IsMicMuted { get { lock (_sync) return _isMicMuted; } }
+    public bool IsDesktopMuted { get { lock (_sync) return _isDesktopMuted; } }
 
     public ObsAudioMixer(
-        AudioOutputCapture? desktopAudio,
-        AudioInputCapture? micAudio,
+        Action<float, bool, float, bool> applyAudioState,
         ILogger<ObsAudioMixer> logger)
     {
-        _desktopAudio = desktopAudio;
-        _micAudio = micAudio;
+        _applyAudioState = applyAudioState;
         _logger = logger;
     }
 
     public void SetDesktopVolume(float volume)
     {
-        _desktopVolume = Math.Clamp(volume, 0f, 1f);
-        if (_desktopAudio is not null)
-            _desktopAudio.Volume = _desktopVolume;
-        _logger.LogDebug("Desktop volume set to {Volume:P0}", _desktopVolume);
+        lock (_sync)
+        {
+            _desktopVolume = Math.Clamp(volume, 0f, 1f);
+            ApplyStateLocked();
+            _logger.LogDebug("Desktop volume set to {Volume:P0}", _desktopVolume);
+        }
     }
 
     public void SetMicVolume(float volume)
     {
-        _micVolume = Math.Clamp(volume, 0f, 1f);
-        if (_micAudio is not null)
-            _micAudio.Volume = _micVolume;
-        _logger.LogDebug("Mic volume set to {Volume:P0}", _micVolume);
+        lock (_sync)
+        {
+            _micVolume = Math.Clamp(volume, 0f, 1f);
+            ApplyStateLocked();
+            _logger.LogDebug("Mic volume set to {Volume:P0}", _micVolume);
+        }
     }
 
     public void ToggleDesktopMute()
     {
-        var newState = !_isDesktopMuted;
-        try
+        lock (_sync)
         {
-            if (_desktopAudio is not null)
-                _desktopAudio.IsMuted = newState;
-            _isDesktopMuted = newState;
+            _isDesktopMuted = !_isDesktopMuted;
+            ApplyStateLocked();
             _logger.LogInformation("Desktop audio {State}", _isDesktopMuted ? "muted" : "unmuted");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to toggle desktop mute");
         }
     }
 
     public void ToggleMicMute()
     {
-        var newState = !_isMicMuted;
-        try
+        lock (_sync)
         {
-            if (_micAudio is not null)
-                _micAudio.IsMuted = newState;
-            _isMicMuted = newState;
+            _isMicMuted = !_isMicMuted;
+            ApplyStateLocked();
             _logger.LogInformation("Mic audio {State}", _isMicMuted ? "muted" : "unmuted");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to toggle mic mute");
         }
     }
 
     public void ApplyConfig(AudioMixConfig config)
     {
-        SetDesktopVolume(config.DesktopVolume);
-        SetMicVolume(config.MicVolume);
+        lock (_sync)
+        {
+            _desktopVolume = Math.Clamp(config.DesktopVolume, 0f, 1f);
+            _micVolume = Math.Clamp(config.MicVolume, 0f, 1f);
+            _isDesktopMuted = !config.DesktopAudioEnabled;
+            _isMicMuted = !config.MicEnabled;
+            ApplyStateLocked();
+        }
+    }
 
-        // Sync mute state to match config
-        if (!config.DesktopAudioEnabled && !_isDesktopMuted)
-            ToggleDesktopMute();
-        else if (config.DesktopAudioEnabled && _isDesktopMuted)
-            ToggleDesktopMute();
+    /// <summary>Applies retained mixer state to the engine's current OBS audio sources.</summary>
+    public void ApplyToCurrentSources()
+    {
+        lock (_sync)
+            ApplyStateLocked();
+    }
 
-        if (!config.MicEnabled && !_isMicMuted)
-            ToggleMicMute();
-        else if (config.MicEnabled && _isMicMuted)
-            ToggleMicMute();
+    private void ApplyStateLocked()
+    {
+        try
+        {
+            _applyAudioState(_desktopVolume, _isDesktopMuted, _micVolume, _isMicMuted);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to apply audio mixer state");
+        }
     }
 }

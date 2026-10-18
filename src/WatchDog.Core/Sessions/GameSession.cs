@@ -10,5 +10,6 @@ public sealed record GameSession
     public SessionStatus Status { get; init; } = SessionStatus.InProgress;
     public IReadOnlyList<SessionMatch> Matches { get; init; } = [];
     public IReadOnlyList<string> RecordingPaths { get; init; } = [];
+    public IReadOnlyList<SessionMediaSegment> MediaSegments { get; init; } = [];
     public bool IsAutoRecorded { get; init; }
 }

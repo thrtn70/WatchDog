@@ -3,6 +3,7 @@ using WatchDog.Core.Buffer;
 using WatchDog.Core.Capture;
 using WatchDog.Core.Highlights;
 using WatchDog.Core.Recording;
+using WatchDog.Core.Webcam;
 
 namespace WatchDog.Core.Settings;
 
@@ -12,6 +13,7 @@ public sealed record AppSettings
     public BufferConfig Buffer { get; init; } = new();
     public SessionRecordingConfig Recording { get; init; } = new();
     public AudioMixConfig Audio { get; init; } = new();
+    public WebcamConfig Webcam { get; init; } = new();
     public HighlightConfig Highlight { get; init; } = new();
     public HotkeySettings Hotkey { get; init; } = new();
     public StorageSettings Storage { get; init; } = new();
@@ -19,6 +21,7 @@ public sealed record AppSettings
     public List<CustomGameEntry> CustomGames { get; init; } = [];
     public IReadOnlyList<GameRecordingProfile> GameProfiles { get; init; } = [];
     public UpdateSettings Update { get; init; } = new();
+    public SessionSegmentLivenessSettings? SessionSegmentLiveness { get; init; }
     public bool DesktopCaptureEnabled { get; init; } = true;
     public bool StartWithWindows { get; init; } = false;
     public bool StartMinimized { get; init; } = true;
@@ -52,6 +55,7 @@ public sealed record HotkeySettings
 
 public sealed record StorageSettings
 {
+    public IReadOnlyList<string> LegacySavePaths { get; init; } = [];
     public string SavePath { get; init; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),
         "WatchDog");

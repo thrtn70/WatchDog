@@ -4,17 +4,25 @@ using WatchDog.Core.Highlights;
 
 namespace WatchDog.Core.Events;
 
-public sealed record GameDetectedEvent(GameInfo Game);
+public sealed record GameDetectedEvent(GameInfo Game, CaptureSessionContext? Context = null);
 
-public sealed record GameExitedEvent(GameInfo Game);
+public sealed record GameExitedEvent(GameInfo Game, CaptureSessionContext? Context = null);
+
+public sealed record CaptureSourceLostEvent(CaptureSessionContext Context, string Reason);
+
+public sealed record CaptureHealthDegradedEvent(CaptureSessionContext Context, CaptureFailure Failure);
 
 public sealed record ClipSavedEvent(
     string FilePath, GameInfo? Game, DateTimeOffset Timestamp,
-    Guid? SessionId = null, int? MatchNumber = null);
+    Guid? SessionId = null, int? MatchNumber = null,
+    CaptureSessionContext? CaptureContext = null);
 
 public sealed record BufferStateChangedEvent(CaptureState NewState);
 
 public sealed record CaptureErrorEvent(string Message, Exception? Exception = null);
+
+public sealed record AutomaticCapturePolicyDecisionEvent(
+    GameCaptureTarget Target, WatchDog.Core.Settings.CapturePolicyDecision Decision);
 
 public sealed record SessionRecordingStartedEvent(string OutputPath, GameInfo? Game);
 
@@ -26,7 +34,8 @@ public sealed record HighlightDetectedEvent(
     HighlightType Type,
     GameInfo Game,
     DateTimeOffset Timestamp,
-    string? Description = null);
+    string? Description = null,
+    CaptureSessionContext? Context = null);
 
 // Session lifecycle events
 public sealed record SessionStartedEvent(Guid SessionId, GameInfo Game);
