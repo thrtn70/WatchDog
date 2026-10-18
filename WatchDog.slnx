@@ -1,6 +1,10 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/WatchDog.App/WatchDog.App.csproj" />
+    <Project Path="src/WatchDog.CaptureIsolation/WatchDog.CaptureIsolation.csproj" />
+    <Project Path="src/WatchDog.CaptureIsolation.Windows/WatchDog.CaptureIsolation.Windows.csproj" />
+    <Project Path="src/WatchDog.CaptureMetadata/WatchDog.CaptureMetadata.csproj" />
+    <Project Path="src/WatchDog.CaptureProtocol/WatchDog.CaptureProtocol.csproj" />
     <Project Path="src/WatchDog.Core/WatchDog.Core.csproj" />
     <Project Path="src/WatchDog.Native/WatchDog.Native.csproj" />
   </Folder>
