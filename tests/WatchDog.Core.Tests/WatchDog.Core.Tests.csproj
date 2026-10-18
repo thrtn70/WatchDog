@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,6 +17,38 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\src\WatchDog.App\Services\ObsCaptureLifecycleBackend.cs" Link="App\ObsCaptureLifecycleBackend.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixturePendingFileCleanup.cs" Link="Isolation\FixturePendingFileCleanup.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureRelativeOpenDecision.cs" Link="Isolation\FixtureRelativeOpenDecision.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureBinaryAttribution.cs" Link="Isolation\FixtureBinaryAttribution.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureArtifactRootAdmission.cs" Link="Isolation\FixtureArtifactRootAdmission.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureArtifactOwnership.cs" Link="Isolation\FixtureArtifactOwnership.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureArtifactHandoff.cs" Link="Isolation\FixtureArtifactHandoff.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureArtifactHandoffState.cs" Link="Isolation\FixtureArtifactHandoffState.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureBrokerSnapshot.cs" Link="Isolation\FixtureBrokerSnapshot.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureBrokerState.cs" Link="Isolation\FixtureBrokerState.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureB1Command.cs" Link="Isolation\FixtureB1Command.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureB1HandshakeModel.cs" Link="Isolation\FixtureB1HandshakeModel.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureB1LauncherModel.cs" Link="Isolation\FixtureB1LauncherModel.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureB1CleanupContext.cs" Link="Isolation\FixtureB1CleanupContext.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureB1AdapterCustodyModel.cs" Link="Isolation\FixtureB1AdapterCustodyModel.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureB1EntryDispatch.cs" Link="Isolation\FixtureB1EntryDispatch.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureB1WrapperContract.cs" Link="Isolation\FixtureB1WrapperContract.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureB1BirthSlotModel.cs" Link="Isolation\FixtureB1BirthSlotModel.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureB1OwnerChannelModel.cs" Link="Isolation\FixtureB1OwnerChannelModel.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureB1JournalOwnerChannelModel.cs" Link="Isolation\FixtureB1JournalOwnerChannelModel.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureB1EndpointJournalModel.cs" Link="Isolation\FixtureB1EndpointJournalModel.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureB1ReleaseCleanupModel.cs" Link="Isolation\FixtureB1ReleaseCleanupModel.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureB1AuthorityJournalContract.cs" Link="Isolation\FixtureB1AuthorityJournalContract.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureB1FileJournalStorage.cs" Link="Isolation\FixtureB1FileJournalStorage.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureB1NativeJournalObservation.cs" Link="Isolation\FixtureB1NativeJournalObservation.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureB1NativeJournalObservationNative.cs" Link="Isolation\FixtureB1NativeJournalObservationNative.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\FixtureBootstrapRejection.cs" Link="Isolation\FixtureBootstrapRejection.cs" />
+    <Compile Include="..\..\tools\WatchDog.CaptureIsolation.Windows.Qualification\QualificationContracts.cs" Link="Isolation\QualificationContracts.cs" />
+    <ProjectReference Include="..\..\src\WatchDog.CaptureIsolation\WatchDog.CaptureIsolation.csproj" />
+    <ProjectReference Include="..\..\src\WatchDog.CaptureIsolation.Windows\WatchDog.CaptureIsolation.Windows.csproj" />
+    <ProjectReference Include="..\..\src\WatchDog.CaptureMetadata\WatchDog.CaptureMetadata.csproj" />
+    <ProjectReference Include="..\..\src\WatchDog.CaptureProtocol\WatchDog.CaptureProtocol.csproj" />
     <ProjectReference Include="..\..\src\WatchDog.Core\WatchDog.Core.csproj" />
   </ItemGroup>
 

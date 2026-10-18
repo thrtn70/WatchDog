@@ -76,6 +76,9 @@ public sealed class StorageAnalyticsTests
             throw new NotImplementedException();
         public Task<ClipMetadata> IndexClipAsync(string fp, string? gn, HighlightType? ht, Guid? sessionId, int? matchNumber, CancellationToken ct) =>
             throw new NotImplementedException();
+        public Task<ClipMetadata> IndexCompletedMediaAsync(CompletedMediaReceipt media, HighlightType? highlightType = null, CancellationToken ct = default) =>
+            throw new NotImplementedException();
+        public IReadOnlyList<string> FindUnindexedMediaFiles() => [];
         public Task<int> ScanAndIndexAsync(CancellationToken ct) => Task.FromResult(0);
         public void DeleteClip(string fp) { }
         public void ToggleFavorite(string fp) { }
