@@ -16,8 +16,10 @@ namespace WatchDog.App.ViewModels;
 public partial class StatusOverlayViewModel : ObservableObject, IDisposable
 {
     private readonly ICaptureEngine _captureEngine;
+    private readonly CaptureLifecycleCoordinator _captureLifecycle;
     private readonly IClipStorage _clipStorage;
     private readonly Action<CaptureState> _stateHandler;
+    private readonly Action<CaptureLifecycleSnapshot> _lifecycleSnapshotHandler;
     private readonly IDisposable _gameDetectedSub;
     private readonly IDisposable _gameExitedSub;
     private readonly IDisposable _clipSavedSub;
@@ -62,21 +64,33 @@ public partial class StatusOverlayViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsExpandedMode));
     }
 
-    public StatusOverlayViewModel(ICaptureEngine captureEngine, IEventBus eventBus, IClipStorage clipStorage)
+    public StatusOverlayViewModel(
+        ICaptureEngine captureEngine,
+        CaptureLifecycleCoordinator captureLifecycle,
+        IEventBus eventBus,
+        IClipStorage clipStorage)
     {
         _captureEngine = captureEngine;
+        _captureLifecycle = captureLifecycle;
         _clipStorage = clipStorage;
 
-        _stateHandler = state =>
-            Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() => UpdateStatus(state)));
+        _stateHandler = _ =>
+            Application.Current?.Dispatcher.InvokeAsync(() =>
+                PostToUi(() => UpdateLifecycleStatus(_captureLifecycle.Snapshot)));
         captureEngine.StateChanged += _stateHandler;
 
         _gameDetectedSub = eventBus.Subscribe<GameDetectedEvent>(e =>
-            Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() => UpdateStatus(_captureEngine.State))));
+            Application.Current?.Dispatcher.InvokeAsync(() =>
+                PostToUi(() => UpdateLifecycleStatus(_captureLifecycle.Snapshot))));
         _gameExitedSub = eventBus.Subscribe<GameExitedEvent>(e =>
-            Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() => UpdateStatus(_captureEngine.State))));
+            Application.Current?.Dispatcher.InvokeAsync(() =>
+                PostToUi(() => UpdateLifecycleStatus(_captureLifecycle.Snapshot))));
         _clipSavedSub = eventBus.Subscribe<ClipSavedEvent>(e =>
             Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(UpdateClipCount)));
+        _lifecycleSnapshotHandler = snapshot =>
+            Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() => UpdateLifecycleStatus(snapshot)));
+        _captureLifecycle.SnapshotChanged += _lifecycleSnapshotHandler;
+        UpdateLifecycleStatus(_captureLifecycle.Snapshot);
     }
 
     /// <summary>Toggle between compact and expanded overlay modes.</summary>
@@ -105,6 +119,15 @@ public partial class StatusOverlayViewModel : ObservableObject, IDisposable
                 IsRecording = false;
                 break;
             case CaptureState.Buffering:
+                if (!_captureEngine.IsReplayBufferActive)
+                {
+                    StatusLine = $"REC · {displayName}";
+                    StatusLabel = "Recording";
+                    IndicatorBrush = BufferingBrush;
+                    StatusLabelBrush = BufferingBrush;
+                    IsRecording = true;
+                    break;
+                }
                 var highlightText = isDesktop ? "No highlights" : "Highlights \u2713";
                 StatusLine = $"BUF · {displayName} · {highlightText}";
                 StatusLabel = "Buffering";
@@ -136,6 +159,23 @@ public partial class StatusOverlayViewModel : ObservableObject, IDisposable
         }
     }
 
+    private void UpdateLifecycleStatus(CaptureLifecycleSnapshot snapshot)
+    {
+        var warning = CaptureStatusPresentation.Warning(snapshot);
+        if (warning is not null)
+        {
+            StatusLine = warning.OverlayLine;
+            StatusLabel = warning.OverlayLabel;
+            IndicatorBrush = SavingBrush;
+            StatusLabelBrush = SavingBrush;
+            IsRecording = snapshot.Context is not null &&
+                          snapshot.Status is CaptureLifecycleStatus.Active or CaptureLifecycleStatus.Saving;
+            return;
+        }
+
+        UpdateStatus(_captureEngine.State);
+    }
+
     private void UpdateClipCount()
     {
         var gameName = _captureEngine.CurrentGame?.DisplayName;
@@ -160,6 +200,7 @@ public partial class StatusOverlayViewModel : ObservableObject, IDisposable
     {
         _disposed = true;
         _captureEngine.StateChanged -= _stateHandler;
+        _captureLifecycle.SnapshotChanged -= _lifecycleSnapshotHandler;
         _gameDetectedSub.Dispose();
         _gameExitedSub.Dispose();
         _clipSavedSub.Dispose();

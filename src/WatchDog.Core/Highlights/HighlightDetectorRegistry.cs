@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using WatchDog.Core.Capture;
 using WatchDog.Core.Events;
 using WatchDog.Core.GameDetection;
 using WatchDog.Core.Highlights.Audio;
@@ -11,8 +12,10 @@ public sealed class HighlightDetectorRegistry
     private volatile IHighlightDetector? _audioFallback;
     private readonly IEventBus _eventBus;
     private readonly ILogger<HighlightDetectorRegistry> _logger;
+    private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
     private IHighlightDetector? _activeDetector;
     private GameInfo? _activeGame;
+    private Action<HighlightDetectedEventArgs>? _activeHandler;
 
     /// <summary>Whether the currently active detector is the AI audio fallback.</summary>
     public bool IsAudioFallbackActive => _activeDetector == _audioFallback && _audioFallback is not null;
@@ -63,58 +66,107 @@ public sealed class HighlightDetectorRegistry
         }
     }
 
-    public async Task StartDetectorForGameAsync(GameInfo game, CancellationToken ct = default)
+    public async Task StartDetectorForGameAsync(
+        GameInfo game,
+        CaptureSessionContext context,
+        CancellationToken ct = default)
     {
-        await StopActiveDetectorAsync(ct);
-
-        if (!_detectors.TryGetValue(game.ExecutableName, out var detector))
+        await _lifecycleGate.WaitAsync(ct);
+        try
         {
-            // No dedicated detector — try the AI audio fallback
-            if (_audioFallback is not null)
+            await StopActiveDetectorCoreAsync(ct);
+
+            if (!_detectors.TryGetValue(game.ExecutableName, out var detector))
             {
-                detector = _audioFallback;
-                _logger.LogInformation("No dedicated detector for {Game}, using AI audio fallback",
-                    game.DisplayName);
+                // No dedicated detector — try the AI audio fallback
+                if (_audioFallback is not null)
+                {
+                    detector = _audioFallback;
+                    _logger.LogInformation("No dedicated detector for {Game}, using AI audio fallback",
+                        game.DisplayName);
+                }
+                else
+                {
+                    _logger.LogInformation("No highlight detector available for {Game}", game.DisplayName);
+                    return;
+                }
             }
-            else
+
+            _activeDetector = detector;
+            _activeGame = game;
+
+            var handler = new Action<HighlightDetectedEventArgs>(args => OnHighlightDetected(game, context, args));
+            _activeHandler = handler;
+            detector.HighlightDetected += handler;
+            try
             {
-                _logger.LogInformation("No highlight detector available for {Game}", game.DisplayName);
-                return;
+                await detector.StartAsync(ct);
             }
+            catch
+            {
+                detector.HighlightDetected -= handler;
+                _activeDetector = null;
+                _activeGame = null;
+                _activeHandler = null;
+                throw;
+            }
+
+            _logger.LogInformation("Highlight detector started for {Game}", game.DisplayName);
         }
-
-        _activeDetector = detector;
-        _activeGame = game;
-
-        detector.HighlightDetected += OnHighlightDetected;
-        await detector.StartAsync(ct);
-
-        _logger.LogInformation("Highlight detector started for {Game}", game.DisplayName);
+        finally
+        {
+            _lifecycleGate.Release();
+        }
     }
 
     public async Task StopActiveDetectorAsync(CancellationToken ct = default)
     {
-        if (_activeDetector is null) return;
-
-        _activeDetector.HighlightDetected -= OnHighlightDetected;
-        await _activeDetector.StopAsync(ct);
-
-        _logger.LogInformation("Highlight detector stopped for {Game}", _activeGame?.DisplayName);
-        _activeDetector = null;
-        _activeGame = null;
+        await _lifecycleGate.WaitAsync(ct);
+        try
+        {
+            await StopActiveDetectorCoreAsync(ct);
+        }
+        finally
+        {
+            _lifecycleGate.Release();
+        }
     }
 
-    private void OnHighlightDetected(HighlightDetectedEventArgs args)
+    private async Task StopActiveDetectorCoreAsync(CancellationToken ct)
     {
-        if (_activeGame is null) return;
+        if (_activeDetector is null) return;
 
+        var detector = _activeDetector;
+        var game = _activeGame;
+        if (_activeHandler is { } handler)
+            detector.HighlightDetected -= handler;
+        try
+        {
+            await detector.StopAsync(ct);
+        }
+        finally
+        {
+            _activeDetector = null;
+            _activeGame = null;
+            _activeHandler = null;
+        }
+
+        _logger.LogInformation("Highlight detector stopped for {Game}", game?.DisplayName);
+    }
+
+    private void OnHighlightDetected(
+        GameInfo game,
+        CaptureSessionContext context,
+        HighlightDetectedEventArgs args)
+    {
         _eventBus.Publish(new HighlightDetectedEvent(
             args.Type,
-            _activeGame,
+            game,
             DateTimeOffset.UtcNow,
-            args.Description));
+            args.Description,
+            context));
 
         _logger.LogInformation("Highlight detected: {Type} in {Game} — {Description}",
-            args.Type, _activeGame.DisplayName, args.Description ?? "");
+            args.Type, game.DisplayName, args.Description ?? "");
     }
 }

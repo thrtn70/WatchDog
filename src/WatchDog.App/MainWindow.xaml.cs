@@ -1,7 +1,12 @@
 using System.Windows;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using Microsoft.Extensions.DependencyInjection;
 using WatchDog.App.ViewModels;
+using WatchDog.Core.Capture;
+using WatchDog.Core.Settings;
+using WatchDog.Native.Win32;
 
 namespace WatchDog.App;
 
@@ -25,6 +30,14 @@ public partial class MainWindow : Window
         // Hide instead of close (tray app)
         e.Cancel = true;
         Hide();
+    }
+
+    private void OnLiveStatusTargetUpdated(object sender, DataTransferEventArgs e)
+    {
+        if (sender is not UIElement element) return;
+        var peer = UIElementAutomationPeer.FromElement(element) ??
+                   UIElementAutomationPeer.CreatePeerForElement(element);
+        peer?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
     }
 
     private void FloatingPanelCanvas_Loaded(object sender, RoutedEventArgs e)
@@ -71,6 +84,38 @@ public partial class MainWindow : Window
         var dashboard = new Views.StorageDashboardWindow();
         dashboard.Owner = this;
         dashboard.ShowDialog();
+    }
+
+    private void OnTutorialWorkspaceClick(object sender, RoutedEventArgs e)
+    {
+        var observation = new TutorialLifecycleObservation(
+            App.Services.GetRequiredService<CaptureLifecycleCoordinator>());
+        var capture = new Services.TutorialWorkspaceCapture(
+            App.Services.GetRequiredService<Services.CaptureSourceManager>().TutorialCapture);
+        var captureEngine = App.Services.GetRequiredService<ICaptureEngine>();
+        var displayCatalog = new Services.DisplayCaptureCatalog(captureEngine);
+        var regionSelection = new Services.TutorialRegionSelection(captureEngine);
+        var viewModel = new TutorialWorkspaceViewModel(
+            App.Services.GetRequiredService<CaptureStartupBaselineResult>(), observation,
+            window => WindowEnumerator.IsWindowOwnedByProcess(window.Handle, window.ProcessId),
+            capture, displayCatalog.IsCurrent, regionSelection);
+        try
+        {
+            var cameras = App.Services.GetRequiredService<Core.Webcam.IWebcamDeviceEnumerator>();
+            var workspace = new Views.TutorialWorkspaceWindow(viewModel,
+                WindowEnumerator.GetVisibleWindows, cameras.GetPhysicalDevicesOrThrow,
+                displayCatalog.GetDisplaysOrThrow)
+            {
+                Owner = this,
+            };
+            workspace.ShowDialog();
+        }
+        finally
+        {
+            viewModel.Dispose();
+            if (sender is UIElement opener)
+                opener.Focus();
+        }
     }
 
     // ── View Switching ─────────────────────────────────────────────────

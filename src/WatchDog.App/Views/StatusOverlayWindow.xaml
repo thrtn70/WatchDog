@@ -52,10 +52,14 @@
             </Ellipse>
 
             <!-- Compact mode: status text only -->
-            <TextBlock Text="{Binding StatusLine}"
+            <TextBlock Text="{Binding StatusLine, NotifyOnTargetUpdated=True}"
                        FontFamily="{StaticResource UIFont}"
                        FontSize="11"
                        FontWeight="Medium"
+                       TargetUpdated="OnStatusTargetUpdated"
+                       AutomationProperties.Name="{Binding StatusLine, StringFormat='Capture status: {0}'}"
+                       AutomationProperties.AutomationId="StatusOverlayLine"
+                       AutomationProperties.LiveSetting="Assertive"
                        Foreground="{StaticResource TextBrush}"
                        VerticalAlignment="Center"
                        Visibility="{Binding IsCompactMode, Converter={StaticResource BoolToVis}}"/>
@@ -77,9 +81,13 @@
                            VerticalAlignment="Center"/>
                 <TextBlock Text=" · " Foreground="{StaticResource SubtextBrush}"
                            FontSize="11" VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding StatusLabel}"
+                <TextBlock Text="{Binding StatusLabel, NotifyOnTargetUpdated=True}"
                            FontFamily="{StaticResource UIFont}"
                            FontSize="11" FontWeight="Medium"
+                           TargetUpdated="OnStatusTargetUpdated"
+                           AutomationProperties.Name="{Binding StatusLabel, StringFormat='Capture status: {0}'}"
+                           AutomationProperties.AutomationId="StatusOverlayLabel"
+                           AutomationProperties.LiveSetting="Assertive"
                            Foreground="{Binding StatusLabelBrush}"
                            VerticalAlignment="Center"/>
             </StackPanel>

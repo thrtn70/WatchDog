@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using ObsKit.NET.Encoders;
 using ObsKit.NET.Outputs;
 using ObsKit.NET.Signals;
+using WatchDog.Core.Audio;
 
 namespace WatchDog.Core.Buffer;
 
@@ -10,6 +11,7 @@ public sealed class ObsReplayBuffer : IReplayBuffer
     private readonly ILogger<ObsReplayBuffer> _logger;
     private ReplayBuffer? _buffer;
     private SignalConnection? _savedSignal;
+    private readonly ReplaySaveCoordinator _saves;
     private bool _disposed;
 
     public bool IsActive => _buffer?.IsActive ?? false;
@@ -22,10 +24,23 @@ public sealed class ObsReplayBuffer : IReplayBuffer
     {
         Config = config;
         _logger = logger;
+        _saves = new ReplaySaveCoordinator(path =>
+        {
+            var root = Path.GetFullPath(Config.OutputDirectory).TrimEnd(Path.DirectorySeparatorChar)
+                + Path.DirectorySeparatorChar;
+            var file = new FileInfo(path);
+            return file.FullName.StartsWith(root, StringComparison.OrdinalIgnoreCase)
+                && file.Exists && file.Length > 0;
+        });
     }
 
-    public void Initialize(VideoEncoder videoEncoder, AudioEncoder audioEncoder)
+    public void Initialize(
+        VideoEncoder videoEncoder,
+        IReadOnlyList<AudioTrackEncoderBinding> audioEncoders)
     {
+        if (audioEncoders.Count == 0)
+            throw new ArgumentException("At least one audio encoder binding is required.", nameof(audioEncoders));
+
         _buffer = new ReplayBuffer(
             name: "WatchDog Replay",
             maxSeconds: Config.MaxSeconds,
@@ -34,18 +49,20 @@ public sealed class ObsReplayBuffer : IReplayBuffer
         _buffer
             .SetDirectory(Config.OutputDirectory)
             .SetFilenameFormat(Config.FilenameFormat)
-            .WithVideoEncoder(videoEncoder)
-            .WithAudioEncoder(audioEncoder, track: 0);
+            .WithVideoEncoder(videoEncoder, takeOwnership: false);
+
+        foreach (var binding in audioEncoders)
+        {
+            _buffer.WithAudioEncoder(
+                binding.Encoder,
+                takeOwnership: false,
+                track: binding.Route.OutputTrackIndex);
+        }
 
         // Connect save-completed signal
         _savedSignal = _buffer.ConnectSignal(OutputSignal.Saved, _ =>
         {
-            var path = _buffer.GetLastReplayPath();
-            if (path is not null)
-            {
-                _logger.LogInformation("Replay saved to {Path}", path);
-                Saved?.Invoke(path);
-            }
+            _saves.Complete(_buffer?.GetLastReplayPath());
         });
 
         _logger.LogInformation("Replay buffer initialized: {MaxSeconds}s, {MaxSizeMb}MB",
@@ -99,28 +116,38 @@ public sealed class ObsReplayBuffer : IReplayBuffer
             return null;
         }
 
-        _buffer.Save();
-
-        // Poll for the saved path (ObsKit.NET fires the signal async)
-        for (var i = 0; i < 50 && !ct.IsCancellationRequested; i++)
+        try
         {
-            await Task.Delay(100, ct);
-            var path = _buffer.GetLastReplayPath();
-            if (path is not null)
-                return path;
+            var path = await _saves.SaveAsync(() => _buffer.Save(), ct).ConfigureAwait(false);
+            _logger.LogInformation("Replay completed and file verified: {Path}", path);
+            Saved?.Invoke(path);
+            return path;
         }
-
-        _logger.LogWarning("Replay save timed out after 5 seconds");
-        return null;
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Replay save failed");
+            Error?.Invoke(ex.Message);
+            return null;
+        }
     }
 
     public void Dispose()
     {
         if (_disposed) return;
-        _disposed = true;
 
         Stop();
-        _savedSignal?.Dispose();
-        _buffer?.Dispose();
+        if (_savedSignal is not null)
+        {
+            _savedSignal.Dispose();
+            _savedSignal = null;
+        }
+        if (_buffer is not null)
+        {
+            _buffer.Dispose();
+            _buffer = null;
+        }
+        _saves.Dispose();
+        _disposed = true;
     }
 }

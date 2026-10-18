@@ -9,6 +9,7 @@ namespace WatchDog.Core.Recording;
 public sealed class NullSessionRecorder : ISessionRecorder
 {
     public bool IsRecording => false;
+    public bool HasActiveResources => false;
     public TimeSpan Elapsed => TimeSpan.Zero;
     public string? CurrentOutputPath => null;
 
@@ -20,6 +21,7 @@ public sealed class NullSessionRecorder : ISessionRecorder
 
     public event Action<string>? SegmentSaved { add { } remove { } }
     public event Action<string>? Error { add { } remove { } }
+    public event Action? Stopped { add { } remove { } }
 
     public void Dispose() { }
 }

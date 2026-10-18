@@ -88,3 +88,4 @@ docs/assets/system tray*
 .cursor/
 .serena/
 .worktrees/
+.gstack/

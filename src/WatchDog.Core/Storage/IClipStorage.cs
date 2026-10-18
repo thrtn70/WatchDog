@@ -11,6 +11,8 @@ public interface IClipStorage
     Task<ClipMetadata> IndexClipAsync(string filePath, string? gameName, CancellationToken ct = default);
     Task<ClipMetadata> IndexClipAsync(string filePath, string? gameName, HighlightType? highlightType, CancellationToken ct = default);
     Task<ClipMetadata> IndexClipAsync(string filePath, string? gameName, HighlightType? highlightType, Guid? sessionId, int? matchNumber, CancellationToken ct = default);
+    Task<ClipMetadata> IndexCompletedMediaAsync(CompletedMediaReceipt media, HighlightType? highlightType = null, CancellationToken ct = default);
+    IReadOnlyList<string> FindUnindexedMediaFiles();
     Task<int> ScanAndIndexAsync(CancellationToken ct = default);
     void DeleteClip(string filePath);
     void ToggleFavorite(string filePath);

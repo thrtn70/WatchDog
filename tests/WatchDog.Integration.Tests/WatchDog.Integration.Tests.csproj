@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\WatchDog.App\WatchDog.App.csproj" />
     <ProjectReference Include="..\..\src\WatchDog.Core\WatchDog.Core.csproj" />
     <ProjectReference Include="..\..\src\WatchDog.Native\WatchDog.Native.csproj" />
   </ItemGroup>

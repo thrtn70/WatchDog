@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using WatchDog.Core.Settings;
@@ -12,13 +13,16 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
     private readonly ISettingsService _settings;
     private readonly Func<BuildChannel> _channelProvider;
     private readonly Func<Version?> _versionProvider;
+    private readonly UpdateManifestVerifier _verifier;
+    private readonly string _downloadDirectory;
 
     private const string StableApiUrl = "https://api.github.com/repos/thrtn70/WatchDog/releases/latest";
     private const string ReleasesListUrl = "https://api.github.com/repos/thrtn70/WatchDog/releases?per_page=10";
     private const string InstallerAssetSuffix = "-Setup.exe";
+    private const string ManifestAssetSuffix = InstallerAssetSuffix + ".manifest.json";
+    private const string SignatureAssetSuffix = InstallerAssetSuffix + ".manifest.sig";
     private static readonly TimeSpan CheckTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan DownloadTimeout = TimeSpan.FromMinutes(5);
-    private const long MaxInstallerBytes = 512L * 1024 * 1024;
 
     private static readonly string[] AllowedHosts =
     [
@@ -36,13 +40,17 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
         ILogger<GitHubUpdateChecker> logger,
         ISettingsService settings,
         Func<BuildChannel> channelProvider,
-        Func<Version?> versionProvider)
+        Func<Version?> versionProvider,
+        UpdateManifestVerifier? verifier = null,
+        string? downloadDirectory = null)
     {
         _http = http;
         _logger = logger;
         _settings = settings;
         _channelProvider = channelProvider;
         _versionProvider = versionProvider;
+        _verifier = verifier ?? UpdateManifestVerifier.CreatePinned();
+        _downloadDirectory = downloadDirectory ?? Path.Combine(Path.GetTempPath(), "WatchDog-Update");
     }
 
     public async Task<UpdateInfo?> CheckForUpdateAsync(CancellationToken ct = default)
@@ -92,7 +100,10 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
                 LatestVersion: latestVersion.ToString(),
                 DownloadUrl: downloadUrl ?? "",
                 ReleaseNotesUrl: htmlUrl,
-                IsUpdateAvailable: isNewer && !string.IsNullOrEmpty(downloadUrl));
+                IsUpdateAvailable: isNewer && !string.IsNullOrEmpty(downloadUrl),
+                ReleaseTag: tagName,
+                ManifestUrl: FindSignedManifestAssetUrl(root, ManifestAssetSuffix),
+                SignatureUrl: FindSignedManifestAssetUrl(root, SignatureAssetSuffix));
         }
         catch (OperationCanceledException) { _logger.LogDebug("Update check timed out or cancelled"); return null; }
         catch (HttpRequestException ex) { _logger.LogWarning(ex, "Failed to check for updates (network error)"); return null; }
@@ -146,7 +157,10 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
                             DownloadUrl: downloadUrl,
                             ReleaseNotesUrl: htmlUrl,
                             IsUpdateAvailable: true,
-                            DisplayMessage: $"WatchDog v{stableVersion} (stable) is available.");
+                            DisplayMessage: $"WatchDog v{stableVersion} (stable) is available.",
+                            ReleaseTag: tagName,
+                            ManifestUrl: FindSignedManifestAssetUrl(release, ManifestAssetSuffix),
+                            SignatureUrl: FindSignedManifestAssetUrl(release, SignatureAssetSuffix));
                     }
                 }
 
@@ -178,7 +192,10 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
                         ReleaseNotesUrl: htmlUrl,
                         IsUpdateAvailable: hasNewBuild,
                         AssetUpdatedAt: parsedTimestamp,
-                        DisplayMessage: hasNewBuild ? "New CI build available." : null);
+                        DisplayMessage: hasNewBuild ? "New CI build available." : null,
+                        ReleaseTag: tagName,
+                        ManifestUrl: FindSignedManifestAssetUrl(release, ManifestAssetSuffix),
+                        SignatureUrl: FindSignedManifestAssetUrl(release, SignatureAssetSuffix));
                 }
             }
 
@@ -193,66 +210,124 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
 
     // ── Download ───────────────────────────────────────────────
 
-    public async Task<string?> DownloadInstallerAsync(
-        string downloadUrl,
+    public async Task<UpdateDownloadResult> DownloadVerifiedInstallerAsync(
+        UpdateInfo update,
         IProgress<double>? progress = null,
         CancellationToken ct = default)
     {
-        if (!IsAllowedDownloadUrl(downloadUrl))
+        ArgumentNullException.ThrowIfNull(update);
+        if (!IsAllowedDownloadUrl(update.DownloadUrl))
         {
             _logger.LogWarning("Blocked download from untrusted URL");
-            return null;
+            return UpdateDownloadResult.Refused(UpdateVerificationFailure.DownloadFailed);
+        }
+        if (string.IsNullOrEmpty(update.ReleaseTag) ||
+            !IsAllowedDownloadUrl(update.ManifestUrl) || !IsAllowedDownloadUrl(update.SignatureUrl))
+        {
+            _logger.LogWarning("Refusing update {Tag}: release has no signed update manifest", update.ReleaseTag);
+            return UpdateDownloadResult.Refused(UpdateVerificationFailure.MissingManifest);
+        }
+        if (_versionProvider() is not { } currentVersion)
+        {
+            _logger.LogWarning("Refusing update: could not determine current app version");
+            return UpdateDownloadResult.Refused(UpdateVerificationFailure.DownloadFailed);
         }
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(DownloadTimeout);
+        string? installerPath = null;
+        var verified = false;
 
         try
         {
-            var tempDir = Path.Combine(Path.GetTempPath(), "WatchDog-Update");
-            Directory.CreateDirectory(tempDir);
-            var tempPath = Path.Combine(tempDir, $"WatchDog-Setup-{Guid.NewGuid():N}.exe");
-
-            using var response = await _http.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cts.Token);
-            response.EnsureSuccessStatusCode();
-
-            var totalBytes = response.Content.Headers.ContentLength ?? -1L;
-            var bytesRead = 0L;
-
-            await using var contentStream = await response.Content.ReadAsStreamAsync(cts.Token);
-            await using var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
-
-            var buffer = new byte[81920];
-            int read;
-            while ((read = await contentStream.ReadAsync(buffer, cts.Token)) > 0)
+            // Authenticate the small manifest first so an unverifiable release never downloads the installer.
+            var manifestBytes = await DownloadSmallAssetAsync(update.ManifestUrl!, UpdateManifestVerifier.MaxManifestBytes, cts.Token);
+            var signature = await DownloadSmallAssetAsync(update.SignatureUrl!, UpdateManifestVerifier.MaxSignatureBytes, cts.Token);
+            var failure = _verifier.Verify(manifestBytes, signature, update.ReleaseTag, currentVersion, out var manifest);
+            if (failure != UpdateVerificationFailure.None || manifest is null)
             {
-                await fileStream.WriteAsync(buffer.AsMemory(0, read), cts.Token);
-                bytesRead += read;
-
-                if (bytesRead > MaxInstallerBytes)
-                {
-                    _logger.LogWarning("Installer download exceeds maximum size ({Max} MB), aborting", MaxInstallerBytes / (1024 * 1024));
-                    try { File.Delete(tempPath); } catch { /* best-effort */ }
-                    return null;
-                }
-
-                if (totalBytes > 0)
-                    progress?.Report((double)bytesRead / totalBytes);
+                _logger.LogWarning("Refusing update {Tag}: manifest verification failed ({Failure})", update.ReleaseTag, failure);
+                return UpdateDownloadResult.Refused(
+                    failure == UpdateVerificationFailure.None ? UpdateVerificationFailure.ManifestInvalid : failure);
             }
 
-            if (bytesRead == 0)
+            Directory.CreateDirectory(_downloadDirectory);
+            installerPath = Path.Combine(_downloadDirectory, $"WatchDog-Setup-{Guid.NewGuid():N}.exe");
+            if (!await DownloadMatchingInstallerAsync(update.DownloadUrl, installerPath, manifest, progress, cts.Token))
             {
-                _logger.LogWarning("Downloaded installer is empty");
-                try { File.Delete(tempPath); } catch { /* best-effort */ }
-                return null;
+                _logger.LogWarning("Refusing update {Tag}: installer bytes do not match the signed manifest", update.ReleaseTag);
+                return UpdateDownloadResult.Refused(UpdateVerificationFailure.InstallerMismatch);
             }
 
+            verified = true;
             progress?.Report(1.0);
-            _logger.LogInformation("Installer downloaded: {Path} ({Size:F1} MB)", tempPath, bytesRead / (1024.0 * 1024.0));
-            return tempPath;
+            _logger.LogInformation("Verified installer for {Tag}: {Path} ({Size:F1} MB)",
+                update.ReleaseTag, installerPath, manifest.Length / (1024.0 * 1024.0));
+            return UpdateDownloadResult.Verified(installerPath, manifest);
         }
-        catch (OperationCanceledException) { _logger.LogDebug("Installer download timed out or cancelled"); return null; }
-        catch (Exception ex) { _logger.LogWarning(ex, "Failed to download installer"); return null; }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("Installer download timed out or cancelled");
+            return UpdateDownloadResult.Refused(UpdateVerificationFailure.DownloadFailed);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to download update");
+            return UpdateDownloadResult.Refused(UpdateVerificationFailure.DownloadFailed);
+        }
+        finally
+        {
+            if (!verified && installerPath is not null)
+            {
+                try { File.Delete(installerPath); } catch { /* best-effort */ }
+            }
+        }
+    }
+
+    /// <summary>Reads at most <paramref name="maxBytes"/> + 1 bytes so the verifier can reject oversize assets.</summary>
+    private async Task<byte[]> DownloadSmallAssetAsync(string url, int maxBytes, CancellationToken ct)
+    {
+        using var response = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+        response.EnsureSuccessStatusCode();
+        await using var stream = await response.Content.ReadAsStreamAsync(ct);
+
+        var buffer = new byte[maxBytes + 1];
+        var total = 0;
+        int read;
+        while (total < buffer.Length && (read = await stream.ReadAsync(buffer.AsMemory(total), ct)) > 0)
+            total += read;
+        return buffer[..total];
+    }
+
+    /// <summary>
+    /// Streams the installer to <paramref name="path"/> while hashing it; stops as soon as it exceeds the
+    /// signed length. True only when the length and SHA-256 equal the manifest's.
+    /// </summary>
+    private async Task<bool> DownloadMatchingInstallerAsync(
+        string url, string path, UpdateManifest manifest, IProgress<double>? progress, CancellationToken ct)
+    {
+        using var response = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+        response.EnsureSuccessStatusCode();
+        await using var contentStream = await response.Content.ReadAsStreamAsync(ct);
+        await using var fileStream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+
+        var buffer = new byte[81920];
+        var bytesRead = 0L;
+        int read;
+        while ((read = await contentStream.ReadAsync(buffer, ct)) > 0)
+        {
+            bytesRead += read;
+            if (bytesRead > manifest.Length)
+                return false;
+
+            hash.AppendData(buffer, 0, read);
+            await fileStream.WriteAsync(buffer.AsMemory(0, read), ct);
+            progress?.Report((double)bytesRead / manifest.Length);
+        }
+
+        return bytesRead == manifest.Length &&
+            string.Equals(Convert.ToHexStringLower(hash.GetHashAndReset()), manifest.Sha256, StringComparison.Ordinal);
     }
 
     /// <summary>Persist the asset timestamp so the next check can detect newer builds.</summary>
@@ -304,6 +379,28 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
                     url is not null && Uri.TryCreate(url, UriKind.Absolute, out var rejected) ? rejected.Host : "null");
                 break;
             }
+        }
+
+        return null;
+    }
+
+    private string? FindSignedManifestAssetUrl(JsonElement release, string suffix)
+    {
+        if (!release.TryGetProperty("assets", out var assets)) return null;
+
+        foreach (var asset in assets.EnumerateArray())
+        {
+            if (!asset.TryGetProperty("name", out var nameEl) ||
+                nameEl.GetString()?.EndsWith(suffix, StringComparison.OrdinalIgnoreCase) != true)
+            {
+                continue;
+            }
+
+            var url = asset.TryGetProperty("browser_download_url", out var urlEl) ? urlEl.GetString() : null;
+            if (IsAllowedDownloadUrl(url)) return url;
+
+            _logger.LogWarning("Rejected update manifest asset from untrusted host");
+            return null;
         }
 
         return null;

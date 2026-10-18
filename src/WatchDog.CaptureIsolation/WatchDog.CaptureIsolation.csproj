@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/thrtn70/WatchDog</RepositoryUrl>
+    <Authors>thrtn70</Authors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WatchDog.CaptureProtocol\WatchDog.CaptureProtocol.csproj" />
+  </ItemGroup>
+
+</Project>

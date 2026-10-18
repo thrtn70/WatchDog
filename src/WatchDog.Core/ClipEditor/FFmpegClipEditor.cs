@@ -1,4 +1,7 @@
 using System.Diagnostics;
+using System.Globalization;
+using System.Runtime.ExceptionServices;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using WatchDog.Core.Runtime;
 
@@ -7,12 +10,25 @@ namespace WatchDog.Core.ClipEditor;
 public sealed partial class FFmpegClipEditor : IClipEditor
 {
     private readonly ILogger<FFmpegClipEditor> _logger;
+    private readonly IClipEditorProcessRunner _processRunner;
     private readonly string _ffmpegPath;
+    private readonly string _ffprobePath;
 
     public FFmpegClipEditor(ILogger<FFmpegClipEditor> logger, string? ffmpegPath = null)
+        : this(logger, new ReapingClipEditorProcessRunner(), ffmpegPath, ffprobePath: null)
     {
-        _logger = logger;
+    }
+
+    internal FFmpegClipEditor(
+        ILogger<FFmpegClipEditor> logger,
+        IClipEditorProcessRunner processRunner,
+        string? ffmpegPath = null,
+        string? ffprobePath = null)
+    {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _processRunner = processRunner ?? throw new ArgumentNullException(nameof(processRunner));
         _ffmpegPath = ffmpegPath ?? FFmpegRuntime.FfmpegPath;
+        _ffprobePath = ffprobePath ?? FFmpegRuntime.FfprobePath;
     }
 
     /// <summary>
@@ -20,25 +36,69 @@ public sealed partial class FFmpegClipEditor : IClipEditor
     /// </summary>
     public async Task<string> TrimAsync(string inputPath, TimeSpan start, TimeSpan end, CancellationToken ct = default)
     {
-        var dir = Path.GetDirectoryName(inputPath)
+        ArgumentException.ThrowIfNullOrWhiteSpace(inputPath);
+        if (start < TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(start), "Trim start must not be negative.");
+        if (end <= start)
+            throw new ArgumentOutOfRangeException(nameof(end), "Trim end must be after trim start.");
+
+        var fullInputPath = Path.GetFullPath(inputPath);
+        if (!File.Exists(fullInputPath))
+            throw new FileNotFoundException("Input clip was not found.", fullInputPath);
+
+        var dir = Path.GetDirectoryName(fullInputPath)
             ?? throw new ArgumentException("inputPath must not be a root path.", nameof(inputPath));
-        var name = Path.GetFileNameWithoutExtension(inputPath);
-        var ext = Path.GetExtension(inputPath);
-        var outputPath = Path.Combine(dir, $"{name}_trimmed{ext}");
+        var name = Path.GetFileNameWithoutExtension(fullInputPath);
+        var ext = Path.GetExtension(fullInputPath);
+        var candidatePath = Path.Combine(
+            dir,
+            $".{name}.watchdog-exporting-{Guid.NewGuid():N}{ext}");
 
-        _logger.LogInformation("Trimming clip: {Input} [{Start} -> {End}]", inputPath, start, end);
+        _logger.LogInformation("Trimming clip: {Input} [{Start} -> {End}]", fullInputPath, start, end);
 
-        await RunFFmpegAsync(["-ss", FormatTime(start), "-to", FormatTime(end), "-i", inputPath,
-            "-c", "copy", "-avoid_negative_ts", "make_zero", outputPath], ct);
-
-        if (!File.Exists(outputPath))
+        string? publishedPath = null;
+        Exception? failure = null;
+        try
         {
-            _logger.LogError("FFmpeg trim produced no output for: {Input}", inputPath);
-            throw new InvalidOperationException("FFmpeg trim failed — no output file produced.");
+            await RunProcessAsync(
+                _ffmpegPath,
+                BuildTrimArguments(fullInputPath, candidatePath, start, end),
+                ct);
+            ValidateCandidateFile(candidatePath);
+
+            var probeJson = await RunProcessAsync(
+                _ffprobePath,
+                BuildValidationProbeArguments(candidatePath),
+                ct);
+            ValidateProbeJson(probeJson);
+
+            publishedPath = PublishCandidate(candidatePath, dir, name, ext);
+        }
+        catch (Exception ex)
+        {
+            failure = ex;
         }
 
-        _logger.LogInformation("Trim complete: {Output}", outputPath);
-        return outputPath;
+        try
+        {
+            if (File.Exists(candidatePath))
+                File.Delete(candidatePath);
+        }
+        catch (Exception cleanupFailure)
+        {
+            failure = failure is null
+                ? cleanupFailure
+                : new AggregateException(
+                    "Clip export failed and its unpublished candidate could not be removed.",
+                    failure,
+                    cleanupFailure);
+        }
+
+        if (failure is not null)
+            ExceptionDispatchInfo.Capture(failure).Throw();
+
+        _logger.LogInformation("Trim complete: {Output}", publishedPath);
+        return publishedPath!;
     }
 
     /// <summary>
@@ -65,9 +125,7 @@ public sealed partial class FFmpegClipEditor : IClipEditor
     /// </summary>
     public async Task<TimeSpan> GetDurationAsync(string inputPath, CancellationToken ct = default)
     {
-        var ffprobePath = FFmpegRuntime.FfprobePath;
-
-        var result = await RunProcessAsync(ffprobePath,
+        var result = await RunProcessAsync(_ffprobePath,
             ["-v", "error", "-show_entries", "format=duration",
              "-of", "default=noprint_wrappers=1:nokey=1", inputPath], ct);
         var trimmed = result.Trim();
@@ -131,6 +189,141 @@ public sealed partial class FFmpegClipEditor : IClipEditor
     private async Task<string> RunProcessAsync(string executable, string[] args, CancellationToken ct)
     {
         _logger.LogDebug("Running: {Exe} {Args}", executable, string.Join(' ', args));
+        return await _processRunner.RunAsync(executable, args, ct);
+    }
+
+    internal static string[] BuildTrimArguments(
+        string inputPath,
+        string candidatePath,
+        TimeSpan start,
+        TimeSpan end) =>
+    [
+        "-n",
+        "-ss", FormatTime(start),
+        "-to", FormatTime(end),
+        "-i", inputPath,
+        "-c", "copy",
+        "-avoid_negative_ts", "make_zero",
+        candidatePath,
+    ];
+
+    internal static string[] BuildValidationProbeArguments(string candidatePath) =>
+    [
+        "-v", "error",
+        "-show_entries", "format=duration:stream=codec_type",
+        "-of", "json",
+        candidatePath,
+    ];
+
+    internal static void ValidateProbeJson(string probeJson)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(probeJson);
+            if (!document.RootElement.TryGetProperty("streams", out var streams) ||
+                streams.ValueKind != JsonValueKind.Array ||
+                !streams.EnumerateArray().Any(stream =>
+                    stream.TryGetProperty("codec_type", out var codecType) &&
+                    string.Equals(codecType.GetString(), "video", StringComparison.Ordinal)))
+            {
+                throw new InvalidDataException("FFprobe found no video stream in the exported clip.");
+            }
+
+            if (!document.RootElement.TryGetProperty("format", out var format) ||
+                !format.TryGetProperty("duration", out var durationElement) ||
+                !TryReadPositiveDuration(durationElement, out _))
+            {
+                throw new InvalidDataException("FFprobe found no positive duration in the exported clip.");
+            }
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidDataException("FFprobe returned malformed JSON for the exported clip.", ex);
+        }
+    }
+
+    private static bool TryReadPositiveDuration(JsonElement element, out double duration)
+    {
+        duration = 0;
+        if (element.ValueKind == JsonValueKind.Number && element.TryGetDouble(out duration))
+            return double.IsFinite(duration) && duration > 0;
+
+        return element.ValueKind == JsonValueKind.String &&
+            double.TryParse(
+                element.GetString(),
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                out duration) &&
+            double.IsFinite(duration) &&
+            duration > 0;
+    }
+
+    private static void ValidateCandidateFile(string candidatePath)
+    {
+        var candidate = new FileInfo(candidatePath);
+        if (!candidate.Exists || candidate.Length <= 0)
+            throw new InvalidDataException("FFmpeg trim produced no usable output file.");
+    }
+
+    private static string PublishCandidate(
+        string candidatePath,
+        string directory,
+        string inputName,
+        string extension)
+    {
+        for (var sequence = 1; ; sequence++)
+        {
+            var suffix = sequence == 1 ? string.Empty : $"_{sequence}";
+            var destinationPath = Path.Combine(directory, $"{inputName}_trimmed{suffix}{extension}");
+            try
+            {
+                File.Move(candidatePath, destinationPath, overwrite: false);
+                return destinationPath;
+            }
+            catch (IOException) when (File.Exists(destinationPath))
+            {
+                // Another export already owns this name. The no-overwrite move is the
+                // reservation and publication boundary, so retry with the next suffix.
+            }
+        }
+    }
+
+    private static string FormatTime(TimeSpan ts)
+        => ts.ToString(@"hh\:mm\:ss\.fff");
+
+}
+
+internal interface IClipEditorProcessRunner
+{
+    Task<string> RunAsync(
+        string executable,
+        IReadOnlyList<string> arguments,
+        CancellationToken ct);
+}
+
+internal sealed class ReapingClipEditorProcessRunner : IClipEditorProcessRunner
+{
+    private static readonly TimeSpan DefaultTerminationTimeout = TimeSpan.FromSeconds(5);
+    private readonly TimeSpan _terminationTimeout;
+
+    public ReapingClipEditorProcessRunner()
+        : this(DefaultTerminationTimeout)
+    {
+    }
+
+    internal ReapingClipEditorProcessRunner(TimeSpan terminationTimeout)
+    {
+        if (terminationTimeout <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(terminationTimeout));
+        _terminationTimeout = terminationTimeout;
+    }
+
+    public async Task<string> RunAsync(
+        string executable,
+        IReadOnlyList<string> arguments,
+        CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
 
         var startInfo = new ProcessStartInfo
         {
@@ -140,34 +333,72 @@ public sealed partial class FFmpegClipEditor : IClipEditor
             UseShellExecute = false,
             CreateNoWindow = true,
         };
-        foreach (var arg in args)
-            startInfo.ArgumentList.Add(arg);
+        foreach (var argument in arguments)
+            startInfo.ArgumentList.Add(argument);
 
         using var process = new Process { StartInfo = startInfo };
         if (!process.Start())
             throw new InvalidOperationException($"Failed to start process: {Path.GetFileName(executable)}");
 
-        // Drain stdout and stderr concurrently to prevent pipe deadlock —
-        // FFmpeg writes heavily to stderr; sequential reads can deadlock if the pipe fills.
-        var stdoutTask = process.StandardOutput.ReadToEndAsync(ct);
-        var stderrTask = process.StandardError.ReadToEndAsync(ct);
-        await Task.WhenAll(stdoutTask, stderrTask);
-        await process.WaitForExitAsync(ct);
+        // Never cancel the pipe drains independently. On caller cancellation the process
+        // is killed and reaped first, which closes both pipes and lets these tasks finish.
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
+        var exitTask = process.WaitForExitAsync(CancellationToken.None);
+        var completion = Task.WhenAll(exitTask, stdoutTask, stderrTask);
+
+        try
+        {
+            await completion.WaitAsync(ct);
+        }
+        catch (OperationCanceledException cancellation) when (ct.IsCancellationRequested)
+        {
+            var cleanupFailures = new List<Exception>();
+            try
+            {
+                if (!process.HasExited)
+                    process.Kill(entireProcessTree: true);
+            }
+            catch (Exception killFailure)
+            {
+                cleanupFailures.Add(new IOException(
+                    $"The canceled {Path.GetFileName(executable)} process could not be killed.",
+                    killFailure));
+            }
+
+            try
+            {
+                await completion.WaitAsync(_terminationTimeout);
+            }
+            catch (Exception terminationFailure)
+            {
+                cleanupFailures.Add(new IOException(
+                    $"The canceled {Path.GetFileName(executable)} process was not reaped within the cleanup timeout.",
+                    terminationFailure));
+                _ = completion.ContinueWith(
+                    task => _ = task.Exception,
+                    CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default);
+            }
+
+            if (cleanupFailures.Count == 0)
+                ExceptionDispatchInfo.Capture(cancellation).Throw();
+
+            cleanupFailures.Insert(0, cancellation);
+            throw new AggregateException(
+                $"{Path.GetFileName(executable)} was canceled but process cleanup was incomplete.",
+                cleanupFailures);
+        }
 
         var stdout = await stdoutTask;
         var stderr = await stderrTask;
-
         if (process.ExitCode != 0)
         {
-            _logger.LogWarning("Process exited with code {Code}. Stderr: {Stderr}", process.ExitCode, stderr);
             throw new InvalidOperationException(
-                $"{Path.GetFileName(executable)} exited with code {process.ExitCode}.");
+                $"{Path.GetFileName(executable)} exited with code {process.ExitCode}: {stderr.Trim()}");
         }
 
         return string.IsNullOrEmpty(stdout) ? stderr : stdout;
     }
-
-    private static string FormatTime(TimeSpan ts)
-        => ts.ToString(@"hh\:mm\:ss\.fff");
-
 }

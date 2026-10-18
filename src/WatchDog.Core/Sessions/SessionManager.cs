@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using WatchDog.Core.Events;
 using WatchDog.Core.GameDetection;
@@ -34,7 +33,10 @@ public sealed class SessionManager
         _logger = logger;
     }
 
-    public async Task StartSessionAsync(GameInfo game, CancellationToken ct = default)
+    public async Task StartSessionAsync(
+        GameInfo game,
+        CancellationToken ct = default,
+        Guid? sessionId = null)
     {
         // Collect events to publish after releasing the lock
         SessionEndedEvent? endedEvent = null;
@@ -48,7 +50,7 @@ public sealed class SessionManager
 
             var session = new GameSession
             {
-                Id = Guid.NewGuid(),
+                Id = sessionId ?? Guid.NewGuid(),
                 GameName = game.DisplayName,
                 GameExecutableName = game.ExecutableName,
                 StartedAt = DateTimeOffset.UtcNow,
@@ -70,7 +72,9 @@ public sealed class SessionManager
         _logger.LogInformation("Session started: {Game} ({Id})", game.DisplayName, created.Id);
     }
 
-    public async Task StartDesktopSessionAsync(CancellationToken ct = default)
+    public async Task StartDesktopSessionAsync(
+        CancellationToken ct = default,
+        Guid? sessionId = null)
     {
         SessionEndedEvent? endedEvent = null;
         GameSession? created = null;
@@ -81,7 +85,8 @@ public sealed class SessionManager
             // If there's already a desktop session for today, reuse it
             if (_currentSession is not null
                 && _currentSession.GameExecutableName == DesktopExecutableName
-                && _currentSession.StartedAt.LocalDateTime.Date == DateTimeOffset.Now.LocalDateTime.Date)
+                && _currentSession.StartedAt.LocalDateTime.Date == DateTimeOffset.Now.LocalDateTime.Date
+                && (sessionId is null || sessionId == _currentSession.Id))
             {
                 return;
             }
@@ -91,7 +96,7 @@ public sealed class SessionManager
 
             var session = new GameSession
             {
-                Id = Guid.NewGuid(),
+                Id = sessionId ?? Guid.NewGuid(),
                 GameName = DesktopGameName,
                 GameExecutableName = DesktopExecutableName,
                 StartedAt = DateTimeOffset.UtcNow,
@@ -150,12 +155,104 @@ public sealed class SessionManager
         try
         {
             if (_currentSession is null) return;
+            if (_currentSession.RecordingPaths.Contains(path, StringComparer.OrdinalIgnoreCase)) return;
 
-            _currentSession = _currentSession with
+            var updated = _currentSession with
             {
                 RecordingPaths = [.. _currentSession.RecordingPaths, path]
             };
-            await _repository.SaveAsync(_currentSession, ct);
+            await _repository.SaveAsync(updated, ct);
+            _currentSession = updated;
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    public async Task UpsertMediaSegmentAsync(
+        Guid sessionId,
+        SessionMediaSegment segment,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(segment);
+
+        await _lock.WaitAsync(ct);
+        try
+        {
+            if (_currentSession?.Id != sessionId)
+                throw new InvalidOperationException("Media attribution does not match the active session.");
+            SessionMediaSegmentValidation.ValidateSegment(sessionId, segment);
+
+            var existing = _currentSession.MediaSegments.FirstOrDefault(item => item.MediaId == segment.MediaId);
+            if (_currentSession.MediaSegments.Any(item =>
+                    item.MediaId != segment.MediaId &&
+                    string.Equals(item.FilePath, segment.FilePath, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidOperationException("A media path cannot be attributed to more than one media ID.");
+            }
+            if (existing is not null)
+            {
+                if (existing == segment)
+                    return;
+                RequireCompatibleMediaUpdate(existing, segment);
+            }
+
+            var media = existing is null
+                ? [.. _currentSession.MediaSegments, segment]
+                : _currentSession.MediaSegments
+                    .Select(item => item.MediaId == segment.MediaId ? segment : item)
+                    .ToArray();
+            SessionMediaSegmentValidation.ValidateGraph(sessionId, media);
+            var recordingPaths = _currentSession.RecordingPaths;
+            if (segment is { Role: SessionMediaRole.Screen, State: SessionMediaState.Finalized } &&
+                !recordingPaths.Contains(segment.FilePath, StringComparer.OrdinalIgnoreCase))
+            {
+                recordingPaths = [.. recordingPaths, segment.FilePath];
+            }
+
+            var updated = _currentSession with
+            {
+                MediaSegments = media,
+                RecordingPaths = recordingPaths,
+            };
+            await _repository.SaveAsync(updated, ct);
+            _currentSession = updated;
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    public async Task RemovePlannedMediaSegmentAsync(
+        Guid sessionId,
+        Guid mediaId,
+        CancellationToken ct = default)
+    {
+        if (mediaId == Guid.Empty)
+            throw new ArgumentException("A planned media ID is required.", nameof(mediaId));
+
+        await _lock.WaitAsync(ct);
+        try
+        {
+            if (_currentSession?.Id != sessionId)
+                throw new InvalidOperationException("Media compensation does not match the active session.");
+
+            var existing = _currentSession.MediaSegments.SingleOrDefault(item => item.MediaId == mediaId);
+            if (existing is null)
+                return;
+            if (existing.State != SessionMediaState.Planned)
+                throw new InvalidOperationException("Only never-activated planned media may be removed.");
+
+            var updated = _currentSession with
+            {
+                MediaSegments = _currentSession.MediaSegments
+                    .Where(item => item.MediaId != mediaId)
+                    .ToArray(),
+            };
+            await _repository.SaveAsync(updated, ct);
+            _currentSession = updated;
         }
         finally
         {
@@ -170,8 +267,12 @@ public sealed class SessionManager
         {
             if (_currentSession is null) return;
 
-            _currentSession = _currentSession with { Matches = matches };
-            await _repository.SaveAsync(_currentSession, ct);
+            var matchesSnapshot = matches
+                .Select(match => match with { ClipIds = match.ClipIds.ToArray() })
+                .ToArray();
+            var updated = _currentSession with { Matches = matchesSnapshot };
+            await _repository.SaveAsync(updated, ct);
+            _currentSession = updated;
         }
         finally
         {
@@ -181,41 +282,23 @@ public sealed class SessionManager
 
     /// <summary>
     /// Recovers any sessions that were left InProgress (e.g., due to a crash).
-    /// If the session's game is still running, resumes it instead of marking it crashed.
+    /// Non-empty sessions are closed as crashed; a new capture lifecycle always receives a new ID.
     /// Must be called on startup before normal operation begins.
     /// </summary>
     public async Task RecoverOrphanedSessionsAsync(CancellationToken ct = default)
     {
-        SessionStartedEvent? resumedEvent = null;
-
         await _lock.WaitAsync(ct);
         try
         {
             var recent = await _repository.GetRecentAsync(50, ct);
-            var runningExeNames = GetRunningExecutableNames();
-
             foreach (var session in recent)
             {
                 if (session.Status != SessionStatus.InProgress) continue;
 
-                // If the game is still running and we don't already have an active session,
-                // resume this session instead of marking it crashed
-                if (_currentSession is null && runningExeNames.Contains(session.GameExecutableName))
-                {
-                    _currentSession = session;
-                    resumedEvent = new SessionStartedEvent(session.Id, new GameInfo
-                    {
-                        ExecutableName = session.GameExecutableName,
-                        DisplayName = session.GameName,
-                    });
-                    _logger.LogInformation("Resumed orphaned session: {Game} ({Id}) — game still running",
-                        session.GameName, session.Id);
-                    continue;
-                }
-
-                // Game is no longer running — check if the session has any content
+                // A lifecycle generation cannot truthfully adopt this prior process instance.
+                // Preserve non-empty media as crashed and let capture create a fresh session.
                 var hasClips = _clipStorage.GetClipsBySession(session.Id).Count > 0;
-                var hasRecordings = session.RecordingPaths.Count > 0;
+                var hasRecordings = session.RecordingPaths.Count > 0 || session.MediaSegments.Count > 0;
                 var hasMatches = session.Matches.Count > 0;
 
                 if (!hasClips && !hasRecordings && !hasMatches)
@@ -242,42 +325,6 @@ public sealed class SessionManager
             _lock.Release();
         }
 
-        // Publish outside the lock to prevent deadlock via re-entrant subscribers
-        if (resumedEvent is not null)
-            _eventBus.Publish(resumedEvent);
-    }
-
-    /// <summary>Returns normalized executable names of all currently running processes.</summary>
-    private static HashSet<string> GetRunningExecutableNames()
-    {
-        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        Process[]? processes = null;
-        try
-        {
-            processes = Process.GetProcesses();
-            foreach (var proc in processes)
-            {
-                try
-                {
-                    names.Add(proc.ProcessName + ".exe");
-                }
-                catch
-                {
-                    // Access denied for system processes — skip
-                }
-            }
-        }
-        catch
-        {
-            // Process enumeration failed — no resume possible
-        }
-        finally
-        {
-            if (processes is not null)
-                foreach (var p in processes)
-                    p.Dispose();
-        }
-        return names;
     }
 
     /// <summary>
@@ -344,7 +391,7 @@ public sealed class SessionManager
         var duration = DateTimeOffset.UtcNow - _currentSession.StartedAt;
         var sessionId = _currentSession.Id;
         var hasClips = _clipStorage.GetClipsBySession(sessionId).Count > 0;
-        var hasRecordings = _currentSession.RecordingPaths.Count > 0;
+        var hasRecordings = _currentSession.RecordingPaths.Count > 0 || _currentSession.MediaSegments.Count > 0;
         var hasMatches = _currentSession.Matches.Count > 0;
 
         if (!hasClips && !hasRecordings && !hasMatches)
@@ -375,5 +422,31 @@ public sealed class SessionManager
         _currentSession = null;
 
         return new SessionEndedEvent(ended.Id, gameInfo, duration);
+    }
+
+    private static void RequireCompatibleMediaUpdate(
+        SessionMediaSegment existing,
+        SessionMediaSegment replacement)
+    {
+        var producerFinalization =
+            existing is { State: SessionMediaState.Planned, ProducerMetadata: null } &&
+            replacement is { State: SessionMediaState.Finalized, ProducerMetadata: not null };
+        var finalizedProducerIdentity =
+            existing.State == SessionMediaState.Finalized &&
+            (existing.ProducerMetadata is not null || replacement.ProducerMetadata is not null);
+
+        if (existing.SessionId != replacement.SessionId ||
+            existing.CaptureRequestId != replacement.CaptureRequestId ||
+            existing.CaptureGeneration != replacement.CaptureGeneration ||
+            existing.Role != replacement.Role ||
+            !string.Equals(existing.FilePath, replacement.FilePath, StringComparison.OrdinalIgnoreCase) ||
+            existing.Sequence != replacement.Sequence ||
+            existing.StartOffset != replacement.StartOffset ||
+            (existing.TimingProvenance != replacement.TimingProvenance && !producerFinalization) ||
+            finalizedProducerIdentity ||
+            existing.State == SessionMediaState.Finalized && replacement.State != SessionMediaState.Finalized)
+        {
+            throw new InvalidOperationException("A media ID cannot be reassigned or moved backward in its lifecycle.");
+        }
     }
 }

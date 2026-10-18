@@ -18,6 +18,7 @@ public sealed class HotkeyListenerHostedService : IHostedService
 
     private readonly Win32HotkeyService _hotkeyService;
     private readonly ICaptureEngine _captureEngine;
+    private readonly CaptureLifecycleCoordinator _lifecycle;
     private readonly ISettingsService _settingsService;
     private readonly ILogger<HotkeyListenerHostedService> _logger;
 
@@ -26,11 +27,13 @@ public sealed class HotkeyListenerHostedService : IHostedService
     public HotkeyListenerHostedService(
         Win32HotkeyService hotkeyService,
         ICaptureEngine captureEngine,
+        CaptureLifecycleCoordinator lifecycle,
         ISettingsService settingsService,
         ILogger<HotkeyListenerHostedService> logger)
     {
         _hotkeyService = hotkeyService;
         _captureEngine = captureEngine;
+        _lifecycle = lifecycle;
         _settingsService = settingsService;
         _logger = logger;
     }
@@ -147,9 +150,11 @@ public sealed class HotkeyListenerHostedService : IHostedService
 
     private async Task HandleSaveClipAsync()
     {
-        if (_captureEngine.State != CaptureState.Buffering)
+        if (_lifecycle.Snapshot.Status != CaptureLifecycleStatus.Active)
         {
-            _logger.LogDebug("Save-clip hotkey pressed but not currently buffering (state={State})", _captureEngine.State);
+            _logger.LogDebug(
+                "Save-clip hotkey pressed but capture is not active (state={State})",
+                _lifecycle.Snapshot.Status);
             return;
         }
 
@@ -157,11 +162,11 @@ public sealed class HotkeyListenerHostedService : IHostedService
 
         try
         {
-            var path = await _captureEngine.SaveReplayAsync();
-            if (path is not null)
-                _logger.LogInformation("Clip saved: {Path}", path);
+            var result = await _lifecycle.SaveAsync();
+            if (result.Saved)
+                _logger.LogInformation("Clip saved: {Path}", result.OutputPath);
             else
-                _logger.LogWarning("Clip save returned no path");
+                _logger.LogWarning("Clip save failed: {Code} — {Message}", result.Failure?.Code, result.Failure?.Message);
         }
         catch (Exception ex)
         {
@@ -171,19 +176,51 @@ public sealed class HotkeyListenerHostedService : IHostedService
 
     private async void HandleToggleRecording()
     {
-        _logger.LogInformation("Toggle recording hotkey pressed (state={State})", _captureEngine.State);
+        _logger.LogInformation("Toggle recording hotkey pressed (state={State})", _lifecycle.Snapshot.Status);
 
         try
         {
-            if (_captureEngine.State == CaptureState.Idle)
+            var snapshot = _lifecycle.Snapshot;
+            if (snapshot.Status == CaptureLifecycleStatus.Faulted && snapshot.Context is not null)
             {
-                await _captureEngine.StartDesktopCaptureAsync();
-                _logger.LogInformation("Recording started via hotkey");
+                var cleanup = await _lifecycle.StopAsync(CaptureInitiation.Manual);
+                _logger.LogInformation(
+                    "Recording toggle cleanup {Disposition}: {Message}",
+                    cleanup.Disposition,
+                    cleanup.Failure?.Message ?? "idle");
             }
-            else if (_captureEngine.State == CaptureState.Buffering)
+            else if (snapshot.Status is CaptureLifecycleStatus.Idle or CaptureLifecycleStatus.Faulted)
             {
-                await _captureEngine.StopAsync();
-                _logger.LogInformation("Recording stopped via hotkey");
+                var settings = _settingsService.Load();
+                var capture = settings.Capture;
+                var target = ConfiguredDisplayResolver.Resolve(capture, _captureEngine);
+                if (target is null)
+                {
+                    _logger.LogWarning(
+                        "Configured display {StableId} is unavailable or has no stable physical identity; capture was not started",
+                        capture.MonitorStableId);
+                    return;
+                }
+
+                var request = new CaptureRequest(
+                    Guid.NewGuid(),
+                    DateTimeOffset.UtcNow,
+                    CaptureInitiation.Manual,
+                    target,
+                    ExplicitManualWebcamPolicy.Snapshot(settings));
+                var result = await _lifecycle.StartAsync(request);
+                _logger.LogInformation(
+                    "Recording toggle start {Disposition}: {Message}",
+                    result.Disposition,
+                    result.Failure?.Message ?? "active");
+            }
+            else if (_lifecycle.Snapshot.Status == CaptureLifecycleStatus.Active)
+            {
+                var result = await _lifecycle.StopAsync(CaptureInitiation.Manual);
+                _logger.LogInformation(
+                    "Recording toggle stop {Disposition}: {Message}",
+                    result.Disposition,
+                    result.Failure?.Message ?? "idle");
             }
         }
         catch (Exception ex)
@@ -191,4 +228,5 @@ public sealed class HotkeyListenerHostedService : IHostedService
             _logger.LogError(ex, "Failed to toggle recording");
         }
     }
+
 }

@@ -15,12 +15,13 @@ public partial class WindowPickerPopup : Window
     {
         InitializeComponent();
         _viewModel = viewModel;
+        DataContext = viewModel;
 
-        Deactivated += OnDeactivated;
         RefreshButton.Click += (_, _) => RefreshWindowList();
         WindowList.SelectionChanged += OnSelectionChanged;
         WindowList.KeyDown += OnWindowListKeyDown;
 
+        _viewModel.RefreshStatus();
         RefreshWindowList();
     }
 
@@ -37,7 +38,6 @@ public partial class WindowPickerPopup : Window
         {
             if (WindowList.SelectedItem is WindowEnumerator.WindowInfo window)
             {
-                Close();
                 await _viewModel.SelectWindowCommand.ExecuteAsync(window);
             }
         }
@@ -53,7 +53,6 @@ public partial class WindowPickerPopup : Window
         {
             if (e.Key == Key.Enter && WindowList.SelectedItem is WindowEnumerator.WindowInfo window)
             {
-                Close();
                 await _viewModel.SelectWindowCommand.ExecuteAsync(window);
             }
         }

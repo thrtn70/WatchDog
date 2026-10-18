@@ -42,8 +42,13 @@ Write-Host ""
 
 # ── Clean ────────────────────────────────────────────────────────
 if (Test-Path $PublishDir) {
+    $resolvedPublish = (Resolve-Path -LiteralPath $PublishDir).Path
+    $expectedPublish = [IO.Path]::GetFullPath((Join-Path $ProjectRoot 'publish'))
+    if ($resolvedPublish -ne $expectedPublish -or (Get-Item -LiteralPath $PublishDir).LinkType) {
+        throw "Refusing to clean an unexpected or linked publish directory: $resolvedPublish"
+    }
     Write-Host "Cleaning previous publish..." -ForegroundColor Yellow
-    Remove-Item $PublishDir -Recurse -Force
+    Remove-Item -LiteralPath $resolvedPublish -Recurse -Force
 }
 
 # ── Verify OBS runtime ───────────────────────────────────────────
@@ -59,6 +64,7 @@ dotnet publish $AppProject `
     --configuration $Configuration `
     --runtime win-x64 `
     --self-contained true `
+    -p:RestoreLockedMode=true `
     --output $PublishDir `
     2>&1
 
@@ -68,11 +74,11 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # ── Verify key files ─────────────────────────────────────────────
-$requiredFiles = @("WatchDog.App.exe", "obs.dll", "data", "obs-plugins")
+$requiredFiles = @("WatchDog.App.exe", "obs.dll", "data", "obs-plugins", "ffmpeg/ffmpeg.exe", "ffmpeg/ffprobe.exe")
 foreach ($file in $requiredFiles) {
     $path = Join-Path $PublishDir $file
     if (-not (Test-Path $path)) {
-        Write-Host "WARNING: Missing in publish output: $file" -ForegroundColor Yellow
+        throw "Missing required publish output: $file"
     }
 }
 
@@ -137,7 +143,7 @@ if ($InstallerExe) {
 }
 Write-Host ""
 Write-Host "Contents:" -ForegroundColor Green
-Write-Host "  - WatchDog application (self-contained, .NET 9 bundled)" -ForegroundColor DarkGray
+Write-Host "  - WatchDog application (self-contained, .NET 10 bundled)" -ForegroundColor DarkGray
 Write-Host "  - OBS runtime (obs.dll, plugins, data)" -ForegroundColor DarkGray
 Write-Host "  - FFmpeg (clip editing, thumbnails)" -ForegroundColor DarkGray
 Write-Host "  - All dependencies" -ForegroundColor DarkGray

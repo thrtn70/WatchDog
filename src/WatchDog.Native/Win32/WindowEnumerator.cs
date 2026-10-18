@@ -67,6 +67,19 @@ public static partial class WindowEnumerator
         return windows;
     }
 
+    /// <summary>
+    /// Returns whether the exact top-level window still exists and belongs to the expected process.
+    /// This is intentionally identity-only; callers decide whether minimized or hidden windows remain capturable.
+    /// </summary>
+    public static bool IsWindowOwnedByProcess(IntPtr windowHandle, int processId)
+    {
+        if (windowHandle == IntPtr.Zero || processId <= 0 || !IsWindow(windowHandle))
+            return false;
+
+        GetWindowThreadProcessId(windowHandle, out var actualProcessId);
+        return actualProcessId == processId;
+    }
+
     // ── P/Invoke declarations ────────────────────────────────────────────
 
     private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
@@ -78,6 +91,10 @@ public static partial class WindowEnumerator
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool IsWindowVisible(IntPtr hWnd);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool IsWindow(IntPtr hWnd);
 
     [LibraryImport("user32.dll", SetLastError = true)]
     private static partial uint GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);

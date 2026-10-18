@@ -28,6 +28,9 @@ public partial class GameProfilesViewModel : ObservableObject
     [ObservableProperty] private bool _useDefaultBufferDuration = true;
     [ObservableProperty] private int _bufferDurationSeconds = 120;
     [ObservableProperty] private float _highlightSensitivity = 0.6f;
+    [ObservableProperty] private bool _useDefaultHighlightSensitivity = true;
+    [ObservableProperty] private bool _autoRecord = true;
+    [ObservableProperty] private string _profileStatus = string.Empty;
     [ObservableProperty] private bool _hasProfile;
 
     public GameProfilesViewModel(
@@ -45,9 +48,9 @@ public partial class GameProfilesViewModel : ObservableObject
     private void LoadGames()
     {
         var allDbGames = _gameDatabase.GetAllGames();
-        var profiles = _settings.GameProfiles.ToDictionary(
-            p => p.GameExecutableName,
-            p => p,
+        var profiles = _settings.GameProfiles.GroupBy(p => p.GameExecutableName, StringComparer.OrdinalIgnoreCase).ToDictionary(
+            group => group.Key,
+            group => group.First(),
             StringComparer.OrdinalIgnoreCase);
 
         var entries = allDbGames.Select(g => new GameProfileEntry
@@ -104,11 +107,13 @@ public partial class GameProfilesViewModel : ObservableObject
             UseDefaultBufferDuration = profile.BufferDurationSeconds is null;
             BufferDurationSeconds = profile.BufferDurationSeconds ?? _settings.Buffer.MaxSeconds;
             HighlightSensitivity = profile.HighlightSensitivity ?? 0.6f;
+            UseDefaultHighlightSensitivity = profile.HighlightSensitivity is null;
+            AutoRecord = profile.AutoRecord;
         }
         else
         {
             HasProfile = false;
-            SelectedMode = GenreClassification.DefaultMode(value.Genre);
+            SelectedMode = GameRecordingMode.ReplayBuffer;
             UseDefaultResolution = true;
             OutputWidth = (int)_settings.Capture.OutputWidth;
             OutputHeight = (int)_settings.Capture.OutputHeight;
@@ -117,7 +122,10 @@ public partial class GameProfilesViewModel : ObservableObject
             UseDefaultBufferDuration = true;
             BufferDurationSeconds = _settings.Buffer.MaxSeconds;
             HighlightSensitivity = 0.6f;
+            UseDefaultHighlightSensitivity = true;
+            AutoRecord = true;
         }
+        ProfileStatus = GameCapturePolicy.Resolve(_settings, value.ExecutableName, _settings.Capture).Message;
     }
 
     [RelayCommand]
@@ -133,10 +141,11 @@ public partial class GameProfilesViewModel : ObservableObject
             OutputHeight = UseDefaultResolution ? null : OutputHeight,
             BitrateKbps = UseDefaultBitrate ? null : BitrateKbps,
             BufferDurationSeconds = UseDefaultBufferDuration ? null : BufferDurationSeconds,
-            HighlightSensitivity = HighlightSensitivity,
-            AutoRecord = true,
+            HighlightSensitivity = UseDefaultHighlightSensitivity ? null : HighlightSensitivity,
+            AutoRecord = AutoRecord,
         }.Sanitized();
 
+        _settings = _settingsService.Load();
         var existingProfiles = _settings.GameProfiles.ToList();
         existingProfiles.RemoveAll(p => string.Equals(p.GameExecutableName,
             SelectedGame.ExecutableName, StringComparison.OrdinalIgnoreCase));
@@ -145,6 +154,10 @@ public partial class GameProfilesViewModel : ObservableObject
         var updatedSettings = _settings with { GameProfiles = existingProfiles.AsReadOnly() };
         _settingsService.Save(updatedSettings);
         _settings = updatedSettings;
+        var decision = GameCapturePolicy.Resolve(updatedSettings, SelectedGame.ExecutableName, _settings.Capture);
+        ProfileStatus = decision.Disposition == CapturePolicyDisposition.Ready
+            ? "Profile saved for the next automatic start. The current recording is unchanged; resolution/FPS changes require restart."
+            : $"Profile saved. {decision.Message}";
 
         HasProfile = true;
         SelectedGame.HasProfile = true;
@@ -158,6 +171,7 @@ public partial class GameProfilesViewModel : ObservableObject
     {
         if (SelectedGame is null) return;
 
+        _settings = _settingsService.Load();
         var existingProfiles = _settings.GameProfiles.ToList();
         existingProfiles.RemoveAll(p => string.Equals(p.GameExecutableName,
             SelectedGame.ExecutableName, StringComparison.OrdinalIgnoreCase));

@@ -11,20 +11,21 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\WatchDog.CaptureMetadata\WatchDog.CaptureMetadata.csproj" />
     <ProjectReference Include="..\WatchDog.Native\WatchDog.Native.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="ObsKit.NET" Version="1.*" />
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.*" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.*" />
-    <PackageReference Include="System.Management" Version="9.*" />
+    <PackageReference Include="ObsKit.NET" Version="1.6.0" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+    <PackageReference Include="System.Management" Version="10.0.12" />
 
     <!-- AI audio highlight detection -->
     <!-- DirectML package includes the base OnnxRuntime — do not add both -->
-    <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.*" />
-    <PackageReference Include="NAudio" Version="2.*" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.24.4" />
+    <PackageReference Include="NAudio" Version="2.4.0" />
   </ItemGroup>
 
 </Project>

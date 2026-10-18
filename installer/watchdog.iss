@@ -11,6 +11,9 @@
   #define AppVersion "0.0.0"
 #endif
 
+; Upgrades use Inno Setup's same-AppId, same-mode in-place installation.
+; Never execute a registry-supplied uninstaller from elevated setup.
+; No settings/media deletion or legacy per-user migration is performed here.
 [Setup]
 AppId={{E870A91B-7F6E-4AFE-8211-50EF7BC47C92}
 AppName=WatchDog
@@ -62,32 +65,3 @@ Name: "{autodesktop}\WatchDog"; Filename: "{app}\WatchDog.App.exe"; Tasks: deskt
 [Run]
 ; Offer to launch after install (skipped in silent mode)
 Filename: "{app}\WatchDog.App.exe"; Description: "Launch WatchDog"; Flags: nowait postinstall skipifsilent
-
-[Code]
-// Detect and silently uninstall previous version before upgrading
-function GetUninstallString(): string;
-var
-  sUnInstPath: string;
-  sUnInstallString: String;
-begin
-  sUnInstPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{E870A91B-7F6E-4AFE-8211-50EF7BC47C92}_is1';
-  sUnInstallString := '';
-  if not RegQueryStringValue(HKLM, sUnInstPath, 'UninstallString', sUnInstallString) then
-    RegQueryStringValue(HKCU, sUnInstPath, 'UninstallString', sUnInstallString);
-  Result := sUnInstallString;
-end;
-
-function InitializeSetup(): Boolean;
-var
-  sUninstallString: string;
-  iResultCode: Integer;
-begin
-  Result := True;
-  sUninstallString := GetUninstallString();
-  if sUninstallString <> '' then
-  begin
-    sUninstallString := RemoveQuotes(sUninstallString);
-    if FileExists(sUninstallString) then
-      Exec(sUninstallString, '/VERYSILENT /NORESTART', '', SW_HIDE, ewWaitUntilTerminated, iResultCode);
-  end;
-end;

@@ -14,6 +14,8 @@ public sealed record ClipMetadata
     public bool IsFavorite { get; init; }
     public HighlightType? HighlightType { get; init; }
     public Guid? SessionId { get; init; }
+    public Guid? CaptureRequestId { get; init; }
+    public long? CaptureGeneration { get; init; }
     public int? MatchNumber { get; init; }
 
     /// <summary>User-assigned tags for clip organization (e.g., "montage", "funny", "clutch").</summary>

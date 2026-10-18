@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using WatchDog.Core.Capture;
 using WatchDog.Core.Events;
 using WatchDog.Core.GameDetection;
 using WatchDog.Core.Highlights;
@@ -43,7 +44,45 @@ public sealed class MatchTrackerTests : IDisposable
 
     private void PublishHighlight(HighlightType type, string? description = null)
     {
-        _eventBus.Publish(new HighlightDetectedEvent(type, TestGame, DateTimeOffset.UtcNow, description));
+        var target = new GameCaptureTarget(
+            "cs2",
+            42,
+            TestGame.ExecutableName,
+            DateTimeOffset.UnixEpoch,
+            TestGame.DisplayName);
+        var request = new CaptureRequest(
+            Guid.NewGuid(),
+            DateTimeOffset.UtcNow,
+            CaptureInitiation.Automatic,
+            target);
+        var context = _sessionManager.CurrentSessionId is { } sessionId
+            ? new CaptureSessionContext(sessionId, 1, request, target, target)
+            : null;
+        _eventBus.Publish(new HighlightDetectedEvent(
+            type,
+            TestGame,
+            DateTimeOffset.UtcNow,
+            description,
+            context));
+    }
+
+    [Fact]
+    public async Task StaleSessionHighlight_IsIgnored()
+    {
+        await _sessionManager.StartSessionAsync(TestGame);
+        var staleSessionId = _sessionManager.CurrentSessionId!.Value;
+        await _sessionManager.StartSessionAsync(TestGame);
+        var target = new GameCaptureTarget("cs2", 42, "cs2.exe", DateTimeOffset.UnixEpoch);
+        var request = new CaptureRequest(Guid.NewGuid(), DateTimeOffset.UtcNow, CaptureInitiation.Automatic, target);
+        var staleContext = new CaptureSessionContext(staleSessionId, 1, request, target, target);
+
+        _eventBus.Publish(new HighlightDetectedEvent(
+            HighlightType.MatchStarted,
+            TestGame,
+            DateTimeOffset.UtcNow,
+            Context: staleContext));
+
+        Assert.Null(_tracker.CurrentMatchNumber);
     }
 
     [Fact]

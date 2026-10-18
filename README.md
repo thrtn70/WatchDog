@@ -40,7 +40,7 @@ Think of it as **Outplayed / Medal without the bloat** — and also without the 
 | **Session Engine** | Clips organized by gaming session (like Outplayed). Drill into sessions to see clips, matches, and stats. Desktop capture clips grouped by day. |
 | **Clip Library** | Session-grouped library with grid/list views, favorites, game filter, sort, and hover-to-scrub thumbnails. |
 | **Game Detection** | Auto-detects 100+ games by process name. Auto-starts/stops capture. |
-| **GPU Encoding** | NVENC H.264/HEVC/AV1, AMD AMF H.264/HEVC, and x264 CPU fallback. |
+| **Encoding** | Replay factories implement NVENC H.264/HEVC/AV1 (hardware availability unverified) and explicit x264 software selection. Session and separate webcam files use x264. AMF and Intel/QSV are not implemented. |
 | **Audio Mixing** | Live volume sliders, mute toggles, device selection, and separate audio tracks. |
 | **Floating Panels** | Draggable, resizable Performance and Audio overlays. |
 | **System Tray** | Runs minimized. Right-click for quick actions. Start with Windows. |
@@ -61,7 +61,7 @@ Think of it as **Outplayed / Medal without the bloat** — and also without the 
 
 The installer places WatchDog in Program Files, creates Desktop and Start Menu shortcuts, and registers with Add/Remove Programs for clean uninstall.
 
-**System Requirements:** Windows 10/11 (64-bit). GPU with NVENC (NVIDIA GTX 600+) or AMF (AMD RX 400+) for hardware encoding, or CPU for x264 fallback.
+**System Requirements:** Windows 10/11 (64-bit). Select x264 for software encoding, or an implemented NVENC option whose availability depends on your hardware/runtime and remains unverified. There is no automatic encoder fallback. The engine prepares the selected encoder even for session-only starts; AMF and Intel/QSV selections are unsupported.
 
 > **Auto-Update:** WatchDog checks for updates on launch. When a new version is available, a banner appears with a one-click install button.
 >
@@ -176,7 +176,7 @@ Change hotkeys in **Settings > Hotkeys** using the interactive key recorder.
 
 | Section | What you can configure |
 |---------|----------------------|
-| **Capture** | Resolution, FPS, encoder (NVENC/AMF/x264), quality, bitrate, monitor selection |
+| **Capture** | Resolution, FPS, replay encoder (NVENC hardware unverified / explicit x264), quality, bitrate, monitor selection. Unsupported saved encoders remain visible until explicitly replaced. |
 | **Audio** | Output/input device, volume, mute, separate audio tracks |
 | **Replay Buffer** | Duration (seconds), max size (MB) |
 | **Storage** | Save path, max storage (GB), auto-delete age (days) |
@@ -184,6 +184,8 @@ Change hotkeys in **Settings > Hotkeys** using the interactive key recorder.
 | **Recording** | Mode (ReplayBuffer / Session / Both / Highlights), segment duration |
 | **Discord** | Webhook URL, bot username, message template, embed toggle |
 | **General** | Start with Windows, start minimized |
+
+Saved game profiles apply to the next automatic start for the exact executable. Auto Record can disable that start; Replay Buffer and Session Recording select their respective outputs. Supported bitrate overrides and replay duration are frozen before window acquisition. Null overrides inherit sanitized defaults without changing global settings. Session/webcam encoders remain x264. Bitrate overrides for CQP/CRF replay, session-only buffer overrides, Highlights, sensitivity overrides and per-game canvas changes report an actionable unsupported reason. Change global resolution/FPS and restart to change the canvas. Editing a profile never reconfigures an active recording. Hardware/device behavior remains unqualified by managed tests.
 
 ---
 
@@ -296,7 +298,7 @@ Sessions are created automatically when a game is detected. If the library shows
 <summary><strong>High CPU usage</strong></summary>
 
 1. Check the Performance overlay (drag it from the top-right corner)
-2. Switch to **NVENC encoder** (GPU) instead of x264 (CPU) in Settings > Capture
+2. An implemented **NVENC encoder** in Settings > Capture may reduce CPU work if your hardware/runtime supports it. Availability and performance are unverified; explicitly choose x264 if startup fails.
 3. Lower output resolution or FPS
 </details>
 

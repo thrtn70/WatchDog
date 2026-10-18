@@ -1,0 +1,284 @@
+<Window x:Class="WatchDog.App.Views.TutorialWorkspaceWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Tutorial workspace" Width="760" Height="720"
+        MinWidth="640" MinHeight="560" WindowStartupLocation="CenterOwner"
+        Background="{StaticResource BaseBrush}" Foreground="{StaticResource TextBrush}"
+        FontFamily="{StaticResource UIFont}" FontSize="13"
+        Loaded="OnLoaded" Closing="OnClosing" Closed="OnClosed" PreviewKeyDown="OnPreviewKeyDown">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,14">
+            <TextBlock Text="Tutorial workspace" FontSize="22" FontWeight="SemiBold"
+                       AutomationProperties.HeadingLevel="Level1"/>
+            <TextBlock Text="Plan a local window tutorial. Recording remains unavailable until tutorial recording safety checks are complete."
+                       Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{StaticResource SubtextBrush}"/>
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Text="Select a window" FontSize="16" FontWeight="SemiBold"
+                           AutomationProperties.HeadingLevel="Level2"/>
+                <TextBlock Text="The list contains metadata only. Confirming a window does not start capture or preview pixels."
+                           Margin="0,4,0,8" TextWrapping="Wrap" Foreground="{StaticResource SubtextBrush}"/>
+                <DockPanel Margin="0,0,0,8">
+                    <Button x:Name="RefreshWindowsButton" DockPanel.Dock="Right" Content="Refresh windows"
+                            Click="OnRefreshWindowsClick" Padding="10,5" Margin="8,0,0,0"
+                            IsEnabled="{Binding CanEditPlan}"
+                            AutomationProperties.Name="Refresh available windows"/>
+                    <TextBlock Text="Available windows" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                </DockPanel>
+                <ListBox x:Name="WindowOptionsList" Height="145"
+                         ItemsSource="{Binding WindowOptions}"
+                         SelectedItem="{Binding SelectedWindow, Mode=TwoWay}"
+                         IsEnabled="{Binding CanEditPlan}"
+                         KeyDown="OnWindowOptionsKeyDown"
+                         AutomationProperties.Name="Available tutorial windows"
+                         AutomationProperties.HelpText="Use arrow keys to select an exact window, then press Enter to confirm its metadata.">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="AutomationProperties.Name">
+                                <Setter.Value>
+                                    <MultiBinding StringFormat="{}{0} | {1}, PID {2}, HWND {3}">
+                                        <Binding Path="Title"/>
+                                        <Binding Path="ExecutableName"/>
+                                        <Binding Path="ProcessId"/>
+                                        <Binding Path="Handle"/>
+                                    </MultiBinding>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Title}"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding ExecutableName}" FontSize="10"
+                                               Foreground="{StaticResource SubtextBrush}"/>
+                                    <TextBlock Text="{Binding ProcessId, StringFormat=' · PID {0}'}" FontSize="10"
+                                               Foreground="{StaticResource SubtextBrush}"/>
+                                    <TextBlock Text="{Binding Handle, StringFormat=' · HWND {0}'}" FontSize="10"
+                                               Foreground="{StaticResource SubtextBrush}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <Button Content="Use selected window" Command="{Binding ConfirmWindowCommand}"
+                        IsEnabled="{Binding CanConfirmWindow}"
+                        AutomationProperties.Name="Confirm selected tutorial window metadata"
+                        HorizontalAlignment="Left" Padding="12,6" Margin="0,8,0,0"/>
+
+                <StackPanel Margin="0,16,0,0">
+                    <TextBlock Text="Select an entire display" FontSize="16" FontWeight="SemiBold"
+                               AutomationProperties.HeadingLevel="Level2"/>
+                    <TextBlock Text="Everything visible on the selected display may be recorded. The list is loaded only when you choose Refresh displays."
+                               Margin="0,4,0,8" TextWrapping="Wrap" Foreground="{StaticResource SubtextBrush}"/>
+                    <DockPanel Margin="0,0,0,8">
+                        <Button DockPanel.Dock="Right" Content="Refresh displays"
+                                Click="OnRefreshDisplaysClick" Padding="10,5" Margin="8,0,0,0"
+                                IsEnabled="{Binding CanEditPlan}"
+                                AutomationProperties.Name="Refresh available displays"/>
+                        <TextBlock Text="Available displays" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    </DockPanel>
+                    <ListBox x:Name="DisplayOptionsList" Height="110"
+                             ItemsSource="{Binding DisplayOptions}"
+                             SelectedItem="{Binding SelectedDisplay, Mode=TwoWay}"
+                             IsEnabled="{Binding CanEditPlan}"
+                             KeyDown="OnDisplayOptionsKeyDown"
+                             AutomationProperties.Name="Available tutorial displays"
+                             AutomationProperties.HelpText="Refresh, choose one exact display, then press Enter to confirm the entire display.">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="AutomationProperties.Name">
+                                    <Setter.Value>
+                                        <MultiBinding StringFormat="{}{0} | {1} by {2} pixels | primary {3} | {4}">
+                                            <Binding Path="Target.DisplayName"/>
+                                            <Binding Path="Width"/>
+                                            <Binding Path="Height"/>
+                                            <Binding Path="IsPrimary"/>
+                                            <Binding Path="DeviceName"/>
+                                        </MultiBinding>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Target.DisplayName}"/>
+                                    <TextBlock Text="{Binding DeviceName}" FontSize="10"
+                                               Foreground="{StaticResource SubtextBrush}"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Width}" FontSize="10"
+                                                   Foreground="{StaticResource SubtextBrush}"/>
+                                        <TextBlock Text="{Binding Height, StringFormat=' × {0} pixels'}" FontSize="10"
+                                                   Foreground="{StaticResource SubtextBrush}"/>
+                                        <TextBlock Text="{Binding IsPrimary, StringFormat=' · Primary: {0}'}" FontSize="10"
+                                                   Foreground="{StaticResource SubtextBrush}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <Button Content="Use selected display" Command="{Binding ConfirmDisplayCommand}"
+                            IsEnabled="{Binding CanConfirmDisplay}"
+                            AutomationProperties.Name="Confirm selected entire display"
+                            HorizontalAlignment="Left" Padding="12,6" Margin="0,8,0,0"/>
+                    <TextBlock Text="{Binding DisplayAvailabilityText}" Margin="0,5,0,0"
+                               TextWrapping="Wrap"/>
+
+                    <StackPanel Margin="0,16,0,0">
+                        <TextBlock Text="Select a physical region" FontSize="16" FontWeight="SemiBold"
+                                   AutomationProperties.HeadingLevel="Level2"/>
+                        <TextBlock Text="Enter global physical-pixel coordinates. Negative X or Y values are allowed; width and height must be positive, and the complete rectangle must fit inside the selected display. No preview is available."
+                                   Margin="0,4,0,8" TextWrapping="Wrap"
+                                   Foreground="{StaticResource SubtextBrush}"/>
+                        <WrapPanel>
+                            <StackPanel Margin="0,0,12,8">
+                                <Label Content="Global X (px)" Target="{Binding ElementName=RegionXTextBox}" Padding="0,0,0,3"/>
+                                <TextBox x:Name="RegionXTextBox" Width="120"
+                                         Text="{Binding RegionXText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding CanEditPlan}"
+                                         AutomationProperties.Name="Region global X in physical pixels"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,12,8">
+                                <Label Content="Global Y (px)" Target="{Binding ElementName=RegionYTextBox}" Padding="0,0,0,3"/>
+                                <TextBox x:Name="RegionYTextBox" Width="120"
+                                         Text="{Binding RegionYText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding CanEditPlan}"
+                                         AutomationProperties.Name="Region global Y in physical pixels"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,12,8">
+                                <Label Content="Width (px)" Target="{Binding ElementName=RegionWidthTextBox}" Padding="0,0,0,3"/>
+                                <TextBox x:Name="RegionWidthTextBox" Width="120"
+                                         Text="{Binding RegionWidthText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding CanEditPlan}"
+                                         AutomationProperties.Name="Region width in physical pixels"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,0,8">
+                                <Label Content="Height (px)" Target="{Binding ElementName=RegionHeightTextBox}" Padding="0,0,0,3"/>
+                                <TextBox x:Name="RegionHeightTextBox" Width="120"
+                                         Text="{Binding RegionHeightText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding CanEditPlan}"
+                                         AutomationProperties.Name="Region height in physical pixels"/>
+                            </StackPanel>
+                        </WrapPanel>
+                        <TextBlock Text="The entire selected rectangle may be recorded. Confirming a region replaces the entire-display plan for this draft."
+                                   TextWrapping="Wrap" Foreground="{StaticResource SubtextBrush}"/>
+                        <Button Content="Use exact region" Command="{Binding ConfirmRegionCommand}"
+                                IsEnabled="{Binding CanConfirmRegion}"
+                                AutomationProperties.Name="Confirm exact physical region"
+                                HorizontalAlignment="Left" Padding="12,6" Margin="0,8,0,0"/>
+                        <TextBlock Text="{Binding RegionAvailabilityText}" Margin="0,5,0,0"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Margin="0,16,0,0">
+                    <TextBlock Text="Selected boundary" FontSize="16" FontWeight="SemiBold"
+                               AutomationProperties.HeadingLevel="Level2"/>
+                    <TextBlock Text="{Binding BoundaryText}" TextWrapping="Wrap" Margin="0,5,0,0"/>
+                    <TextBlock Text="{Binding ExactWindowText}" TextWrapping="Wrap" Margin="0,5,0,0"
+                               Foreground="{StaticResource SubtextBrush}"/>
+                </StackPanel>
+
+                <StackPanel Margin="0,16,0,0">
+                    <TextBlock Text="Startup audio and camera" FontSize="16" FontWeight="SemiBold"
+                               AutomationProperties.HeadingLevel="Level2"/>
+                    <TextBlock Text="{Binding AudioText}" TextWrapping="Wrap" Margin="0,5,0,0"/>
+                    <CheckBox Content="Include a camera" IsChecked="{Binding IncludeCamera, Mode=TwoWay}"
+                              IsEnabled="{Binding CanConfigureCamera}"
+                              AutomationProperties.Name="Include a camera in this tutorial plan"
+                              Margin="0,7,0,0"/>
+                    <Button Content="Refresh physical cameras" Click="OnRefreshCamerasClick"
+                            IsEnabled="{Binding CanUseCameraOptions}" HorizontalAlignment="Left"
+                            AutomationProperties.Name="Refresh physical camera metadata"
+                            Padding="10,5" Margin="0,7,0,0"/>
+                    <ListBox x:Name="CameraOptionsList" Height="100" Margin="0,7,0,0"
+                             AlternationCount="2147483647"
+                             ItemsSource="{Binding CameraOptions}"
+                             SelectedItem="{Binding SelectedCamera, Mode=TwoWay}"
+                             IsEnabled="{Binding CanUseCameraOptions}"
+                             AutomationProperties.Name="Available physical cameras"
+                             AutomationProperties.HelpText="Choose one offered camera entry, then confirm it for this plan.">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="AutomationProperties.Name">
+                                    <Setter.Value>
+                                        <MultiBinding StringFormat="{}{0} (camera option {1})">
+                                            <Binding Path="DisplayName"/>
+                                            <Binding RelativeSource="{RelativeSource Self}" Path="(ItemsControl.AlternationIndex)"/>
+                                        </MultiBinding>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding DisplayName}"/>
+                                    <TextBlock Text="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=(ItemsControl.AlternationIndex), StringFormat='Camera option {0}'}" FontSize="10"
+                                               Foreground="{StaticResource SubtextBrush}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <Button Content="Use selected camera" Command="{Binding ConfirmCameraCommand}"
+                            IsEnabled="{Binding CanConfirmCamera}" HorizontalAlignment="Left"
+                            AutomationProperties.Name="Confirm exact physical camera for this tutorial plan"
+                            Padding="10,5" Margin="0,7,0,0"/>
+                    <TextBlock Text="{Binding CameraText}" TextWrapping="Wrap" Margin="0,5,0,0"
+                               Foreground="{StaticResource SubtextBrush}"/>
+                </StackPanel>
+
+                <StackPanel Margin="0,16,0,8">
+                    <TextBlock Text="Planned output" FontSize="16" FontWeight="SemiBold"
+                               AutomationProperties.HeadingLevel="Level2"/>
+                    <TextBlock Text="{Binding OutputText}" TextWrapping="Wrap" Margin="0,5,0,0"/>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="2" BorderBrush="{StaticResource Surface1Brush}"
+                BorderThickness="0,1,0,0" Padding="0,12,0,0">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">
+                    <Button Content="Start recording" Command="{Binding StartCommand}"
+                            IsEnabled="{Binding StartAvailable}" Padding="14,6"
+                            AutomationProperties.Name="Start tutorial recording"
+                            Margin="0,0,8,0"
+                            ToolTip="{Binding StartReason}"/>
+                    <Button Content="Cancel" Command="{Binding CancelCommand}"
+                            IsEnabled="{Binding CancelAvailable}" Padding="14,6"
+                            AutomationProperties.Name="Cancel pending tutorial recording"
+                            Margin="0,0,8,0"/>
+                    <Button Content="Stop" Command="{Binding StopCommand}"
+                            IsEnabled="{Binding StopAvailable}" Padding="14,6"
+                            AutomationProperties.Name="Stop tutorial recording and finish cleanup"
+                            Margin="0,0,8,0"/>
+                    <Button Content="Close" Click="OnCloseClick" Padding="14,6"
+                            IsEnabled="{Binding CloseAvailable}"
+                            AutomationProperties.Name="Close tutorial workspace"/>
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Text="{Binding StatusText, NotifyOnTargetUpdated=True}"
+                               TargetUpdated="OnStatusTargetUpdated"
+                               TextWrapping="Wrap" MaxWidth="490"
+                               AutomationProperties.Name="{Binding StatusText, StringFormat='Tutorial workspace status: {0}'}"
+                               AutomationProperties.LiveSetting="Polite"/>
+                    <TextBlock Text="{Binding StartReason}" Margin="0,4,0,0"
+                               TextWrapping="Wrap" MaxWidth="490"
+                               Foreground="{StaticResource SubtextBrush}"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>
