@@ -117,12 +117,29 @@ jobs:
             Write-Host "ERROR: WatchDog-Setup.exe not found"; exit 1
           }
 
+      # ── Sign update manifest (in-app updater refuses unsigned installers) ──
+      - name: Sign update manifest
+        shell: pwsh
+        env:
+          WATCHDOG_UPDATE_SIGNING_KEY: ${{ secrets.WATCHDOG_UPDATE_SIGNING_KEY }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          ./tools/sign-update-manifest.ps1 `
+            -Installer installer/Output/WatchDog-Setup.exe `
+            -Tag $env:TAG_NAME
+
       # ── Upload assets to release ─────────────────────────────
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ github.ref_name }}
+        # Manifest and signature first: clients only see a new installer once its signed manifest exists.
         run: |
+          gh release upload "$env:TAG_NAME" `
+            "installer/Output/WatchDog-Setup.exe.manifest.json" `
+            "installer/Output/WatchDog-Setup.exe.manifest.sig" `
+            --clobber
+          if ($LASTEXITCODE -ne 0) { exit 1 }
           gh release upload "$env:TAG_NAME" `
             "installer/Output/WatchDog-Setup.exe" `
             "WatchDog-win-x64.zip" `

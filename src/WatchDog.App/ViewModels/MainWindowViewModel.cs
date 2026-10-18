@@ -865,12 +865,17 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             var checker = App.Services.GetRequiredService<IUpdateChecker>();
             var progress = new Progress<double>(p => UpdateDownloadProgress = p);
-            var installerPath = await checker.DownloadInstallerAsync(
-                AvailableUpdate.DownloadUrl, progress);
+            var download = await checker.DownloadVerifiedInstallerAsync(AvailableUpdate, progress);
 
-            if (installerPath is null)
+            // Only an installer that matched the signed release manifest is ever launched.
+            if (!download.IsVerified || download.InstallerPath is not { } installerPath)
             {
                 AvailableUpdate = null;
+                MessageBox.Show(
+                    download.RefusalMessage,
+                    "Update Not Installed",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
                 return;
             }
 
@@ -886,6 +891,19 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
             if (Application.Current is not App app)
                 throw new InvalidOperationException("Application shutdown is unavailable.");
+
+            // Hold the re-verified installer open against writes until the installer process has started.
+            using var launchLock = download.LockForLaunch();
+            if (launchLock is null)
+            {
+                AvailableUpdate = null;
+                MessageBox.Show(
+                    UpdateDownloadResult.Refused(UpdateVerificationFailure.InstallerMismatch).RefusalMessage,
+                    "Update Not Installed",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
 
             await app.RequestShutdownAsync(0, () =>
             {
