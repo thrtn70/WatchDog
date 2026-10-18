@@ -311,6 +311,7 @@ public sealed class TutorialCaptureControllerTests
             capture: commands, isDisplayCurrent: _ => true, regionSelection: selection);
         ConfirmWorkspaceRegion(vm);
         Assert.False(vm.StartAvailable);
+        Assert.Equal(TutorialWorkspaceCapture.QualificationReason, vm.StartReason);
         await vm.StartCommand.ExecuteAsync(null);
         Assert.Null(await commands.StartAsync());
         Assert.Empty(h.Backend.Starts);

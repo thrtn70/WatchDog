@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://thrtn70.github.io/WatchDog/"><img src="https://img.shields.io/badge/Website-thrtn70.github.io%2FWatchDog-2EC4B6?logo=github" alt="Website"/></a>
-  <img src="https://img.shields.io/badge/.NET-9.0-blue?logo=dotnet" alt=".NET 9"/>
+  <img src="https://img.shields.io/badge/.NET-10.0-blue?logo=dotnet" alt=".NET 10"/>
   <img src="https://img.shields.io/badge/OBS-31.0-purple?logo=obsstudio" alt="OBS"/>
   <img src="https://img.shields.io/badge/license-GPL--2.0-green" alt="License"/>
   <img src="https://img.shields.io/github/v/release/thrtn70/WatchDog?label=latest" alt="Release"/>
@@ -40,12 +40,23 @@ Think of it as **Outplayed / Medal without the bloat** — and also without the 
 | **Session Engine** | Clips organized by gaming session (like Outplayed). Drill into sessions to see clips, matches, and stats. Desktop capture clips grouped by day. |
 | **Clip Library** | Session-grouped library with grid/list views, favorites, game filter, sort, and hover-to-scrub thumbnails. |
 | **Game Detection** | Auto-detects 100+ games by process name. Auto-starts/stops capture. |
-| **Encoding** | Replay factories implement NVENC H.264/HEVC/AV1 (hardware availability unverified) and explicit x264 software selection. Session and separate webcam files use x264. AMF and Intel/QSV are not implemented. |
+| **Encoding** | Replay buffer: **x264** (software) or **NVENC** H.264/HEVC/AV1 (NVIDIA). Session recordings and separate webcam files use x264. AMD AMF and Intel QSV are not supported. |
 | **Audio Mixing** | Live volume sliders, mute toggles, device selection, and separate audio tracks. |
 | **Floating Panels** | Draggable, resizable Performance and Audio overlays. |
 | **System Tray** | Runs minimized. Right-click for quick actions. Start with Windows. |
 | **Storage Management** | Auto-delete old clips, configurable quota, per-game folders, storage dashboard. |
 | **Toast Notifications** | Visual popup near the tray when a clip is saved. |
+
+---
+
+## Known Limitations
+
+- **Tutorial recording is not available yet.** The **Tutorial (planning only)** workspace can plan a window, display or region with an optional camera, but **Start recording stays disabled** in this release. Region capture, pause/resume, redaction/crop/zoom/camera layers and tutorial editing are deferred to a later release.
+- **Encoders: x264 and NVENC only.** x264 runs on any CPU. NVENC needs an NVIDIA GPU and driver that support it. AMD AMF and Intel QSV are not supported. There is no automatic fallback: if NVENC fails to start, select x264 in **Settings > Capture**.
+- **OBS runs in-process.** WatchDog loads its bundled OBS Studio 31 engine (libobs) inside the WatchDog process; no separate OBS install is needed or used. A crash in libobs, an OBS plugin or a GPU/capture driver also closes WatchDog.
+- **Hardware qualification is per release candidate.** Automated tests do not exercise real GPUs, displays or audio devices. NVENC availability and performance, multi-monitor and mixed DPI, HDR and sleep/resume are checked on real hardware for each release candidate, not by CI.
+- **The installer is not code-signed.** Windows SmartScreen may warn on first run. In-app updates are authenticated separately (see Auto-Update below).
+- **Windows 10/11 64-bit only.**
 
 ---
 
@@ -63,7 +74,7 @@ The installer places WatchDog in Program Files, creates Desktop and Start Menu s
 
 **System Requirements:** Windows 10/11 (64-bit). Select x264 for software encoding, or an implemented NVENC option whose availability depends on your hardware/runtime and remains unverified. There is no automatic encoder fallback. The engine prepares the selected encoder even for session-only starts; AMF and Intel/QSV selections are unsupported.
 
-> **Auto-Update:** WatchDog checks for updates on launch. When a new version is available, a banner appears with a one-click install button.
+> **Auto-Update:** WatchDog checks for updates on launch. When a new version is available, a banner appears with a one-click install button. The updater runs an installer only when its signed update manifest verifies against the key built into the app and matches the downloaded bytes.
 >
 > **Portable:** Prefer no installer? Download `WatchDog-win-x64.zip` from the same releases page and run `WatchDog.App.exe` directly.
 
@@ -76,7 +87,7 @@ The installer places WatchDog in Program Files, creates Desktop and Start Menu s
 
 #### Prerequisites
 
-- **[.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)** or later
+- **[.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)** (see `global.json`)
 - **[Inno Setup 6](https://jrsoftware.org/isdl.php)** (optional, for building the installer)
 
 #### 1. Clone the repo
@@ -110,7 +121,9 @@ The app starts minimized to the system tray. Right-click the tray icon to open t
 .\tools\package.ps1
 ```
 
-This produces both `WatchDog-win-x64.zip` (portable) and `installer/Output/WatchDog-Setup.exe` (installer, requires Inno Setup 6).
+This produces both `WatchDog-win-x64.zip` (portable) and `installer/Output/WatchDog-Setup.exe` (installer, requires Inno Setup 6). Both include `LICENSE` and `NOTICE`.
+
+To also write the signed update manifest for a release, set `WATCHDOG_UPDATE_SIGNING_KEY` to the signing key and pass the tag (`.\tools\package.ps1 -Tag v1.4.0`). Without it, the in-app updater refuses the installer. Tagged releases are signed by `.github/workflows/release.yml` from the repository secret of the same name.
 
 #### 5. Install git hooks (one-time)
 
@@ -198,13 +211,15 @@ WatchDog/
 │   ├── WatchDog.Core/             # Business logic (Capture, Highlights, Discord, Storage, Audio)
 │   └── WatchDog.Native/           # Win32 interop (Hotkeys, OBS runtime loading)
 ├── tests/
-│   └── WatchDog.Core.Tests/       # xUnit unit tests
+│   ├── WatchDog.Core.Tests/       # xUnit unit tests
+│   └── WatchDog.Integration.Tests/  # App-level integration tests (fake capture backend)
 ├── cfg/
 │   └── gamestate_integration_watchdog.cfg   # CS2 GSI config template
 ├── tools/
 │   ├── setup-obs-runtime.ps1      # Downloads OBS binaries
 │   ├── setup-ffmpeg.ps1           # Downloads FFmpeg binaries
-│   └── package.ps1                # Build + package script
+│   ├── package.ps1                # Build + package script
+│   └── sign-update-manifest.ps1   # Signs the update manifest the in-app updater requires
 ├── obs-runtime/                   # OBS binaries (gitignored)
 └── ffmpeg-runtime/                # FFmpeg binaries (gitignored)
 ```
@@ -215,9 +230,9 @@ WatchDog/
 
 | Component | Technology |
 |-----------|-----------|
-| Runtime | .NET 9.0 / C# 13 |
+| Runtime | .NET 10 / C# 14 |
 | UI Framework | WPF (Windows Presentation Foundation) |
-| Recording Engine | OBS Studio via [ObsKit.NET](https://github.com/niceguy135/ObsKit.NET) |
+| Recording Engine | OBS Studio (libobs, in-process) via [ObsKit.NET](https://github.com/niceguy135/ObsKit.NET) |
 | Clip Processing | FFmpeg (lossless stream copy) |
 | MVVM | [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) |
 | System Tray | [H.NotifyIcon.Wpf](https://github.com/HavenDV/H.NotifyIcon) |

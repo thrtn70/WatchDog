@@ -5,13 +5,13 @@
       "watchdog.captureisolation": {
         "type": "Project",
         "dependencies": {
-          "WatchDog.CaptureProtocol": "[1.3.0, )"
+          "WatchDog.CaptureProtocol": "[1.4.0, )"
         }
       },
       "watchdog.captureisolation.windows": {
         "type": "Project",
         "dependencies": {
-          "WatchDog.CaptureIsolation": "[1.3.0, )"
+          "WatchDog.CaptureIsolation": "[1.4.0, )"
         }
       },
       "watchdog.captureprotocol": {

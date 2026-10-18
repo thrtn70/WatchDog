@@ -9,7 +9,7 @@ namespace WatchDog.App.Services;
 /// </summary>
 public sealed class TutorialWorkspaceCapture : IDisposable
 {
-    private const string QualificationReason = "Tutorial recording is unavailable while recording safety checks are incomplete.";
+    internal const string QualificationReason = "Tutorial recording is not available in this release.";
     private readonly object _sync = new();
     private readonly TutorialCaptureController _controller;
     private readonly bool _startAdmitted;

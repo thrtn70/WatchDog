@@ -16,7 +16,7 @@
         <StackPanel Grid.Row="0" Margin="0,0,0,14">
             <TextBlock Text="Tutorial workspace" FontSize="22" FontWeight="SemiBold"
                        AutomationProperties.HeadingLevel="Level1"/>
-            <TextBlock Text="Plan a local window tutorial. Recording remains unavailable until tutorial recording safety checks are complete."
+            <TextBlock Text="Plan a local window tutorial. Tutorial recording is not available in this release, so Start recording stays disabled."
                        Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{StaticResource SubtextBrush}"/>
         </StackPanel>
 
