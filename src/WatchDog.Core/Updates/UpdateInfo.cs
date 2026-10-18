@@ -7,4 +7,7 @@ public sealed record UpdateInfo(
     string ReleaseNotesUrl,
     bool IsUpdateAvailable,
     DateTimeOffset? AssetUpdatedAt = null,
-    string? DisplayMessage = null);
+    string? DisplayMessage = null,
+    string? ReleaseTag = null,
+    string? ManifestUrl = null,
+    string? SignatureUrl = null);
