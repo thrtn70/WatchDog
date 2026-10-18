@@ -84,6 +84,7 @@
                     <ColumnDefinition Width="8"/>           <!-- Spacer -->
                     <ColumnDefinition Width="Auto"/>       <!-- Sort -->
                     <ColumnDefinition Width="*"/>           <!-- Center: status -->
+                    <ColumnDefinition Width="Auto"/>       <!-- Tutorial workspace -->
                     <ColumnDefinition Width="Auto"/>       <!-- Settings -->
                     <ColumnDefinition Width="Auto"/>       <!-- Storage -->
                     <ColumnDefinition Width="Auto"/>       <!-- Refresh -->
@@ -135,27 +136,38 @@
                     <Ellipse x:Name="RecordingDot" Width="8" Height="8" Margin="0,0,8,0"
                              Fill="{StaticResource RecordingBrush}"
                              Visibility="{Binding IsRecording, Converter={StaticResource BoolToVis}}"/>
-                    <TextBlock Text="{Binding CaptureStatusText}"
+                    <TextBlock Text="{Binding CaptureStatusText, NotifyOnTargetUpdated=True}"
                                FontSize="11" FontWeight="Medium"
+                               TargetUpdated="OnLiveStatusTargetUpdated"
+                               AutomationProperties.Name="{Binding CaptureStatusText, StringFormat='Capture status: {0}'}"
+                               AutomationProperties.AutomationId="CaptureStatusText"
+                               AutomationProperties.LiveSetting="Assertive"
                                Foreground="{StaticResource SubtextBrush}"/>
                 </StackPanel>
 
+                <!-- Metadata-only tutorial planning -->
+                <Button Grid.Column="10" Content="Tutorial workspace"
+                        Click="OnTutorialWorkspaceClick" ToolTip="Plan a tutorial recording"
+                        AutomationProperties.Name="Open tutorial workspace"
+                        Padding="10,4" Margin="0,0,6,0"
+                        VerticalAlignment="Center"/>
+
                 <!-- Settings gear -->
-                <Button Grid.Column="10" Content="&#xE713;"
+                <Button Grid.Column="11" Content="&#xE713;"
                         Click="OnSettingsClick" ToolTip="Settings"
                         AutomationProperties.Name="Settings"
                         Style="{StaticResource IconButton}"
                         VerticalAlignment="Center"/>
 
                 <!-- Storage -->
-                <Button Grid.Column="11" Content="&#xE7F1;"
+                <Button Grid.Column="12" Content="&#xE7F1;"
                         Click="OnStorageDashboardClick" ToolTip="Storage dashboard"
                         AutomationProperties.Name="Storage dashboard"
                         Style="{StaticResource IconButton}"
                         VerticalAlignment="Center"/>
 
                 <!-- Refresh -->
-                <Button Grid.Column="12" Content="&#xE72C;" FontSize="13"
+                <Button Grid.Column="13" Content="&#xE72C;" FontSize="13"
                         Command="{Binding RefreshClipsCommand}" ToolTip="Refresh clips"
                         AutomationProperties.Name="Refresh clips"
                         Style="{StaticResource IconButton}"
@@ -544,6 +556,7 @@
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <!-- Video player -->
@@ -635,12 +648,24 @@
                                         <Button Content="Cancel" Command="{Binding CancelTrimCommand}"
                                                 Padding="8,4"/>
                                     </StackPanel>
-                                    <TextBlock Text="{Binding TrimStatus}" Margin="0,4,0,0"
-                                               Foreground="{StaticResource SubtextBrush}" FontSize="11"/>
                                 </StackPanel>
                             </Border>
+                            <TextBlock Text="{Binding TrimStatus, NotifyOnTargetUpdated=True}" Margin="0,6,0,0"
+                                       TextWrapping="Wrap" Foreground="{StaticResource SubtextBrush}"
+                                       FontSize="11" AutomationProperties.Name="{Binding TrimStatus}"
+                                       AutomationProperties.LiveSetting="Polite"
+                                       TargetUpdated="OnLiveStatusTargetUpdated"/>
+                            <TextBlock Text="Zoom, annotations, redaction, and synchronized multi-output editing are unavailable."
+                                       Margin="0,4,0,0" TextWrapping="Wrap"
+                                       Foreground="{StaticResource MutedTextBrush}" FontSize="10"/>
                         </StackPanel>
                     </Border>
+                    <TextBlock Grid.Row="3" Margin="10,4,10,8" TextWrapping="Wrap"
+                               Text="{Binding DataContext.LastExportStatusText, RelativeSource={RelativeSource AncestorType=Window}, NotifyOnTargetUpdated=True}"
+                               Foreground="{StaticResource SubtextBrush}" FontSize="11"
+                               AutomationProperties.Name="{Binding DataContext.LastExportStatusText, RelativeSource={RelativeSource AncestorType=Window}}"
+                               AutomationProperties.LiveSetting="Polite"
+                               TargetUpdated="OnLiveStatusTargetUpdated"/>
                 </Grid>
             </Border>
         </Grid>

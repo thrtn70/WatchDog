@@ -13,6 +13,7 @@ namespace WatchDog.App.ViewModels;
 public partial class TrayIconViewModel : ObservableObject, IDisposable
 {
     private readonly ICaptureEngine _captureEngine;
+    private readonly CaptureLifecycleCoordinator _captureLifecycle;
     private readonly IEventBus _eventBus;
     private Controls.ClipSavedToast? _activeToast;
     private readonly IDisposable _clipSavedSub;
@@ -21,6 +22,7 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
     private readonly IDisposable _gameDetectedSub;
     private readonly IDisposable _gameExitedSub;
     private readonly Action<CaptureState> _captureStateHandler;
+    private readonly Action<CaptureLifecycleSnapshot> _lifecycleSnapshotHandler;
     private const int SavingIconRevertMs = 3000;
     private System.Threading.Timer? _savingRevertTimer;
     private volatile bool _disposed;
@@ -33,6 +35,22 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private string _statusText = "WatchDog - Idle";
+
+    /// <summary>
+    /// Bounded, privacy-safe text for the native tray tooltip and context menu.
+    /// Detailed failures, clip names, paths, and game names remain inside WatchDog.
+    /// </summary>
+    public string TraySummaryText =>
+        CaptureStatusPresentation.Warning(_captureLifecycle.Snapshot) is not null
+            ? "WatchDog — Recording warning; open WatchDog for details."
+            : _captureEngine.State switch
+            {
+                CaptureState.Initializing => "WatchDog — Starting",
+                CaptureState.Buffering => "WatchDog — Capturing",
+                CaptureState.Saving => "WatchDog — Saving",
+                CaptureState.Stopping => "WatchDog — Stopping",
+                _ => "WatchDog — Idle",
+            };
 
     [ObservableProperty]
     private string _iconSource = "/Resources/Icons/tray-idle.ico";
@@ -51,9 +69,13 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _bufferStatusText = "Replay Buffer OFF";
 
-    public TrayIconViewModel(ICaptureEngine captureEngine, IEventBus eventBus)
+    public TrayIconViewModel(
+        ICaptureEngine captureEngine,
+        CaptureLifecycleCoordinator captureLifecycle,
+        IEventBus eventBus)
     {
         _captureEngine = captureEngine;
+        _captureLifecycle = captureLifecycle;
         _eventBus = eventBus;
 
         _clipSavedSub = eventBus.Subscribe<ClipSavedEvent>(OnClipSaved);
@@ -65,9 +87,14 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
         // Use only the direct StateChanged delegate for capture state updates.
         // Do NOT also subscribe to BufferStateChangedEvent — both fire on every
         // state change, causing UpdateState to run twice per transition.
-        _captureStateHandler = state =>
-            Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() => UpdateState(state)));
+        _captureStateHandler = _ =>
+            Application.Current?.Dispatcher.InvokeAsync(() =>
+                PostToUi(() => UpdateLifecycleStatus(_captureLifecycle.Snapshot)));
         captureEngine.StateChanged += _captureStateHandler;
+        _lifecycleSnapshotHandler = snapshot =>
+            Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() => UpdateLifecycleStatus(snapshot)));
+        captureLifecycle.SnapshotChanged += _lifecycleSnapshotHandler;
+        UpdateLifecycleStatus(captureLifecycle.Snapshot);
     }
 
     [RelayCommand]
@@ -95,14 +122,15 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task SaveClipAsync()
     {
-        if (_captureEngine.State == CaptureState.Buffering)
-            await _captureEngine.SaveReplayAsync();
+        if (_captureLifecycle.Snapshot.Status == CaptureLifecycleStatus.Active)
+            await _captureLifecycle.SaveAsync();
     }
 
     [RelayCommand]
-    private void ExitApplication()
+    private async Task ExitApplicationAsync()
     {
-        Application.Current.Shutdown();
+        if (Application.Current is App app)
+            await app.RequestShutdownAsync();
     }
 
     private void UpdateState(CaptureState state)
@@ -140,7 +168,9 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
                     CurrentGameText = "No game detected";
                 }
                 IconSource = BufferingIconPath;
-                BufferStatusText = "Replay Buffer ON";
+                BufferStatusText = _captureEngine.IsReplayBufferActive
+                    ? "Replay Buffer ON"
+                    : "Session Recording ON";
                 IsRecording = true;
                 break;
             case CaptureState.Saving:
@@ -162,6 +192,25 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
                 IsRecording = false;
                 break;
         }
+        OnPropertyChanged(nameof(TraySummaryText));
+    }
+
+    private void UpdateLifecycleStatus(CaptureLifecycleSnapshot snapshot)
+    {
+        var warning = CaptureStatusPresentation.Warning(snapshot);
+        if (warning is not null)
+        {
+            _savingRevertTimer?.Dispose();
+            _savingRevertTimer = null;
+            StatusText = warning.TrayText;
+            IconSource = SavingIconPath;
+            IsRecording = snapshot.Context is not null &&
+                          snapshot.Status is CaptureLifecycleStatus.Active or CaptureLifecycleStatus.Saving;
+            OnPropertyChanged(nameof(TraySummaryText));
+            return;
+        }
+
+        UpdateState(_captureEngine.State);
     }
 
     private void OnGameDetected(GameDetectedEvent e)
@@ -220,7 +269,7 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
         Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() =>
         {
             IsSessionRecording = false;
-            UpdateState(_captureEngine.State);
+            UpdateLifecycleStatus(_captureLifecycle.Snapshot);
         }));
     }
 
@@ -234,6 +283,7 @@ public partial class TrayIconViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         _captureEngine.StateChanged -= _captureStateHandler;
+        _captureLifecycle.SnapshotChanged -= _lifecycleSnapshotHandler;
         _clipSavedSub.Dispose();
         _sessionStartedSub.Dispose();
         _sessionStoppedSub.Dispose();

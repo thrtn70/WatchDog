@@ -10,14 +10,18 @@ using WatchDog.Core.Hotkeys;
 using WatchDog.Core.Recording;
 using WatchDog.Core.Settings;
 using WatchDog.Core.Updates;
+using WatchDog.Core.Webcam;
+using WatchDog.App.Services;
 
 namespace WatchDog.App.ViewModels;
 
 public partial class SettingsViewModel : ObservableObject
 {
     private readonly ISettingsService _settingsService;
+    private readonly ICaptureEngine _captureEngine;
     private readonly IAudioDeviceEnumerator? _audioDeviceEnumerator;
     private readonly IUpdateChecker? _updateChecker;
+    private readonly IWebcamDeviceEnumerator? _webcamDeviceEnumerator;
     private AppSettings _settings;
 
     // Capture settings
@@ -25,6 +29,9 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private uint _outputHeight;
     [ObservableProperty] private uint _fps;
     [ObservableProperty] private EncoderType _encoder;
+    public IReadOnlyList<EncoderOption> EncoderOptions { get; private set; } = EncoderCapabilities.ImplementedOptions;
+    public string EncoderSelectionStatus => EncoderCapabilities.Describe(Encoder).Status;
+    public string EncoderOutputBehavior => EncoderCapabilities.OutputBehavior;
     [ObservableProperty] private RateControlType _rateControl;
     [ObservableProperty] private int _quality;
     [ObservableProperty] private int _bitrate;
@@ -50,6 +57,17 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private AudioDeviceInfo? _selectedDesktopDevice;
     [ObservableProperty] private ObservableCollection<AudioDeviceInfo> _micDevices = [];
     [ObservableProperty] private AudioDeviceInfo? _selectedMicDevice;
+
+    // Webcam selection is metadata-only here. Settings never open the camera.
+    [ObservableProperty] private bool _webcamEnabledForManualRecording;
+    [ObservableProperty] private ObservableCollection<WebcamDeviceInfo> _webcamDevices = [];
+    [ObservableProperty] private WebcamDeviceInfo? _selectedWebcamDevice;
+    [ObservableProperty] private int _webcamWidth;
+    [ObservableProperty] private int _webcamHeight;
+    [ObservableProperty] private double _webcamFramesPerSecond;
+    [ObservableProperty] private string _webcamVideoFormat = string.Empty;
+    [ObservableProperty] private int _webcamVideoBitrateKbps;
+    [ObservableProperty] private string _webcamSelectionStatus = string.Empty;
 
     // Monitor selection
     [ObservableProperty] private ObservableCollection<MonitorInfo> _monitors = [];
@@ -79,6 +97,9 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty] private string _statusMessage = string.Empty;
 
+    public string SessionSegmentLivenessStatusText { get; }
+    public bool SessionSegmentLivenessStatusIsWarning { get; }
+
     // Version & update
     [ObservableProperty] private string _updateStatusText = string.Empty;
     [ObservableProperty] private bool _isCheckingForUpdate;
@@ -103,13 +124,22 @@ public partial class SettingsViewModel : ObservableObject
 
     public SettingsViewModel(
         ISettingsService settingsService,
+        ICaptureEngine captureEngine,
+        SessionSegmentLivenessStartupDecision sessionSegmentLivenessDecision,
         IAudioDeviceEnumerator? audioDeviceEnumerator = null,
         IUpdateChecker? updateChecker = null,
-        GameProfilesViewModel? gameProfiles = null)
+        GameProfilesViewModel? gameProfiles = null,
+        IWebcamDeviceEnumerator? webcamDeviceEnumerator = null)
     {
         _settingsService = settingsService;
+        _captureEngine = captureEngine;
+        var livenessStatus = SessionSegmentLivenessStatusPresenter.Present(
+            sessionSegmentLivenessDecision);
+        SessionSegmentLivenessStatusText = livenessStatus.Text;
+        SessionSegmentLivenessStatusIsWarning = livenessStatus.IsWarning;
         _audioDeviceEnumerator = audioDeviceEnumerator;
         _updateChecker = updateChecker;
+        _webcamDeviceEnumerator = webcamDeviceEnumerator;
         GameProfiles = gameProfiles;
         _settings = settingsService.Load();
         LoadFromSettings(_settings);
@@ -118,6 +148,19 @@ public partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private void Save()
     {
+        if (EncoderCapabilities.Validate(Encoder) is { } encoderFailure)
+        {
+            StatusMessage = encoderFailure.Message;
+            return;
+        }
+        if (WebcamEnabledForManualRecording && SelectedWebcamDevice is null)
+        {
+            StatusMessage = "Choose an exact webcam before enabling camera recording.";
+            return;
+        }
+
+        // Other settings panels may have saved profiles while this window was open.
+        _settings = _settingsService.Load();
         var updated = _settings with
         {
             Capture = _settings.Capture with
@@ -129,7 +172,8 @@ public partial class SettingsViewModel : ObservableObject
                 RateControl = RateControl,
                 Quality = Quality,
                 Bitrate = Bitrate,
-                MonitorIndex = SelectedMonitor?.Index ?? 0,
+                MonitorIndex = SelectedMonitor?.Index ?? _settings.Capture.MonitorIndex,
+                MonitorStableId = SelectedMonitor?.StableDisplayId ?? _settings.Capture.MonitorStableId,
             },
             Buffer = _settings.Buffer with
             {
@@ -158,6 +202,17 @@ public partial class SettingsViewModel : ObservableObject
                 MicDeviceId = SelectedMicDevice?.DeviceId ?? string.Empty,
                 SeparateAudioTracks = SeparateAudioTracks,
             },
+            Webcam = _settings.Webcam with
+            {
+                EnabledForExplicitManualRecording = WebcamEnabledForManualRecording,
+                DeviceId = SelectedWebcamDevice?.DeviceId ?? string.Empty,
+                DisplayName = SelectedWebcamDevice?.DisplayName ?? string.Empty,
+                Width = WebcamWidth,
+                Height = WebcamHeight,
+                FramesPerSecond = WebcamFramesPerSecond,
+                VideoFormat = WebcamVideoFormat,
+                VideoBitrateKbps = WebcamVideoBitrateKbps,
+            },
             Highlight = _settings.Highlight with
             {
                 PostEventDelaySeconds = HighlightDelaySeconds,
@@ -182,17 +237,26 @@ public partial class SettingsViewModel : ObservableObject
             StartMinimized = StartMinimized,
         };
 
-        _settingsService.Save(updated);
+        try
+        {
+            _settingsService.Save(updated);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Settings could not be saved: {ex.Message}";
+            return;
+        }
+
+        StatusMessage = "Settings saved. Supported encoder, bitrate, replay duration and recording mode settings apply at the next automatic game start. Restart WatchDog for resolution/FPS, recording folder, file format, audio, camera, storage and manual recording changes. Camera access occurs only on a later explicit manual recording start.";
 
         // Apply startup registration when setting changes
         if (updated.StartWithWindows != _settings.StartWithWindows)
         {
             try { Services.StartupRegistration.SetStartWithWindows(updated.StartWithWindows); }
-            catch { StatusMessage = "Settings saved, but startup registration failed."; }
+            catch { StatusMessage += " Startup registration failed."; }
         }
 
-        _settings = updated;
-        StatusMessage = "Settings saved. Restart to apply capture changes.";
+        _settings = _settingsService.Load();
     }
 
     [RelayCommand]
@@ -223,12 +287,14 @@ public partial class SettingsViewModel : ObservableObject
         OutputHeight = settings.Capture.OutputHeight;
         Fps = settings.Capture.Fps;
         Encoder = settings.Capture.Encoder;
+        EncoderOptions = EncoderCapabilities.OptionsForSavedSelection(Encoder);
+        OnPropertyChanged(nameof(EncoderOptions));
         RateControl = settings.Capture.RateControl;
         Quality = settings.Capture.Quality;
         Bitrate = settings.Capture.Bitrate;
 
         // Load monitors
-        LoadMonitors(settings.Capture.MonitorIndex);
+        LoadMonitors(settings.Capture.MonitorIndex, settings.Capture.MonitorStableId);
 
         BufferSeconds = settings.Buffer.MaxSeconds;
         BufferMaxSizeMb = settings.Buffer.MaxSizeMb;
@@ -249,6 +315,14 @@ public partial class SettingsViewModel : ObservableObject
 
         // Load audio devices
         LoadAudioDevices(settings.Audio.DesktopDeviceId, settings.Audio.MicDeviceId);
+
+        WebcamEnabledForManualRecording = settings.Webcam.EnabledForExplicitManualRecording;
+        WebcamWidth = settings.Webcam.Width;
+        WebcamHeight = settings.Webcam.Height;
+        WebcamFramesPerSecond = settings.Webcam.FramesPerSecond;
+        WebcamVideoFormat = settings.Webcam.VideoFormat;
+        WebcamVideoBitrateKbps = settings.Webcam.VideoBitrateKbps;
+        LoadWebcamDevices(settings.Webcam.DeviceId, settings.Webcam.DisplayName);
 
         HighlightDelaySeconds = settings.Highlight.PostEventDelaySeconds;
         HighlightCooldownSeconds = settings.Highlight.CooldownSeconds;
@@ -271,6 +345,12 @@ public partial class SettingsViewModel : ObservableObject
     partial void OnSaveClipKeyChanged(int value) =>
         OnPropertyChanged(nameof(SaveClipHotkeyDisplay));
 
+    partial void OnEncoderChanged(EncoderType value) =>
+        OnPropertyChanged(nameof(EncoderSelectionStatus));
+
+    [RelayCommand]
+    private void SelectSoftwareEncoder() => Encoder = EncoderType.X264;
+
     partial void OnSaveClipModifiersChanged(uint value) =>
         OnPropertyChanged(nameof(SaveClipHotkeyDisplay));
 
@@ -287,36 +367,75 @@ public partial class SettingsViewModel : ObservableObject
                          SelectedMicDevice?.DeviceId ?? string.Empty);
     }
 
-    private void LoadMonitors(int selectedIndex)
+    private void LoadMonitors(int selectedIndex, string stableDisplayId)
     {
-        var screens = Screen.AllScreens;
-        var list = screens.Select((s, i) => new MonitorInfo(
-            Index: i,
-            DeviceName: s.DeviceName,
-            DisplayName: $"Monitor {i + 1}: {s.Bounds.Width}x{s.Bounds.Height}" +
-                         (s.Primary ? " (Primary)" : ""),
-            Width: s.Bounds.Width,
-            Height: s.Bounds.Height,
-            IsPrimary: s.Primary
-        )).ToList();
+        var list = new DisplayCaptureCatalog(_captureEngine).GetMonitorsOrThrow();
 
         Monitors = new ObservableCollection<MonitorInfo>(list);
-        SelectedMonitor = list.ElementAtOrDefault(selectedIndex) ?? list.FirstOrDefault();
+        SelectedMonitor = string.IsNullOrWhiteSpace(stableDisplayId)
+            ? list.ElementAtOrDefault(selectedIndex) ?? list.FirstOrDefault()
+            : list.FirstOrDefault(monitor => StringComparer.Ordinal.Equals(
+                monitor.StableDisplayId,
+                stableDisplayId));
     }
 
     private void LoadAudioDevices(string desktopDeviceId, string micDeviceId)
     {
         if (_audioDeviceEnumerator is null) return;
 
-        var outputs = _audioDeviceEnumerator.GetOutputDevices();
-        DesktopDevices = new ObservableCollection<AudioDeviceInfo>(outputs);
-        SelectedDesktopDevice = outputs.FirstOrDefault(d => d.DeviceId == desktopDeviceId)
-                                ?? outputs.FirstOrDefault(d => d.IsDefault);
+        var desktopSelection = AudioDeviceSelection.PreserveSavedSelection(
+            _audioDeviceEnumerator.GetOutputDevices(),
+            desktopDeviceId);
+        DesktopDevices = new ObservableCollection<AudioDeviceInfo>(desktopSelection.Devices);
+        SelectedDesktopDevice = desktopSelection.SelectedDevice;
 
-        var inputs = _audioDeviceEnumerator.GetInputDevices();
-        MicDevices = new ObservableCollection<AudioDeviceInfo>(inputs);
-        SelectedMicDevice = inputs.FirstOrDefault(d => d.DeviceId == micDeviceId)
-                            ?? inputs.FirstOrDefault(d => d.IsDefault);
+        var microphoneSelection = AudioDeviceSelection.PreserveSavedSelection(
+            _audioDeviceEnumerator.GetInputDevices(),
+            micDeviceId);
+        MicDevices = new ObservableCollection<AudioDeviceInfo>(microphoneSelection.Devices);
+        SelectedMicDevice = microphoneSelection.SelectedDevice;
+    }
+
+    [RelayCommand]
+    private void RefreshWebcamDevices()
+    {
+        LoadWebcamDevices(
+            SelectedWebcamDevice?.DeviceId ?? _settings.Webcam.DeviceId,
+            SelectedWebcamDevice?.DisplayName ?? _settings.Webcam.DisplayName);
+    }
+
+    private void LoadWebcamDevices(string savedDeviceId, string savedDisplayName)
+    {
+        if (_webcamDeviceEnumerator is null)
+            return;
+
+        try
+        {
+            var devices = _webcamDeviceEnumerator.GetPhysicalDevicesOrThrow().ToList();
+            var selected = devices.FirstOrDefault(device =>
+                StringComparer.Ordinal.Equals(device.DeviceId, savedDeviceId));
+            if (selected is null && !string.IsNullOrWhiteSpace(savedDeviceId))
+            {
+                selected = new WebcamDeviceInfo(
+                    savedDeviceId,
+                    string.IsNullOrWhiteSpace(savedDisplayName) ? "Saved webcam" : savedDisplayName);
+                devices.Add(selected);
+                WebcamSelectionStatus = $"Unavailable — {selected.DisplayName}. Reselect it if its device identity changed.";
+            }
+            else
+            {
+                WebcamSelectionStatus = selected is null
+                    ? "No webcam selected. Settings discovery does not open a camera."
+                    : "Selected device is available. It remains closed until an explicit manual recording starts.";
+            }
+
+            WebcamDevices = new ObservableCollection<WebcamDeviceInfo>(devices);
+            SelectedWebcamDevice = selected;
+        }
+        catch (Exception ex)
+        {
+            WebcamSelectionStatus = $"Webcam metadata could not be refreshed: {ex.Message}";
+        }
     }
 
     [RelayCommand]

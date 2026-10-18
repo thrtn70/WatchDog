@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using WatchDog.Core.Capture;
 using WatchDog.Core.Events;
+using WatchDog.Core.GameDetection;
 using WatchDog.Core.Highlights;
 using WatchDog.Core.Recording;
 using WatchDog.Core.Sessions;
@@ -17,11 +18,10 @@ namespace WatchDog.App.Services;
 /// </summary>
 public sealed class HighlightClipService : IHostedService, IDisposable
 {
-    private readonly ICaptureEngine _captureEngine;
-    private readonly IClipStorage _clipStorage;
+    private readonly CaptureLifecycleCoordinator _lifecycle;
+    private readonly ICompletedMediaIngestion _completedMedia;
     private readonly IEventBus _eventBus;
     private readonly HighlightDetectorRegistry _registry;
-    private readonly SessionManager _sessionManager;
     private readonly HighlightConfig _config;
     private readonly SessionRecordingConfig _recordingConfig;
     private readonly ILogger<HighlightClipService> _logger;
@@ -30,24 +30,29 @@ public sealed class HighlightClipService : IHostedService, IDisposable
     private IDisposable? _gameDetectedSub;
     private IDisposable? _gameExitedSub;
     private readonly SemaphoreSlim _saveLock = new(1, 1);
+    private readonly SemaphoreSlim _detectorReconcileGate = new(1, 1);
+    private readonly object _detectorStateSync = new();
+    private readonly object _pendingHighlightSync = new();
+    private readonly HashSet<Task> _pendingHighlightTasks = [];
+    private bool _stopping;
     private CancellationTokenSource? _cts;
+    private DetectorRequest? _desiredDetector;
+    private CaptureSessionContext? _activeDetectorContext;
     private DateTimeOffset _lastSaveTime = DateTimeOffset.MinValue;
 
     public HighlightClipService(
-        ICaptureEngine captureEngine,
-        IClipStorage clipStorage,
+        CaptureLifecycleCoordinator lifecycle,
+        ICompletedMediaIngestion completedMedia,
         IEventBus eventBus,
         HighlightDetectorRegistry registry,
-        SessionManager sessionManager,
         HighlightConfig config,
         SessionRecordingConfig recordingConfig,
         ILogger<HighlightClipService> logger)
     {
-        _captureEngine = captureEngine;
-        _clipStorage = clipStorage;
+        _lifecycle = lifecycle;
+        _completedMedia = completedMedia;
         _eventBus = eventBus;
         _registry = registry;
-        _sessionManager = sessionManager;
         _config = config;
         _recordingConfig = recordingConfig;
         _logger = logger;
@@ -63,6 +68,8 @@ public sealed class HighlightClipService : IHostedService, IDisposable
         }
 
         _cts = new CancellationTokenSource();
+        lock (_pendingHighlightSync)
+            _stopping = false;
 
         _highlightSub = _eventBus.Subscribe<HighlightDetectedEvent>(OnHighlightDetected);
         _gameDetectedSub = _eventBus.Subscribe<GameDetectedEvent>(OnGameDetected);
@@ -81,48 +88,151 @@ public sealed class HighlightClipService : IHostedService, IDisposable
         _highlightSub?.Dispose();
         _gameDetectedSub?.Dispose();
         _gameExitedSub?.Dispose();
+        lock (_pendingHighlightSync)
+            _stopping = true;
         _cts?.Cancel();
-        await _registry.StopActiveDetectorAsync(cancellationToken);
+        lock (_detectorStateSync)
+            _desiredDetector = null;
+        await ReconcileDetectorAsync();
+        Task[] pending;
+        lock (_pendingHighlightSync)
+            pending = [.. _pendingHighlightTasks];
+        if (pending.Length > 0)
+            await Task.WhenAll(pending).WaitAsync(cancellationToken);
     }
 
-    private async void OnGameDetected(GameDetectedEvent e)
+    private void OnGameDetected(GameDetectedEvent e)
     {
+        if (e.Context?.Request.StartPolicy is { Recording.IsHighlightModeEnabled: false })
+            return;
+        if (e.Context is null)
+        {
+            _logger.LogWarning("Ignoring unowned game-detected event for {Game}", e.Game.DisplayName);
+            return;
+        }
+
+        lock (_detectorStateSync)
+        {
+            var latestGeneration = Math.Max(
+                _desiredDetector?.Context.Generation ?? 0,
+                _activeDetectorContext?.Generation ?? 0);
+            if (e.Context.Generation >= latestGeneration)
+                _desiredDetector = new DetectorRequest(e.Context, e.Game);
+        }
+
+        _ = ReconcileDetectorAsync();
+    }
+
+    private void OnGameExited(GameExitedEvent e)
+    {
+        if (e.Context is null)
+            return;
+
+        lock (_detectorStateSync)
+        {
+            if (_desiredDetector?.Context == e.Context)
+                _desiredDetector = null;
+        }
+
+        _ = ReconcileDetectorAsync();
+    }
+
+    private async Task ReconcileDetectorAsync()
+    {
+        await _detectorReconcileGate.WaitAsync();
         try
         {
-            await _registry.StartDetectorForGameAsync(e.Game, _cts?.Token ?? default);
+            while (true)
+            {
+                DetectorRequest? desired;
+                CaptureSessionContext? active;
+                lock (_detectorStateSync)
+                {
+                    desired = _desiredDetector;
+                    active = _activeDetectorContext;
+                }
+
+                if (active == desired?.Context)
+                    return;
+
+                if (active is not null)
+                {
+                    await RotateHighlightCancellationAsync();
+                    try
+                    {
+                        await _registry.StopActiveDetectorAsync();
+                    }
+                    finally
+                    {
+                        lock (_detectorStateSync)
+                        {
+                            if (_activeDetectorContext == active)
+                                _activeDetectorContext = null;
+                        }
+                    }
+                    continue;
+                }
+
+                if (desired is null)
+                    return;
+
+                await _registry.StartDetectorForGameAsync(
+                    desired.Game,
+                    desired.Context,
+                    _cts?.Token ?? default);
+                lock (_detectorStateSync)
+                    _activeDetectorContext = desired.Context;
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to start highlight detector for {Game}", e.Game.DisplayName);
+            _logger.LogError(ex, "Failed to reconcile highlight detector ownership");
+        }
+        finally
+        {
+            _detectorReconcileGate.Release();
         }
     }
 
-    private async void OnGameExited(GameExitedEvent e)
+    private async Task RotateHighlightCancellationAsync()
     {
+        await _saveLock.WaitAsync();
         try
         {
-            // Cancel pending saves and replace CTS under lock
-            await _saveLock.WaitAsync();
-            try
-            {
-                _cts?.Cancel();
-                _cts?.Dispose();
-                _cts = new CancellationTokenSource();
-            }
-            finally
-            {
-                _saveLock.Release();
-            }
-
-            await _registry.StopActiveDetectorAsync();
+            _cts?.Cancel();
+            _cts?.Dispose();
+            _cts = new CancellationTokenSource();
         }
-        catch (Exception ex)
+        finally
         {
-            _logger.LogError(ex, "Failed to stop highlight detector for {Game}", e.Game.DisplayName);
+            _saveLock.Release();
         }
     }
 
-    private async void OnHighlightDetected(HighlightDetectedEvent e)
+    private void OnHighlightDetected(HighlightDetectedEvent e)
+    {
+        if (e.Context?.Request.StartPolicy is { Recording.IsHighlightModeEnabled: false })
+            return;
+        lock (_pendingHighlightSync)
+        {
+            if (_stopping) return;
+            var task = HandleHighlightDetectedAsync(e);
+            _pendingHighlightTasks.Add(task);
+            _ = ObserveHighlightTaskAsync(task);
+        }
+    }
+
+    private async Task ObserveHighlightTaskAsync(Task task)
+    {
+        try { await task; }
+        finally
+        {
+            lock (_pendingHighlightSync)
+                _pendingHighlightTasks.Remove(task);
+        }
+    }
+
+    private async Task HandleHighlightDetectedAsync(HighlightDetectedEvent e)
     {
         try
         {
@@ -134,6 +244,20 @@ public sealed class HighlightClipService : IHostedService, IDisposable
             if (!_config.EnabledTypes.Contains(e.Type))
             {
                 _logger.LogDebug("Ignoring highlight type {Type} (not in enabled set)", e.Type);
+                return;
+            }
+
+            var detectedSnapshot = _lifecycle.Snapshot;
+            var detectedContext = detectedSnapshot.Context;
+            if (detectedSnapshot.Status != CaptureLifecycleStatus.Active ||
+                detectedContext?.RequestedTarget is not GameCaptureTarget detectedGame ||
+                e.Context != detectedContext ||
+                !GameProcessIdentity.Matches(e.Game, detectedGame))
+            {
+                _logger.LogWarning(
+                    "Ignoring highlight for {Game} PID {Pid}; it does not match the active game capture context",
+                    e.Game.DisplayName,
+                    e.Game.ProcessId);
                 return;
             }
 
@@ -166,26 +290,48 @@ public sealed class HighlightClipService : IHostedService, IDisposable
             await Task.Delay(_config.PostEventDelaySeconds * 1000, ct);
 
             // Save the replay buffer
-            if (_captureEngine.State != CaptureState.Buffering)
+            var snapshot = _lifecycle.Snapshot;
+            if (snapshot.Status != CaptureLifecycleStatus.Active ||
+                snapshot.Context is null ||
+                snapshot.Context != detectedContext)
             {
-                _logger.LogWarning("Cannot save highlight — capture not in buffering state");
+                _logger.LogWarning("Cannot save highlight — its capture context is no longer active");
                 return;
             }
 
-            var path = await _captureEngine.SaveReplayAsync(ct);
-            if (path is null)
+            var saveResult = await _lifecycle.SaveAsync(detectedContext, ct);
+            if (saveResult.OutputPath is null || saveResult.Receipt is null)
             {
-                _logger.LogWarning("Highlight save returned null path");
+                _logger.LogWarning(
+                    "Highlight save failed: {Code} — {Message}",
+                    saveResult.Failure?.Code,
+                    saveResult.Failure?.Message);
                 return;
             }
+            var path = saveResult.OutputPath;
 
-            // Index with highlight metadata and session context
-            var sessionId = _sessionManager.CurrentSessionId;
-            var currentSession = _sessionManager.CurrentSession;
-            var matchNumber = currentSession?.Matches.Count > 0
-                ? currentSession.Matches[^1].MatchNumber
-                : (int?)null;
-            await _clipStorage.IndexClipAsync(path, e.Game.DisplayName, e.Type, sessionId, matchNumber, ct);
+            // Enrich the exact receipt durably accepted by the save backend. Reconstructing
+            // session/match data here would race later session state.
+            var enrichment = await _completedMedia.EnrichAsync(
+                saveResult.Receipt,
+                e.Type,
+                ct);
+            if (!enrichment.Indexed)
+            {
+                _logger.LogWarning(
+                    "Highlight metadata for {Path} is pending retry: {Failure}",
+                    Path.GetFileName(path),
+                    enrichment.FailureMessage);
+                return;
+            }
+            if (!saveResult.Saved)
+            {
+                _logger.LogWarning(
+                    "Highlight media was retained and classified, but its original save remains degraded: {Code} — {Message}",
+                    saveResult.Failure?.Code,
+                    saveResult.Failure?.Message);
+                return;
+            }
             _logger.LogInformation("Highlight clip saved: {Type} — {Path}", e.Type, Path.GetFileName(path));
         }
         catch (OperationCanceledException)
@@ -205,5 +351,8 @@ public sealed class HighlightClipService : IHostedService, IDisposable
         _gameExitedSub?.Dispose();
         _cts?.Dispose();
         _saveLock.Dispose();
+        _detectorReconcileGate.Dispose();
     }
+
+    private sealed record DetectorRequest(CaptureSessionContext Context, GameInfo Game);
 }

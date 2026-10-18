@@ -6,7 +6,7 @@
         Topmost="True"
         ShowInTaskbar="False"
         ResizeMode="NoResize"
-        Width="360" Height="400"
+        Width="360" Height="470"
         Background="Transparent"
         Deactivated="OnDeactivated">
 
@@ -26,6 +26,7 @@
                                VerticalAlignment="Center"/>
                     <Button DockPanel.Dock="Right" Content="Refresh"
                             x:Name="RefreshButton"
+                            IsEnabled="{Binding CanSelectWindow}"
                             HorizontalAlignment="Right"
                             Padding="10,4"
                             FontSize="11"
@@ -39,8 +40,32 @@
 
             <Border DockPanel.Dock="Top" Height="1" Background="{StaticResource Surface1Brush}"/>
 
+            <Border DockPanel.Dock="Bottom" Padding="14,10"
+                    BorderBrush="{StaticResource Surface1Brush}" BorderThickness="0,1,0,0">
+                <StackPanel>
+                    <TextBlock Text="{Binding OwnedCaptureTitle}"
+                               FontFamily="{StaticResource UIFont}"
+                               FontSize="12" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextBrush}"
+                               TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding StatusText}"
+                               FontFamily="{StaticResource UIFont}"
+                               FontSize="11" TextWrapping="Wrap"
+                               Foreground="{StaticResource SubtextBrush}"
+                               Margin="0,4,0,8"
+                               AutomationProperties.LiveSetting="Polite"/>
+                    <Button Content="Stop selected window capture"
+                            Command="{Binding StopCaptureCommand}"
+                            IsEnabled="{Binding CanRequestStop}"
+                            AutomationProperties.Name="Stop selected window capture"
+                            Padding="10,5"
+                            HorizontalAlignment="Left"/>
+                </StackPanel>
+            </Border>
+
             <!-- Window list -->
             <ListBox x:Name="WindowList"
+                     IsEnabled="{Binding CanSelectWindow}"
                      Background="Transparent"
                      BorderThickness="0"
                      Padding="4"

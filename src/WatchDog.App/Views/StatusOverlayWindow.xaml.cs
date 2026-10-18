@@ -1,5 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Automation.Peers;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Interop;
 using WatchDog.Core.Settings;
@@ -84,6 +86,14 @@ public partial class StatusOverlayWindow : Window
                     Left = workArea.Left + 12;
             }, System.Windows.Threading.DispatcherPriority.Loaded);
         }
+    }
+
+    private void OnStatusTargetUpdated(object sender, DataTransferEventArgs e)
+    {
+        if (sender is not UIElement element) return;
+        var peer = UIElementAutomationPeer.FromElement(element) ??
+                   UIElementAutomationPeer.CreatePeerForElement(element);
+        peer?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
     }
 
     private void SetClickThrough(bool enable)

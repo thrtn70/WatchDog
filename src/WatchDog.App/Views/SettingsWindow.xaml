@@ -122,10 +122,22 @@
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                         <TextBlock Text="Encoder:" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                        <ComboBox ItemsSource="{Binding Source={x:Static helpers:EnumHelper.EncoderTypes}}"
-                                  SelectedItem="{Binding Encoder}" Width="140"
-                                  AutomationProperties.Name="Encoder type"/>
+                        <ComboBox ItemsSource="{Binding EncoderOptions}"
+                                  SelectedValuePath="Encoder" DisplayMemberPath="Label"
+                                  SelectedValue="{Binding Encoder}" Width="260"
+                                  AutomationProperties.Name="Encoder type">
+                            <ComboBox.ItemContainerStyle>
+                                <Style TargetType="ComboBoxItem">
+                                    <Setter Property="IsEnabled" Value="{Binding IsImplemented}"/>
+                                </Style>
+                            </ComboBox.ItemContainerStyle>
+                        </ComboBox>
                     </StackPanel>
+                    <TextBlock Text="{Binding EncoderSelectionStatus}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                    <Button Content="Choose x264 software encoding" Command="{Binding SelectSoftwareEncoderCommand}"
+                            HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <TextBlock Text="{Binding EncoderOutputBehavior}" TextWrapping="Wrap"
+                               Foreground="{StaticResource SubtextBrush}" Margin="0,0,0,12"/>
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
                         <TextBlock Text="Quality (CQP):" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="Constant quality parameter. Lower = better quality, larger files. Recommended: 18-23 for NVENC, 20-28 for x264."/>
@@ -157,6 +169,22 @@
                         <TextBox Text="{Binding MaxDurationMinutes}" Width="48" PreviewTextInput="NumericOnly_PreviewTextInput"
                                  AutomationProperties.Name="Max duration minutes"/>
                     </StackPanel>
+
+                    <TextBlock Text="Recording health" FontWeight="SemiBold" Margin="0,16,0,4"/>
+                    <TextBlock Text="{Binding SessionSegmentLivenessStatusText, Mode=OneTime}"
+                               TextWrapping="Wrap" FontSize="11" Margin="0,0,0,4"
+                               AutomationProperties.Name="{Binding SessionSegmentLivenessStatusText, StringFormat='Recording health: {0}'}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{StaticResource SubtextBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SessionSegmentLivenessStatusIsWarning, Mode=OneTime}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource WarningBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                 </StackPanel>
             </TabItem>
 
@@ -198,7 +226,69 @@
                                 AutomationProperties.Name="Microphone volume"/>
                     </StackPanel>
 
-                    <CheckBox Content="Separate audio tracks (mic on track 2)" IsChecked="{Binding SeparateAudioTracks}"/>
+                    <CheckBox Content="Separate tracks (desktop on track 1, microphone on track 2)" IsChecked="{Binding SeparateAudioTracks}"/>
+                </StackPanel>
+            </TabItem>
+
+            <!-- Camera discovery is metadata-only. No preview or source is created in settings. -->
+            <TabItem Header="Camera" Style="{StaticResource SettingsTab}">
+                <StackPanel>
+                    <TextBlock Text="Camera" Style="{StaticResource Heading2}" Margin="0,0,0,12"/>
+                    <CheckBox Content="Include camera in explicit manual recordings"
+                              IsChecked="{Binding WebcamEnabledForManualRecording}"
+                              Margin="0,0,0,8"
+                              AutomationProperties.Name="Enable camera for manual recordings"/>
+                    <TextBlock Text="This saved preference never opens the camera during startup, automatic game capture, replay buffering, settings, or device refresh. A camera is opened only when you explicitly start a manual recording."
+                               TextWrapping="Wrap" Foreground="{StaticResource SubtextBrush}"
+                               Margin="0,0,0,12" FontSize="11"/>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <TextBlock Text="Physical device:" VerticalAlignment="Center" Width="96"/>
+                        <ComboBox ItemsSource="{Binding WebcamDevices}"
+                                  SelectedItem="{Binding SelectedWebcamDevice}"
+                                  DisplayMemberPath="DisplayName" Width="248"
+                                  AutomationProperties.Name="Physical webcam device"/>
+                        <Button Content="&#x21BB;" Command="{Binding RefreshWebcamDevicesCommand}"
+                                Margin="4,0,0,0" ToolTip="Refresh metadata without opening a camera"
+                                Padding="8,4" FontSize="14"
+                                AutomationProperties.Name="Refresh webcam metadata"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding WebcamSelectionStatus}" TextWrapping="Wrap"
+                               Foreground="{StaticResource SubtextBrush}" Margin="96,0,0,12" FontSize="11"/>
+
+                    <Grid Margin="0,0,0,8" IsEnabled="{Binding WebcamEnabledForManualRecording}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="64"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="64"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="52"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Width:" VerticalAlignment="Center" Grid.Column="0" Margin="0,0,8,0"/>
+                        <TextBox Text="{Binding WebcamWidth}" Grid.Column="1" PreviewTextInput="NumericOnly_PreviewTextInput"
+                                 AutomationProperties.Name="Camera width"/>
+                        <TextBlock Text="Height:" VerticalAlignment="Center" Grid.Column="2" Margin="12,0,8,0"/>
+                        <TextBox Text="{Binding WebcamHeight}" Grid.Column="3" PreviewTextInput="NumericOnly_PreviewTextInput"
+                                 AutomationProperties.Name="Camera height"/>
+                        <TextBlock Text="FPS:" VerticalAlignment="Center" Grid.Column="4" Margin="12,0,8,0"/>
+                        <TextBox Text="{Binding WebcamFramesPerSecond}" Grid.Column="5" PreviewTextInput="NumericOnly_PreviewTextInput"
+                                 AutomationProperties.Name="Camera frames per second"/>
+                    </Grid>
+
+                    <StackPanel Orientation="Horizontal" IsEnabled="{Binding WebcamEnabledForManualRecording}">
+                        <TextBlock Text="Format:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBox Text="{Binding WebcamVideoFormat}" Width="80"
+                                 AutomationProperties.Name="Camera video format"/>
+                        <TextBlock Text="Bitrate (kbps):" VerticalAlignment="Center" Margin="16,0,8,0"/>
+                        <TextBox Text="{Binding WebcamVideoBitrateKbps}" Width="72"
+                                 PreviewTextInput="NumericOnly_PreviewTextInput"
+                                 AutomationProperties.Name="Camera bitrate kilobits per second"/>
+                    </StackPanel>
+
+                    <TextBlock Text="Camera video is retained as an independent file with no camera audio. Desktop and USB microphone routing stay in the screen recording."
+                               TextWrapping="Wrap" Foreground="{StaticResource SubtextBrush}"
+                               Margin="0,16,0,0" FontSize="11"/>
                 </StackPanel>
             </TabItem>
 
@@ -409,12 +499,14 @@
                             </TextBlock>
 
                             <!-- Recording Mode -->
+                            <CheckBox Content="Auto Record this executable at its next start" IsChecked="{Binding AutoRecord}"
+                                      Margin="0,0,0,8"/>
                             <TextBlock Text="Recording Mode" FontWeight="SemiBold"
                                        FontSize="12" Margin="0,0,0,8"/>
                             <StackPanel Margin="0,0,0,16">
-                                <RadioButton Content="Highlight (auto-clip on events)"
+                                <RadioButton Content="Highlight (saved value; next-start application unsupported)"
                                              IsChecked="{Binding SelectedMode, Converter={StaticResource EnumBoolConverter}, ConverterParameter=Highlight}"
-                                             IsEnabled="{Binding SelectedGame.SupportsHighlights}"
+                                             IsEnabled="False"
                                              Foreground="{StaticResource TextBrush}"
                                              FontSize="12" Margin="0,2"/>
                                 <RadioButton Content="Session Recording (full capture)"
@@ -430,6 +522,8 @@
                             <!-- Highlight Sensitivity -->
                             <TextBlock Text="Highlight Sensitivity" FontWeight="SemiBold"
                                        FontSize="12" Margin="0,0,0,4"/>
+                            <CheckBox Content="Clear sensitivity override (per-game sensitivity is unsupported)"
+                                      IsChecked="{Binding UseDefaultHighlightSensitivity}" Margin="0,0,0,8"/>
                             <DockPanel Margin="0,0,0,16">
                                 <TextBlock DockPanel.Dock="Left" Text="More clips"
                                            FontSize="10" Foreground="{StaticResource SubtextBrush}"
@@ -454,6 +548,7 @@
                                 <Button Content="Reset to Default"
                                         Command="{Binding ResetProfileCommand}"/>
                             </StackPanel>
+                            <TextBlock Text="{Binding ProfileStatus}" TextWrapping="Wrap" Margin="0,8,0,0"/>
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>
@@ -465,9 +560,13 @@
                 BorderBrush="{StaticResource Surface1Brush}" BorderThickness="0,1,0,0"
                 Padding="16,8">
             <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
                 <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center"
-                           Foreground="{StaticResource SuccessBrush}" FontStyle="Italic"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                           TextWrapping="Wrap" Margin="0,0,12,0" FontStyle="Italic"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Content="Reset Defaults" Command="{Binding ResetCommand}"
                             Margin="0,0,8,0"/>
                     <Button Content="Save" Command="{Binding SaveCommand}"

@@ -6,7 +6,7 @@ namespace WatchDog.App.Helpers;
 
 public static class EnumHelper
 {
-    public static EncoderType[] EncoderTypes { get; } = Enum.GetValues<EncoderType>();
+    public static EncoderType[] EncoderTypes { get; } = EncoderCapabilities.ImplementedOptions.Select(option => option.Encoder).ToArray();
     public static RateControlType[] RateControlTypes { get; } = Enum.GetValues<RateControlType>();
     public static RecordingMode[] RecordingModes { get; } = Enum.GetValues<RecordingMode>();
     public static ClipSortMode[] ClipSortModes { get; } = Enum.GetValues<ClipSortMode>();

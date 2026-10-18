@@ -22,12 +22,19 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 {
     private readonly IClipStorage _clipStorage;
     private readonly IClipEditor _clipEditorService;
+    private readonly IClipExportCoordinator _clipExports;
     private readonly ICaptureEngine _captureEngine;
+    private readonly CaptureLifecycleCoordinator _captureLifecycle;
     private readonly ISessionRepository _sessionRepository;
-    private readonly SessionManager _sessionManager;
+    private readonly ICompletedMediaIngestion _completedMedia;
+    private readonly IStorageSafetyMonitor _storageSafety;
     private readonly int _maxStorageGb;
     private readonly IDisposable _clipSavedSub;
+    private readonly IDisposable _automaticPolicySub;
+    private readonly Action<CompletedMediaIngestionStatus> _ingestionStatusHandler;
+    private readonly Action<StorageSafetyStatus> _storageStatusHandler;
     private readonly Action<CaptureState> _stateChangedHandler;
+    private readonly Action<CaptureLifecycleSnapshot> _lifecycleSnapshotHandler;
     private volatile bool _disposed;
 
     // Session-grouped view
@@ -66,6 +73,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     // Status
     [ObservableProperty] private string _statusText = string.Empty;
+    [ObservableProperty] private string _lastExportStatusText = string.Empty;
     [ObservableProperty] private string _captureStatusText = "Idle";
     [ObservableProperty] private bool _isScanning;
     [ObservableProperty] private bool _isRecording;
@@ -108,10 +116,13 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public MainWindowViewModel(
         IClipStorage clipStorage,
         IClipEditor clipEditor,
+        IClipExportCoordinator clipExports,
         ICaptureEngine captureEngine,
+        CaptureLifecycleCoordinator captureLifecycle,
         IEventBus eventBus,
         ISessionRepository sessionRepository,
-        SessionManager sessionManager,
+        ICompletedMediaIngestion completedMedia,
+        IStorageSafetyMonitor storageSafety,
         Core.Storage.StorageConfig storageConfig,
         AudioMixerViewModel? audioMixer = null,
         PerformanceViewModel? performance = null)
@@ -120,34 +131,36 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         Performance = performance;
         _clipStorage = clipStorage;
         _clipEditorService = clipEditor;
+        _clipExports = clipExports;
         _captureEngine = captureEngine;
+        _captureLifecycle = captureLifecycle;
         _sessionRepository = sessionRepository;
-        _sessionManager = sessionManager;
+        _completedMedia = completedMedia;
+        _storageSafety = storageSafety;
         _maxStorageGb = storageConfig.MaxStorageGb;
 
-        _clipSavedSub = eventBus.Subscribe<ClipSavedEvent>(e =>
-        {
-            Task.Run(async () =>
-            {
-                try
-                {
-                    // Use session context from the event if available, otherwise look up current session
-                    var sessionId = e.SessionId ?? _sessionManager.CurrentSessionId;
-                    var matchNumber = e.MatchNumber;
-                    await _clipStorage.IndexClipAsync(e.FilePath, e.Game?.DisplayName,
-                        highlightType: null, sessionId, matchNumber);
-                }
-                catch { /* already indexed or missing file */ }
+        _clipSavedSub = eventBus.Subscribe<ClipSavedEvent>(_ =>
+            Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(RefreshClips)));
+        _automaticPolicySub = eventBus.Subscribe<AutomaticCapturePolicyDecisionEvent>(decision =>
+            Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() =>
+                StatusText = $"{decision.Target.DisplayName ?? decision.Target.ExecutableName}: {decision.Decision.Message}")));
+        _ingestionStatusHandler = _ =>
+            Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(RefreshClips));
+        _completedMedia.StatusChanged += _ingestionStatusHandler;
+        _storageStatusHandler = _ =>
+            Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(UpdateStorageStatus));
+        _storageSafety.StatusChanged += _storageStatusHandler;
 
-                Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(RefreshClips));
-            });
-        });
-
-        _stateChangedHandler = state =>
-            Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() => UpdateCaptureStatus(state)));
+        _stateChangedHandler = _ =>
+            Application.Current?.Dispatcher.InvokeAsync(() =>
+                PostToUi(() => UpdateLifecycleStatus(_captureLifecycle.Snapshot)));
         captureEngine.StateChanged += _stateChangedHandler;
 
         InitializeStatusBarBrushes();
+        _lifecycleSnapshotHandler = snapshot =>
+            Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() => UpdateLifecycleStatus(snapshot)));
+        _captureLifecycle.SnapshotChanged += _lifecycleSnapshotHandler;
+        UpdateLifecycleStatus(_captureLifecycle.Snapshot);
     }
 
     private void InitializeStatusBarBrushes()
@@ -168,33 +181,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         StorageTextBrush = _subtextBrush;
     }
 
-    private bool _initialScanDone;
-
     [RelayCommand]
     private void RefreshClips()
     {
-        if (!_initialScanDone)
-        {
-            _initialScanDone = true;
-            IsScanning = true;
-            Task.Run(async () =>
-            {
-                try
-                {
-                    await _clipStorage.ScanAndIndexAsync();
-                }
-                catch { /* scan failure is non-fatal */ }
-                finally
-                {
-                    Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(() =>
-                    {
-                        IsScanning = false;
-                        RefreshClips();
-                    }));
-                }
-            });
-        }
-
         // Load session groups
         LoadSessionGroups();
 
@@ -251,8 +240,19 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             _ => filtered.OrderByDescending(c => c.CreatedAt),
         };
 
-        Clips = new ObservableCollection<ClipItemViewModel>(
-            sorted.Select(c => new ClipItemViewModel(c)));
+        var selected = SelectedClip;
+        var selectedReused = false;
+        var refreshed = sorted.Select(c =>
+        {
+            if (!selectedReused && selected is not null && CanReuseSelectedClip(selected.Metadata, c))
+            {
+                selectedReused = true;
+                return selected;
+            }
+            return new ClipItemViewModel(c);
+        }).ToList();
+        if (!ReconcileClipsPreservingSelection(Clips, refreshed, selected))
+            Clips = new ObservableCollection<ClipItemViewModel>(refreshed);
 
         // Reset batch selection
         SelectedClipCount = 0;
@@ -269,7 +269,61 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         var totalSize = allClips.Sum(c => c.FileSizeBytes);
         var sizeMb = totalSize / (1024.0 * 1024.0);
-        StatusText = $"{allClips.Count} clips ({sizeMb:F0} MB)";
+        var ingestion = _completedMedia.Status;
+        StatusText = ingestion.NeedsAttention
+            ? $"{allClips.Count} clips ({sizeMb:F0} MB) • " +
+              $"{ingestion.PendingRetryCount + ingestion.UnattributedCount} need attention"
+            : $"{allClips.Count} clips ({sizeMb:F0} MB)";
+    }
+
+    internal static bool CanReuseSelectedClip(ClipMetadata previous, ClipMetadata current) =>
+        string.Equals(previous.FilePath, current.FilePath, StringComparison.OrdinalIgnoreCase) &&
+        previous.FileName == current.FileName &&
+        previous.GameName == current.GameName &&
+        previous.CreatedAt == current.CreatedAt &&
+        previous.Duration == current.Duration &&
+        previous.FileSizeBytes == current.FileSizeBytes &&
+        previous.ThumbnailPath == current.ThumbnailPath &&
+        previous.IsFavorite == current.IsFavorite &&
+        previous.HighlightType == current.HighlightType &&
+        previous.HighlightSource == current.HighlightSource &&
+        previous.SessionId == current.SessionId &&
+        previous.CaptureRequestId == current.CaptureRequestId &&
+        previous.CaptureGeneration == current.CaptureGeneration &&
+        previous.MatchNumber == current.MatchNumber &&
+        previous.Tags.SequenceEqual(current.Tags);
+
+    internal static bool ReconcileClipsPreservingSelection(
+        ObservableCollection<ClipItemViewModel> clips,
+        IReadOnlyList<ClipItemViewModel> refreshed,
+        ClipItemViewModel? selected)
+    {
+        if (selected is null || !clips.Contains(selected)) return false;
+        var selectedIndex = -1;
+        for (var index = 0; index < refreshed.Count; index++)
+        {
+            if (ReferenceEquals(refreshed[index], selected))
+            {
+                selectedIndex = index;
+                break;
+            }
+        }
+        if (selectedIndex < 0) return false;
+
+        // Keep the selected item in the bound collection throughout refresh. Removing it
+        // would retire the editor while completed-media ingestion is still returning.
+        while (clips.Count < refreshed.Count)
+            clips.Add(new ClipItemViewModel(refreshed[clips.Count].Metadata));
+        clips.Move(clips.IndexOf(selected), selectedIndex);
+        for (var index = 0; index < refreshed.Count; index++)
+        {
+            if (index != selectedIndex)
+                clips[index] = refreshed[index];
+        }
+        while (clips.Count > refreshed.Count)
+            clips.RemoveAt(clips.Count - 1);
+        selected.IsSelected = false;
+        return true;
     }
 
     private void LoadSessionGroups()
@@ -436,15 +490,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     partial void OnSelectedClipChanged(ClipItemViewModel? value)
     {
+        ClipEditor?.Retire();
         if (value is not null)
         {
-            ClipEditor = CreateClipEditor();
-            _ = ClipEditor.LoadClipAsync(value.FilePath, value.GameName)
-                .ContinueWith(t =>
-                {
-                    if (t.IsFaulted)
-                        System.Diagnostics.Trace.TraceError($"Clip load failed: {t.Exception?.InnerException?.Message}");
-                }, TaskContinuationOptions.OnlyOnFaulted);
+            var editor = CreateClipEditor();
+            ClipEditor = editor;
+            _ = editor.LoadClipAsync(value.Metadata);
         }
         else
         {
@@ -452,7 +503,30 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
     }
 
-    private ClipEditorViewModel CreateClipEditor() => new(_clipEditorService, _clipStorage);
+    private ClipEditorViewModel CreateClipEditor() =>
+        new(_clipEditorService, _clipExports, ReportExportOutcome);
+
+    private void ReportExportOutcome(ClipMetadata source, ClipExportResult result)
+    {
+        if (_disposed) return;
+        LastExportStatusText = FormatExportOutcome(source, result);
+    }
+
+    internal static string FormatExportOutcome(ClipMetadata source, ClipExportResult result)
+    {
+        var sourceName = Path.GetFileName(source.FileName);
+        if (string.IsNullOrWhiteSpace(sourceName)) sourceName = "source clip";
+        var outputName = Path.GetFileName(result.OutputPath);
+        if (string.IsNullOrWhiteSpace(outputName)) outputName = "derived clip";
+        return result.IngestionDisposition switch
+        {
+            CompletedMediaIngestionDisposition.Indexed =>
+                $"{sourceName} → {outputName}: exported and indexed in the library.",
+            CompletedMediaIngestionDisposition.PendingRetry =>
+                $"{sourceName} → {outputName}: exported; library indexing pending retry.",
+            _ => $"{sourceName} → {outputName}: exported; library indexing rejected.",
+        };
+    }
 
     [RelayCommand]
     private void PlayClip(ClipItemViewModel clip)
@@ -499,7 +573,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void ToggleFavorite(ClipItemViewModel clip)
     {
-        _clipStorage.ToggleFavorite(clip.FilePath);
+        try { _clipStorage.ToggleFavorite(clip.FilePath); }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Favorite was not saved. Check the recording drive and free space, then retry.\n\n{ex.Message}",
+                "Library Update Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
         RefreshClips();
     }
 
@@ -575,7 +654,13 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         var selected = Clips.Where(c => c.IsSelected).ToList();
         foreach (var clip in selected)
         {
-            _clipStorage.AddTags(clip.FilePath, [trimmed]);
+            try { _clipStorage.AddTags(clip.FilePath, [trimmed]); }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Tagging stopped at {clip.FileName}. Earlier changes were saved. Check the recording drive and free space, then retry.\n\n{ex.Message}",
+                    "Library Update Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                break;
+            }
         }
 
         RefreshClips();
@@ -675,7 +760,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         };
 
         // Status bar indicators (use cached brushes — no FindResource per call)
-        var isBuffering = state is CaptureState.Buffering or CaptureState.Saving;
+        var isBuffering = _captureEngine.IsReplayBufferActive;
 
         // Buffer state
         BufferStatusText = isBuffering ? "Buffer ON" : "Buffer OFF";
@@ -718,12 +803,34 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         UpdateStorageStatus();
     }
 
+    private void UpdateLifecycleStatus(CaptureLifecycleSnapshot snapshot)
+    {
+        var warning = CaptureStatusPresentation.Warning(snapshot);
+        if (warning is not null)
+        {
+            CaptureStatusText = warning.MainWindowText;
+            IsRecording = snapshot.Context is not null &&
+                          snapshot.Status is CaptureLifecycleStatus.Active or CaptureLifecycleStatus.Saving;
+            return;
+        }
+
+        UpdateCaptureStatus(_captureEngine.State);
+    }
+
     private void UpdateStorageStatus()
     {
         try
         {
+            var safety = _storageSafety.Status;
+            if (safety.IsPressure)
+            {
+                StorageText = safety.Message;
+                StorageTextBrush = _dangerBrush;
+                return;
+            }
+
             var clips = _clipStorage.GetAllClips();
-            var totalBytes = clips.Sum(c => c.FileSizeBytes);
+            var totalBytes = safety.LastCleanup?.TotalTrackedBytes ?? clips.Sum(c => c.FileSizeBytes);
             var totalGb = totalBytes / (1024.0 * 1024.0 * 1024.0);
             var maxGb = _maxStorageGb;
             var usagePercent = maxGb > 0 ? totalGb / maxGb * 100 : 0;
@@ -777,14 +884,19 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 return;
             }
 
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = resolvedInstaller,
-                UseShellExecute = true,
-                Arguments = "/SILENT /NORESTART",
-            })?.Dispose();
+            if (Application.Current is not App app)
+                throw new InvalidOperationException("Application shutdown is unavailable.");
 
-            Application.Current.Shutdown(0);
+            await app.RequestShutdownAsync(0, () =>
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = resolvedInstaller,
+                    UseShellExecute = true,
+                    Arguments = "/SILENT /NORESTART",
+                })?.Dispose();
+                return Task.CompletedTask;
+            });
         }
         catch (Exception ex)
         {
@@ -819,8 +931,13 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        ClipEditor?.Retire();
         _captureEngine.StateChanged -= _stateChangedHandler;
+        _captureLifecycle.SnapshotChanged -= _lifecycleSnapshotHandler;
+        _completedMedia.StatusChanged -= _ingestionStatusHandler;
+        _storageSafety.StatusChanged -= _storageStatusHandler;
         _clipSavedSub.Dispose();
+        _automaticPolicySub.Dispose();
         _disposed = true;
     }
 }
