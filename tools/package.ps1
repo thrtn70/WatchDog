@@ -7,15 +7,23 @@
     FFmpeg, and .NET runtime bundled. Creates both a portable ZIP and an
     Inno Setup installer (if ISCC.exe is available).
 
+    With -Tag, also writes the signed update manifest next to the installer
+    (tools/sign-update-manifest.ps1). That needs the signing key in the
+    WATCHDOG_UPDATE_SIGNING_KEY environment variable; the in-app updater
+    refuses an installer without a signed manifest.
+
 .EXAMPLE
     .\package.ps1
     .\package.ps1 -Configuration Release
     .\package.ps1 -SkipInstaller
+    .\package.ps1 -Tag v1.4.0-rc.1
 #>
 
 param(
     [string]$Configuration = "Release",
-    [switch]$SkipInstaller
+    [switch]$SkipInstaller,
+    # Release tag to sign the update manifest for (for example v1.4.0 or v1.4.0-rc.1).
+    [string]$Tag
 )
 
 $ErrorActionPreference = "Stop"
@@ -39,6 +47,19 @@ if (-not $AppVersion) {
 }
 Write-Host "Version: $AppVersion" -ForegroundColor Green
 Write-Host ""
+
+# ── Signing preflight (fail before the long publish) ─────────────
+if ($Tag) {
+    if ($SkipInstaller) {
+        throw "-Tag signs the installer's update manifest; it cannot be combined with -SkipInstaller."
+    }
+    if ($Tag -cnotmatch "\Av$([regex]::Escape($AppVersion))(-[0-9A-Za-z.-]{1,32})?\z") {
+        throw "Tag '$Tag' does not match Directory.Build.props Version $AppVersion (expected v$AppVersion or v$AppVersion-<suffix>)."
+    }
+    if ([string]::IsNullOrWhiteSpace($env:WATCHDOG_UPDATE_SIGNING_KEY)) {
+        throw "WATCHDOG_UPDATE_SIGNING_KEY is not set; cannot sign the update manifest for $Tag."
+    }
+}
 
 # ── Clean ────────────────────────────────────────────────────────
 if (Test-Path $PublishDir) {
@@ -74,7 +95,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # ── Verify key files ─────────────────────────────────────────────
-$requiredFiles = @("WatchDog.App.exe", "obs.dll", "data", "obs-plugins", "ffmpeg/ffmpeg.exe", "ffmpeg/ffprobe.exe")
+$requiredFiles = @("WatchDog.App.exe", "obs.dll", "data", "obs-plugins", "ffmpeg/ffmpeg.exe", "ffmpeg/ffprobe.exe", "LICENSE", "NOTICE")
 foreach ($file in $requiredFiles) {
     $path = Join-Path $PublishDir $file
     if (-not (Test-Path $path)) {
@@ -134,6 +155,15 @@ if (-not $SkipInstaller) {
     }
 }
 
+# ── Sign update manifest ─────────────────────────────────────────
+if ($Tag) {
+    if (-not $InstallerExe) { throw "No installer was built, so the update manifest for $Tag cannot be signed." }
+    & (Join-Path $PSScriptRoot "sign-update-manifest.ps1") -Installer $InstallerExe -Tag $Tag
+} elseif ($InstallerExe) {
+    Write-Host "Update manifest not signed: the in-app updater will refuse this installer." -ForegroundColor Yellow
+    Write-Host "Pass -Tag vX.Y.Z with WATCHDOG_UPDATE_SIGNING_KEY set to sign it." -ForegroundColor Yellow
+}
+
 # ── Summary ──────────────────────────────────────────────────────
 Write-Host ""
 Write-Host "Package complete (v$AppVersion)" -ForegroundColor Green
@@ -141,9 +171,13 @@ Write-Host "  Portable ZIP:  $OutputZip ($zipSize MB)" -ForegroundColor DarkGray
 if ($InstallerExe) {
     Write-Host "  Installer:     $InstallerExe" -ForegroundColor DarkGray
 }
+if ($Tag) {
+    Write-Host "  Manifest:      $InstallerExe.manifest.json (+ .manifest.sig)" -ForegroundColor DarkGray
+}
 Write-Host ""
 Write-Host "Contents:" -ForegroundColor Green
 Write-Host "  - WatchDog application (self-contained, .NET 10 bundled)" -ForegroundColor DarkGray
 Write-Host "  - OBS runtime (obs.dll, plugins, data)" -ForegroundColor DarkGray
 Write-Host "  - FFmpeg (clip editing, thumbnails)" -ForegroundColor DarkGray
+Write-Host "  - LICENSE (GPL-2.0) and NOTICE (third-party notices)" -ForegroundColor DarkGray
 Write-Host "  - All dependencies" -ForegroundColor DarkGray

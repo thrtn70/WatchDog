@@ -145,10 +145,12 @@
                                Foreground="{StaticResource SubtextBrush}"/>
                 </StackPanel>
 
-                <!-- Metadata-only tutorial planning -->
-                <Button Grid.Column="10" Content="Tutorial workspace"
-                        Click="OnTutorialWorkspaceClick" ToolTip="Plan a tutorial recording"
-                        AutomationProperties.Name="Open tutorial workspace"
+                <!-- Metadata-only tutorial planning; recording stays disabled in this release -->
+                <Button Grid.Column="10" Content="Tutorial (planning only)"
+                        Click="OnTutorialWorkspaceClick"
+                        ToolTip="Plan a tutorial. Tutorial recording is not available in this release."
+                        AutomationProperties.Name="Open tutorial workspace, planning only"
+                        AutomationProperties.HelpText="Tutorial recording is not available in this release."
                         Padding="10,4" Margin="0,0,6,0"
                         VerticalAlignment="Center"/>
 

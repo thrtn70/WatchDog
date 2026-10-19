@@ -58,6 +58,13 @@
              Condition="Exists('$(MSBuildThisFileDirectory)..\..\ffmpeg-runtime')" />
   </ItemGroup>
 
+  <!-- GPL-2.0 license and third-party notices ship next to WatchDog.App.exe (ZIP and installer) -->
+  <ItemGroup>
+    <Content Include="$(MSBuildThisFileDirectory)..\..\LICENSE;$(MSBuildThisFileDirectory)..\..\NOTICE"
+             CopyToOutputDirectory="PreserveNewest"
+             Link="%(Filename)%(Extension)" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="H.NotifyIcon.Wpf" Version="2.4.1">

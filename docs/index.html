@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WatchDog — Lightweight Game Clipping for Windows</title>
-  <meta name="description" content="Capture highlights, trim clips, and share to Discord. Open-source, GPU-accelerated, runs from the system tray.">
+  <meta name="description" content="Capture highlights, trim clips, and share to Discord. Open-source, NVENC or x264 encoding, runs from the system tray.">
   <meta property="og:title" content="WatchDog — Game Clipping for Windows">
-  <meta property="og:description" content="Lightweight, open-source replay buffer and highlight clipper. NVENC/AMF GPU encoding, auto game detection, Discord sharing.">
+  <meta property="og:description" content="Lightweight, open-source replay buffer and highlight clipper. NVENC or x264 encoding, auto game detection, Discord sharing.">
   <meta property="og:image" content="assets/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -130,7 +130,7 @@
           <div class="feature-hero__icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
           <div class="feature-hero__body">
             <h3 class="feature-hero__title">Replay Buffer</h3>
-            <p class="feature-hero__desc">Hit one key to save your last moments of gameplay instantly. Buffer duration and hotkey are fully configurable. Runs continuously in the background with near-zero CPU impact. Never miss a moment.</p>
+            <p class="feature-hero__desc">Hit one key to save your last moments of gameplay instantly. Buffer duration and hotkey are fully configurable. Runs continuously in the background. Never miss a moment.</p>
           </div>
         </div>
         <div class="feature-hero feature-hero--ai reveal reveal-stagger" style="--i:1">
@@ -170,8 +170,8 @@
         <div class="feature-sm reveal reveal-stagger" style="--i:5">
           <div class="feature-sm__icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg></div>
           <div>
-            <h3 class="feature-sm__title">GPU Encoding</h3>
-            <p class="feature-sm__desc">NVENC, AMD AMF, and x264 fallback.</p>
+            <h3 class="feature-sm__title">Encoding</h3>
+            <p class="feature-sm__desc">NVIDIA NVENC or x264 software. AMD AMF and Intel QSV are not supported yet.</p>
           </div>
         </div>
         <div class="feature-sm reveal reveal-stagger" style="--i:6">
@@ -257,10 +257,10 @@
           <div class="release-hero__info">
             <div class="release-hero__top">
               <span class="release-badge release-badge--latest">Latest</span>
-              <span class="release-hero__version">v1.2.3</span>
+              <span class="release-hero__version">v1.3.0</span>
             </div>
           </div>
-          <a class="btn btn--primary" href="https://github.com/thrtn70/WatchDog/releases/latest" target="_blank" rel="noopener">Download v1.2.3</a>
+          <a class="btn btn--primary" href="https://github.com/thrtn70/WatchDog/releases/latest" target="_blank" rel="noopener">Download v1.3.0</a>
         </div>
         <noscript>
           <p class="releases-fallback"><a href="https://github.com/thrtn70/WatchDog/releases" target="_blank" rel="noopener">View all releases on GitHub</a></p>
@@ -337,6 +337,16 @@
           </button>
           <div class="faq-a" aria-hidden="true" id="faq-panel-5" role="region" aria-labelledby="faq-btn-5"><div class="faq-a__inner">
             <div class="faq-a__content">Set up a webhook URL in <strong>Settings &gt; Discord</strong> first. In Discord, go to <strong>Server Settings &rarr; Integrations &rarr; Webhooks &rarr; New Webhook</strong>, copy the URL, and paste it into WatchDog. Then right-click any clip and select <strong>"Share to Discord."</strong></div>
+          </div></div>
+        </div>
+
+        <div class="faq-item reveal reveal-stagger" style="--i:6">
+          <button class="faq-q" id="faq-btn-6" aria-expanded="false" aria-controls="faq-panel-6">
+            <span>Can WatchDog record tutorials?</span>
+            <svg class="faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="faq-a" aria-hidden="true" id="faq-panel-6" role="region" aria-labelledby="faq-btn-6"><div class="faq-a__inner">
+            <div class="faq-a__content">Not yet. Tutorial recording is not available in this release: the <strong>Tutorial (planning only)</strong> workspace can plan a recording, but <strong>Start recording</strong> stays disabled. WatchDog currently records games only. See the <a href="https://github.com/thrtn70/WatchDog#known-limitations" target="_blank" rel="noopener">known limitations</a> for encoder support and other details.</div>
           </div></div>
         </div>
       </div>

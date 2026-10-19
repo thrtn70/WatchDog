@@ -16,6 +16,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ── Fail fast before the long build: signing secret present, tag matches version ──
+      - name: Preflight (signing secret, tag/version)
+        shell: pwsh
+        env:
+          WATCHDOG_UPDATE_SIGNING_KEY: ${{ secrets.WATCHDOG_UPDATE_SIGNING_KEY }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:WATCHDOG_UPDATE_SIGNING_KEY)) {
+            Write-Host "::error::Repository secret WATCHDOG_UPDATE_SIGNING_KEY is missing. Add it under Settings > Secrets and variables > Actions. Without it the release has no signed update manifest and the in-app updater refuses the installer."
+            exit 1
+          }
+          [xml]$props = Get-Content Directory.Build.props
+          $v = $props.Project.PropertyGroup.Version
+          # A tag ahead of the built version would make every client see a "newer" release it already runs.
+          if ($env:TAG_NAME -cnotmatch "\Av$([regex]::Escape($v))(-[0-9A-Za-z.-]{1,32})?\z") {
+            Write-Host "::error::Tag $env:TAG_NAME does not match Directory.Build.props Version $v (expected v$v or v$v-<suffix>)."
+            exit 1
+          }
+          Write-Host "Preflight OK: signing secret present, tag $env:TAG_NAME matches version $v"
+
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
@@ -73,7 +93,7 @@ jobs:
       - name: Verify publish output
         shell: pwsh
         run: |
-          foreach ($f in @("WatchDog.App.exe", "obs.dll", "data", "obs-plugins", "ffmpeg/ffmpeg.exe", "ffmpeg/ffprobe.exe")) {
+          foreach ($f in @("WatchDog.App.exe", "obs.dll", "data", "obs-plugins", "ffmpeg/ffmpeg.exe", "ffmpeg/ffprobe.exe", "LICENSE", "NOTICE")) {
             if (-not (Test-Path "publish/$f")) { Write-Host "MISSING: $f"; exit 1 }
           }
           Write-Host "Publish output verified"

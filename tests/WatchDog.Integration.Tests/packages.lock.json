@@ -534,8 +534,8 @@
           "CommunityToolkit.Mvvm": "[8.4.2, )",
           "H.NotifyIcon.Wpf": "[2.4.1, )",
           "Microsoft.Extensions.Hosting": "[10.0.12, )",
-          "WatchDog.Core": "[1.3.0, )",
-          "WatchDog.Native": "[1.3.0, )"
+          "WatchDog.Core": "[1.4.0, )",
+          "WatchDog.Native": "[1.4.0, )"
         }
       },
       "watchdog.capturemetadata": {
@@ -551,8 +551,8 @@
           "NAudio": "[2.4.0, )",
           "ObsKit.NET": "[1.6.0, )",
           "System.Management": "[10.0.12, )",
-          "WatchDog.CaptureMetadata": "[1.3.0, )",
-          "WatchDog.Native": "[1.3.0, )"
+          "WatchDog.CaptureMetadata": "[1.4.0, )",
+          "WatchDog.Native": "[1.4.0, )"
         }
       },
       "watchdog.native": {

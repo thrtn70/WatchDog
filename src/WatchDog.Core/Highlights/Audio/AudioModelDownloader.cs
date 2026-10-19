@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using WatchDog.Core.Updates;
 
 namespace WatchDog.Core.Highlights.Audio;
 
@@ -46,7 +47,7 @@ public static class AudioModelDownloader
 
             using var http = new HttpClient();
             http.Timeout = TimeSpan.FromMinutes(5);
-            http.DefaultRequestHeaders.UserAgent.ParseAdd("WatchDog/1.3.0");
+            http.DefaultRequestHeaders.UserAgent.ParseAdd($"WatchDog/{BuildInfo.GetVersionString() ?? "unknown"}");
 
             using var response = await http.GetAsync(ModelUrl, HttpCompletionOption.ResponseHeadersRead, ct);
             response.EnsureSuccessStatusCode();
