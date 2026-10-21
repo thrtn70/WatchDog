@@ -687,7 +687,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             Process.Start(new ProcessStartInfo
             {
                 FileName = "explorer.exe",
-                ArgumentList = { "/select,", target.FilePath },
+                Arguments = ExplorerCommandLine.SelectFile(target.FilePath),
                 UseShellExecute = false,
             })?.Dispose();
         }
@@ -699,7 +699,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 Process.Start(new ProcessStartInfo
                 {
                     FileName = "explorer.exe",
-                    ArgumentList = { dir },
+                    Arguments = ExplorerCommandLine.OpenFolder(dir),
                     UseShellExecute = false,
                 })?.Dispose();
             }
