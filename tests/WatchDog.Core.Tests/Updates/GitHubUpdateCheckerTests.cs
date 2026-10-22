@@ -13,8 +13,10 @@ public sealed class GitHubUpdateCheckerTests : IDisposable
     private const string ManifestUrl = ReleaseBase + "WatchDog-Setup.exe.manifest.json";
     private const string SignatureUrl = ReleaseBase + "WatchDog-Setup.exe.manifest.sig";
     private static readonly byte[] Installer = Enumerable.Range(0, 200_000).Select(i => (byte)(i * 31)).ToArray();
+    private static readonly TimeSpan TestWaitLimit = TimeSpan.FromSeconds(10);
 
     private readonly UpdateManifestTestSigner _signer = new();
+    private readonly ManualClock _clock = new();
     private readonly string _downloadDirectory =
         Path.Combine(Path.GetTempPath(), $"WatchDog-UpdateTests-{Guid.NewGuid():N}");
 
@@ -33,7 +35,7 @@ public sealed class GitHubUpdateCheckerTests : IDisposable
             () => BuildChannel.Stable,
             () => TestVersion);
 
-    private GitHubUpdateChecker CreateDownloadChecker(HttpMessageHandler handler)
+    private GitHubUpdateChecker CreateDownloadChecker(HttpMessageHandler handler, TimeProvider? clock = null)
         => new(
             new HttpClient(handler),
             NullLogger<GitHubUpdateChecker>.Instance,
@@ -41,7 +43,8 @@ public sealed class GitHubUpdateCheckerTests : IDisposable
             () => BuildChannel.Stable,
             () => TestVersion,
             new UpdateManifestVerifier(_signer.PublicKey),
-            _downloadDirectory);
+            _downloadDirectory,
+            clock);
 
     private static UpdateInfo Update(
         string? manifestUrl = ManifestUrl,
@@ -410,6 +413,118 @@ public sealed class GitHubUpdateCheckerTests : IDisposable
 
         Assert.Equal(UpdateVerificationFailure.DownloadFailed, result.Failure);
         Assert.Empty(handler.Requested);
+    }
+
+    [Fact]
+    public async Task DownloadVerifiedInstaller_ReturnsInstaller_WhenSlowDownloadKeepsProgressing()
+    {
+        // 16 chunks 30 s apart: 8 minutes in all, past the old fixed 5-minute budget, never silent for a minute.
+        var link = new SlowLinkStream(Installer, chunkSize: 12_500, _clock, perChunk: TimeSpan.FromSeconds(30));
+        var checker = CreateDownloadChecker(new SlowLinkHandler(SignedRelease(), link), _clock);
+        var started = _clock.GetUtcNow();
+
+        var result = await checker.DownloadVerifiedInstallerAsync(Update());
+
+        Assert.True(result.IsVerified);
+        Assert.Equal(TimeSpan.FromMinutes(8), _clock.GetUtcNow() - started);
+        Assert.Equal(Installer, File.ReadAllBytes(result.InstallerPath!));
+    }
+
+    [Fact]
+    public async Task DownloadVerifiedInstaller_RefusesAndDeletes_WhenDownloadStalls()
+    {
+        var link = new SlowLinkStream(Installer, chunkSize: 10_000, _clock, perChunk: TimeSpan.Zero, stallAt: 50_000);
+        var checker = CreateDownloadChecker(new SlowLinkHandler(SignedRelease(), link), _clock);
+
+        var download = checker.DownloadVerifiedInstallerAsync(Update());
+        await link.Stalled.WaitAsync(TestWaitLimit);
+        Assert.Single(LeftoverFiles());
+
+        _clock.Advance(TimeSpan.FromSeconds(59));
+        Assert.False(link.ReadToken.IsCancellationRequested);
+
+        _clock.Advance(TimeSpan.FromSeconds(2));
+        var result = await download.WaitAsync(TestWaitLimit);
+
+        Assert.Equal(UpdateVerificationFailure.DownloadFailed, result.Failure);
+        Assert.Null(result.InstallerPath);
+        Assert.Empty(LeftoverFiles());
+    }
+
+    [Fact]
+    public async Task DownloadVerifiedInstaller_RefusesAndDeletes_WhenTrickleOutlastsCeiling()
+    {
+        // 1 KB every 50 s never trips the stall timeout, but this 200 KB installer would take almost three hours.
+        var link = new SlowLinkStream(Installer, chunkSize: 1_000, _clock, perChunk: TimeSpan.FromSeconds(50));
+        var checker = CreateDownloadChecker(new SlowLinkHandler(SignedRelease(), link), _clock);
+
+        var result = await checker.DownloadVerifiedInstallerAsync(Update());
+
+        Assert.Equal(UpdateVerificationFailure.DownloadFailed, result.Failure);
+        Assert.True(link.Sent < Installer.Length);
+        Assert.Empty(LeftoverFiles());
+    }
+
+    /// <summary>Serves the signed manifest and signature from <paramref name="signedAssets"/>, and the installer from a slow link.</summary>
+    private sealed class SlowLinkHandler(RoutingHandler signedAssets, SlowLinkStream installer)
+        : DelegatingHandler(signedAssets)
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken)
+            => request.RequestUri!.AbsoluteUri == InstallerUrl
+                ? Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(installer) })
+                : base.SendAsync(request, cancellationToken);
+    }
+
+    /// <summary>
+    /// Installer body on a slow link: each read hands out at most <paramref name="chunkSize"/> bytes, after
+    /// <paramref name="perChunk"/> of <paramref name="clock"/> time has passed. From byte <paramref name="stallAt"/>
+    /// on it sends nothing until the read is cancelled.
+    /// </summary>
+    private sealed class SlowLinkStream(
+        byte[] body, int chunkSize, ManualClock clock, TimeSpan perChunk, int stallAt = int.MaxValue) : Stream
+    {
+        private readonly TaskCompletionSource _stalled = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task Stalled => _stalled.Task;
+        public int Sent { get; private set; }
+
+        /// <summary>The token of the latest read; the checker's timeouts cancel it synchronously.</summary>
+        public CancellationToken ReadToken { get; private set; }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            ReadToken = cancellationToken;
+            if (Sent >= stallAt)
+            {
+                _stalled.TrySetResult();
+                await Task.Delay(Timeout.Infinite, cancellationToken);
+            }
+
+            var count = Math.Min(Math.Min(chunkSize, buffer.Length), body.Length - Sent);
+            if (count == 0) return 0;
+
+            clock.Advance(perChunk);
+            cancellationToken.ThrowIfCancellationRequested();
+            body.AsSpan(Sent, count).CopyTo(buffer.Span);
+            Sent += count;
+            return count;
+        }
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override void Flush() { }
     }
 
     /// <summary>Serves fixed bodies by absolute URL (404 otherwise) and records every request.</summary>
