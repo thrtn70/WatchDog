@@ -15,6 +15,7 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
     private readonly Func<Version?> _versionProvider;
     private readonly UpdateManifestVerifier _verifier;
     private readonly string _downloadDirectory;
+    private readonly TimeProvider _timeProvider;
 
     private const string StableApiUrl = "https://api.github.com/repos/thrtn70/WatchDog/releases/latest";
     private const string ReleasesListUrl = "https://api.github.com/repos/thrtn70/WatchDog/releases?per_page=10";
@@ -22,7 +23,18 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
     private const string ManifestAssetSuffix = InstallerAssetSuffix + ".manifest.json";
     private const string SignatureAssetSuffix = InstallerAssetSuffix + ".manifest.sig";
     private static readonly TimeSpan CheckTimeout = TimeSpan.FromSeconds(10);
-    private static readonly TimeSpan DownloadTimeout = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan ManifestFetchTimeout = TimeSpan.FromMinutes(5);
+    /// <summary>
+    /// The installer download is abandoned when no bytes arrive for this long. The window restarts with each
+    /// chunk, so it also covers writing and hashing that chunk locally.
+    /// </summary>
+    private static readonly TimeSpan StallTimeout = TimeSpan.FromSeconds(60);
+    /// <summary>
+    /// Backstop for a link that trickles just fast enough never to stall: the installer download gets this
+    /// allowance plus its signed length at <see cref="MinimumAverageBytesPerSecond"/> (about 2 h 17 min for 249 MB).
+    /// </summary>
+    private static readonly TimeSpan InstallerCeilingAllowance = TimeSpan.FromMinutes(10);
+    private const double MinimumAverageBytesPerSecond = 32 * 1024;
 
     private static readonly string[] AllowedHosts =
     [
@@ -42,7 +54,8 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
         Func<BuildChannel> channelProvider,
         Func<Version?> versionProvider,
         UpdateManifestVerifier? verifier = null,
-        string? downloadDirectory = null)
+        string? downloadDirectory = null,
+        TimeProvider? timeProvider = null)
     {
         _http = http;
         _logger = logger;
@@ -51,6 +64,7 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
         _versionProvider = versionProvider;
         _verifier = verifier ?? UpdateManifestVerifier.CreatePinned();
         _downloadDirectory = downloadDirectory ?? Path.Combine(Path.GetTempPath(), "WatchDog-Update");
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public async Task<UpdateInfo?> CheckForUpdateAsync(CancellationToken ct = default)
@@ -233,8 +247,11 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
             return UpdateDownloadResult.Refused(UpdateVerificationFailure.DownloadFailed);
         }
 
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        cts.CancelAfter(DownloadTimeout);
+        // The manifest fetch keeps a fixed budget. The installer then gets a ceiling sized to its signed length plus
+        // a stall timeout, so a slow link that keeps delivering finishes while a silent one is dropped.
+        using var deadline = new CancellationTokenSource(ManifestFetchTimeout, _timeProvider);
+        using var stall = new CancellationTokenSource(Timeout.InfiniteTimeSpan, _timeProvider);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct, deadline.Token, stall.Token);
         string? installerPath = null;
         var verified = false;
 
@@ -251,9 +268,10 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
                     failure == UpdateVerificationFailure.None ? UpdateVerificationFailure.ManifestInvalid : failure);
             }
 
+            deadline.CancelAfter(InstallerCeilingAllowance + TimeSpan.FromSeconds(manifest.Length / MinimumAverageBytesPerSecond));
             Directory.CreateDirectory(_downloadDirectory);
             installerPath = Path.Combine(_downloadDirectory, $"WatchDog-Setup-{Guid.NewGuid():N}.exe");
-            if (!await DownloadMatchingInstallerAsync(update.DownloadUrl, installerPath, manifest, progress, cts.Token))
+            if (!await DownloadMatchingInstallerAsync(update.DownloadUrl, installerPath, manifest, progress, stall, cts.Token))
             {
                 _logger.LogWarning("Refusing update {Tag}: installer bytes do not match the signed manifest", update.ReleaseTag);
                 return UpdateDownloadResult.Refused(UpdateVerificationFailure.InstallerMismatch);
@@ -301,11 +319,14 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
 
     /// <summary>
     /// Streams the installer to <paramref name="path"/> while hashing it; stops as soon as it exceeds the
-    /// signed length. True only when the length and SHA-256 equal the manifest's.
+    /// signed length. True only when the length and SHA-256 equal the manifest's. Every arriving chunk
+    /// re-arms <paramref name="stall"/>, so it cancels only after <see cref="StallTimeout"/> without data.
     /// </summary>
     private async Task<bool> DownloadMatchingInstallerAsync(
-        string url, string path, UpdateManifest manifest, IProgress<double>? progress, CancellationToken ct)
+        string url, string path, UpdateManifest manifest, IProgress<double>? progress,
+        CancellationTokenSource stall, CancellationToken ct)
     {
+        stall.CancelAfter(StallTimeout);
         using var response = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
         response.EnsureSuccessStatusCode();
         await using var contentStream = await response.Content.ReadAsStreamAsync(ct);
@@ -317,6 +338,7 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
         int read;
         while ((read = await contentStream.ReadAsync(buffer, ct)) > 0)
         {
+            stall.CancelAfter(StallTimeout);
             bytesRead += read;
             if (bytesRead > manifest.Length)
                 return false;
