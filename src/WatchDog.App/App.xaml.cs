@@ -140,6 +140,8 @@ public partial class App : Application
         // Check for updates (non-blocking, failure is silent)
         _ = Task.Run(async () =>
         {
+            // Before the check, so it always finishes before this run can start a download of its own.
+            DeleteStaleUpdateInstallers(host.Services);
             try
             {
                 var checker = host.Services.GetRequiredService<Core.Updates.IUpdateChecker>();
@@ -156,6 +158,25 @@ public partial class App : Application
             }
             catch { /* update check failure is non-fatal */ }
         });
+    }
+
+    /// <summary>Removes installers an earlier run left behind, e.g. when it was killed mid-download.</summary>
+    private static void DeleteStaleUpdateInstallers(IServiceProvider services)
+    {
+        try
+        {
+            var deleted = Core.Updates.StaleUpdateInstallerCleanup.DeleteStaleInstallers(
+                Core.Updates.StaleUpdateInstallerCleanup.DefaultDirectory, DateTime.UtcNow);
+            if (deleted > 0)
+            {
+                services.GetRequiredService<ILoggerFactory>().CreateLogger<App>()
+                    .LogInformation("Deleted {Count} stale update installer(s)", deleted);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.TraceWarning($"Stale update installer cleanup failed: {ex.Message}");
+        }
     }
 
     public Task<bool> RequestShutdownAsync(
