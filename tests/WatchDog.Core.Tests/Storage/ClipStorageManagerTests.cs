@@ -1,3 +1,6 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using WatchDog.Core.ClipEditor;
 using WatchDog.Core.Storage;
@@ -246,6 +249,207 @@ public sealed class ClipStorageManagerTests : IDisposable
         Assert.Throws<InvalidDataException>(() => CreateManager());
 
         Assert.Equal("[{\"filePath\":\"\",\"fileName\":\"bad.mp4\"}]", File.ReadAllText(primary));
+    }
+
+    [Fact]
+    public void LegacySeparatorDuplicatesLoadAsOneClipPerMediaFile()
+    {
+        WriteIndex(ActiveIndexPath, CreateLegacyDuplicateIndex(_tempDir));
+
+        var clips = CreateManager().GetAllClips();
+
+        Assert.Equal(
+            LegacyFileNames.Select(name => Path.GetFullPath(Path.Combine(_tempDir, "Desktop", name))).Order(),
+            clips.Select(clip => clip.FilePath).Order());
+        Assert.All(clips, clip => Assert.Equal("Desktop", clip.GameName));
+        Assert.All(clips, clip => Assert.False(clip.IsFavorite));
+        Assert.All(clips, clip => Assert.Empty(clip.Tags));
+    }
+
+    [Fact]
+    public void LegacyDuplicateMergeKeepsUserEditsAndRicherAttribution()
+    {
+        var sessionId = Guid.NewGuid();
+        var name = LegacyFileNames[0];
+        var obsPath = $"{_tempDir.Replace('\\', '/')}/Desktop/{name}";
+        var scanPath = Path.Combine(_tempDir, "Desktop", name);
+        var saveEvent = LegacyEntry(obsPath, name, LegacyCreatedAt.AddSeconds(5));
+        saveEvent["gameName"] = null;
+        saveEvent["tags"] = new JsonArray("clutch");
+        var folderScan = LegacyEntry(scanPath, name, LegacyCreatedAt);
+        folderScan["isFavorite"] = true;
+        folderScan["tags"] = new JsonArray("Clutch", "funny");
+        folderScan["highlightType"] = "Kill";
+        var secondSaveEvent = LegacyEntry(obsPath, name, LegacyCreatedAt.AddSeconds(10));
+        secondSaveEvent["sessionId"] = sessionId.ToString();
+        secondSaveEvent["matchNumber"] = 3;
+        WriteIndex(ActiveIndexPath, new JsonArray(saveEvent, folderScan, secondSaveEvent));
+
+        var clip = Assert.Single(CreateManager().GetAllClips());
+
+        Assert.Equal(Path.GetFullPath(scanPath), clip.FilePath);
+        Assert.True(clip.IsFavorite);
+        Assert.Equal(new[] { "clutch", "funny" }, clip.Tags);
+        Assert.Equal(LegacyCreatedAt, clip.CreatedAt);
+        Assert.Equal("Desktop", clip.GameName);
+        Assert.Equal(Core.Highlights.HighlightType.Kill, clip.HighlightType);
+        Assert.Equal(sessionId, clip.SessionId);
+        Assert.Equal(3, clip.MatchNumber);
+        var restarted = Assert.Single(CreateManager().GetAllClips());
+        Assert.True(restarted.IsFavorite);
+        Assert.Equal(new[] { "clutch", "funny" }, restarted.Tags);
+    }
+
+    [Fact]
+    public void LegacyDuplicateMergePreservesOriginalBytesBeforeRewritingIndex()
+    {
+        WriteIndex(ActiveIndexPath, CreateLegacyDuplicateIndex(_tempDir));
+        var original = File.ReadAllBytes(ActiveIndexPath);
+
+        Assert.Equal(5, CreateManager().GetAllClips().Count);
+
+        var evidence = Assert.Single(Directory.GetFiles(_tempDir, "clips-index.json.duplicates-*"));
+        Assert.Equal(original, File.ReadAllBytes(evidence));
+        Assert.Empty(Directory.GetFiles(_tempDir, "clips-index.json.corrupt-*"));
+        var rewritten = JsonNode.Parse(File.ReadAllText(ActiveIndexPath))!.AsArray();
+        Assert.Equal(5, rewritten.Count);
+        Assert.Equal(5, rewritten
+            .Select(entry => Path.GetFullPath((string)entry!["filePath"]!))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count());
+
+        Assert.Equal(5, CreateManager().GetAllClips().Count);
+        Assert.Single(Directory.GetFiles(_tempDir, "clips-index.json.duplicates-*"));
+    }
+
+    [Fact]
+    public void LegacyDuplicateRewriteFailureStillLoadsAndRetainsOriginalIndex()
+    {
+        WriteIndex(ActiveIndexPath, CreateLegacyDuplicateIndex(_tempDir));
+        var original = File.ReadAllBytes(ActiveIndexPath);
+
+        using (File.Open(ActiveIndexPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            Assert.Equal(5, CreateManager().GetAllClips().Count);
+
+        Assert.Equal(original, File.ReadAllBytes(ActiveIndexPath));
+        Assert.Equal(5, CreateManager().GetAllClips().Count);
+        Assert.NotEqual(original, File.ReadAllBytes(ActiveIndexPath));
+    }
+
+    [Fact]
+    public void LegacyDuplicateMergeLogsHowManyEntriesWereMerged()
+    {
+        WriteIndex(ActiveIndexPath, CreateLegacyDuplicateIndex(_tempDir));
+        var logger = new RecordingLogger();
+
+        _ = CreateManager(logger: logger);
+
+        Assert.Contains(logger.Entries, entry =>
+            entry.Level == LogLevel.Warning && entry.Message.Contains("4 duplicate"));
+    }
+
+    [Theory]
+    [InlineData("relative-path", "invalid media path at position 3")]
+    [InlineData("blank-path", "invalid media path at position 3")]
+    [InlineData("blank-file-name", "invalid file name at position 3")]
+    [InlineData("default-created-at", "invalid metadata at position 3")]
+    [InlineData("negative-duration", "invalid metadata at position 3")]
+    [InlineData("negative-size", "invalid metadata at position 3")]
+    [InlineData("null-tags", "invalid tags at position 3")]
+    [InlineData("null-tag", "invalid tags at position 3")]
+    [InlineData("negative-capture-generation", "invalid capture generation at position 3")]
+    [InlineData("null-entry", "null entry at position 3")]
+    public void InvalidEntryAmongLegacyDuplicatesStillRefusesToLoad(string defect, string expectedReason)
+    {
+        // Position 3 duplicates position 2, so for every defect that keeps the path,
+        // merging before validating would hide it.
+        var index = CreateLegacyDuplicateIndex(_tempDir);
+        ApplyDefect(index, 3, defect);
+        WriteIndex(ActiveIndexPath, index);
+        var original = File.ReadAllBytes(ActiveIndexPath);
+
+        var error = Assert.Throws<InvalidDataException>(() => CreateManager());
+
+        Assert.Contains(expectedReason, error.InnerException?.Message);
+        Assert.Equal(original, File.ReadAllBytes(ActiveIndexPath));
+        Assert.NotEmpty(Directory.GetFiles(_tempDir, "clips-index.json.corrupt-*"));
+        Assert.Empty(Directory.GetFiles(_tempDir, "clips-index.json.duplicates-*"));
+    }
+
+    [Theory]
+    [InlineData("not json")]
+    [InlineData("null")]
+    [InlineData("{}")]
+    [InlineData("truncated")]
+    public void CorruptIndexStillRefusesToLoad(string content)
+    {
+        if (content == "truncated")
+        {
+            var whole = CreateLegacyDuplicateIndex(_tempDir).ToJsonString(IndentedJson);
+            content = whole[..(whole.Length / 2)];
+        }
+        File.WriteAllText(ActiveIndexPath, content);
+
+        Assert.Throws<InvalidDataException>(() => CreateManager());
+
+        Assert.Equal(content, File.ReadAllText(ActiveIndexPath));
+        Assert.Empty(Directory.GetFiles(_tempDir, "clips-index.json.duplicates-*"));
+    }
+
+    [Fact]
+    public void LegacyDuplicatesInBackupRecoverWhenPrimaryIsCorrupt()
+    {
+        File.WriteAllText(ActiveIndexPath, "corrupt primary bytes");
+        WriteIndex(ActiveIndexPath + ".bak", CreateLegacyDuplicateIndex(_tempDir));
+        var backup = File.ReadAllBytes(ActiveIndexPath + ".bak");
+
+        Assert.Equal(5, CreateManager().GetAllClips().Count);
+
+        Assert.Equal(backup, File.ReadAllBytes(ActiveIndexPath + ".bak"));
+        Assert.Equal(5, JsonNode.Parse(File.ReadAllText(ActiveIndexPath))!.AsArray().Count);
+        var evidence = Assert.Single(Directory.GetFiles(_tempDir, "clips-index.json.corrupt-*"));
+        Assert.Equal("corrupt primary bytes", File.ReadAllText(evidence));
+        Assert.Equal(5, CreateManager().GetAllClips().Count);
+    }
+
+    [Fact]
+    public void LegacyDuplicatePrimaryAlsoRepairsCorruptBackup()
+    {
+        WriteIndex(ActiveIndexPath, CreateLegacyDuplicateIndex(_tempDir));
+        var original = File.ReadAllBytes(ActiveIndexPath);
+        File.WriteAllText(ActiveIndexPath + ".bak", "corrupt backup bytes");
+
+        Assert.Equal(5, CreateManager().GetAllClips().Count);
+
+        var corruptEvidence = Assert.Single(Directory.GetFiles(_tempDir, "clips-index.json.bak.corrupt-*"));
+        Assert.Equal("corrupt backup bytes", File.ReadAllText(corruptEvidence));
+        Assert.Equal(original, File.ReadAllBytes(ActiveIndexPath + ".bak"));
+        var duplicateEvidence = Assert.Single(Directory.GetFiles(_tempDir, "clips-index.json.duplicates-*"));
+        Assert.Equal(original, File.ReadAllBytes(duplicateEvidence));
+        Assert.Equal(5, JsonNode.Parse(File.ReadAllText(ActiveIndexPath))!.AsArray().Count);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LegacyDuplicatesInReadOnlyLegacyIndexLoadWithoutChangingIt(bool duplicatesInBackup)
+    {
+        var legacyRoot = Path.Combine(_tempDir, "legacy");
+        var legacyIndex = Path.Combine(legacyRoot, "clips-index.json");
+        WriteIndex(duplicatesInBackup ? legacyIndex + ".bak" : legacyIndex, CreateLegacyDuplicateIndex(legacyRoot));
+        if (duplicatesInBackup)
+            File.WriteAllText(legacyIndex, "corrupt legacy bytes");
+        var legacyBytes = Directory.GetFiles(legacyRoot).ToDictionary(path => path, File.ReadAllBytes);
+        var config = _config with
+        {
+            BasePath = Path.Combine(_tempDir, "new"),
+            LegacyReadOnlyPaths = [legacyRoot],
+        };
+
+        Assert.Equal(5, CreateManager(config).GetAllClips().Count);
+
+        Assert.Equal(legacyBytes.Keys.Order(), Directory.GetFiles(legacyRoot).Order());
+        Assert.All(legacyBytes, file => Assert.Equal(file.Value, File.ReadAllBytes(file.Key)));
     }
 
     [Fact]
@@ -556,14 +760,103 @@ public sealed class ClipStorageManagerTests : IDisposable
 
     private ClipStorageManager CreateManager(
         StorageConfig? config = null,
-        IProtectedMediaRegistry? protectedMedia = null)
+        IProtectedMediaRegistry? protectedMedia = null,
+        ILogger<ClipStorageManager>? logger = null)
     {
         var mockEditor = new StubClipEditor();
         return new ClipStorageManager(
             config ?? _config,
             mockEditor,
-            NullLogger<ClipStorageManager>.Instance,
+            logger ?? NullLogger<ClipStorageManager>.Instance,
             protectedMedia ?? new ProtectedMediaRegistry());
+    }
+
+    private string ActiveIndexPath => Path.Combine(_tempDir, "clips-index.json");
+
+    private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true };
+
+    private static readonly DateTimeOffset LegacyCreatedAt = new(2026, 4, 9, 19, 18, 30, TimeSpan.FromHours(-7));
+
+    private static readonly string[] LegacyFileNames =
+    [
+        "2026-04-09 19-18-30.mp4",
+        "2026-04-09 19-42-11.mp4",
+        "2026-04-10 21-03-05.mp4",
+        "2026-04-10 21-27-48.mp4",
+        "2026-04-11 00-55-19.mp4",
+    ];
+
+    // v1.2.x and v1.3.0 indexed a replay once from OBS's save event (forward slashes,
+    // no game for a Desktop capture) and again from the folder scan (backslashes, game
+    // taken from the folder name): 9 entries for 5 files, in the order a real index had.
+    private static JsonArray CreateLegacyDuplicateIndex(string root)
+    {
+        JsonObject SaveEvent(int file)
+        {
+            var name = LegacyFileNames[file];
+            var entry = LegacyEntry(
+                $"{root.Replace('\\', '/')}/Desktop/{name}",
+                name,
+                LegacyCreatedAt.AddMinutes(file * 20));
+            entry["gameName"] = null;
+            return entry;
+        }
+
+        JsonObject FolderScan(int file)
+        {
+            var name = LegacyFileNames[file];
+            return LegacyEntry(Path.Combine(root, "Desktop", name), name, LegacyCreatedAt.AddMinutes(file * 20));
+        }
+
+        return
+        [
+            FolderScan(0), FolderScan(1),
+            SaveEvent(2), SaveEvent(2), SaveEvent(3),
+            FolderScan(2), FolderScan(3),
+            SaveEvent(4), FolderScan(4),
+        ];
+    }
+
+    private static JsonObject LegacyEntry(string filePath, string fileName, DateTimeOffset createdAt) => new()
+    {
+        ["filePath"] = filePath,
+        ["fileName"] = fileName,
+        ["gameName"] = "Desktop",
+        ["createdAt"] = createdAt,
+        ["duration"] = "00:02:00",
+        ["fileSizeBytes"] = 52_428_800,
+        ["thumbnailPath"] = null,
+        ["isFavorite"] = false,
+        ["highlightType"] = null,
+        ["sessionId"] = null,
+        ["matchNumber"] = null,
+        ["tags"] = new JsonArray(),
+        ["highlightSource"] = null,
+    };
+
+    private static void ApplyDefect(JsonArray index, int position, string defect)
+    {
+        var entry = index[position]!.AsObject();
+        switch (defect)
+        {
+            case "relative-path": entry["filePath"] = "Desktop/clip.mp4"; break;
+            case "blank-path": entry["filePath"] = " "; break;
+            case "blank-file-name": entry["fileName"] = " "; break;
+            case "default-created-at": entry["createdAt"] = "0001-01-01T00:00:00+00:00"; break;
+            case "negative-duration": entry["duration"] = "-00:00:01"; break;
+            case "negative-size": entry["fileSizeBytes"] = -1; break;
+            case "null-tags": entry["tags"] = null; break;
+            case "null-tag": entry["tags"] = new JsonArray("ok", null); break;
+            case "negative-capture-generation": entry["captureGeneration"] = -1; break;
+            case "null-entry": index[position] = null; break;
+            default: throw new ArgumentOutOfRangeException(nameof(defect), defect, null);
+        }
+    }
+
+    private static void WriteIndex(string path, JsonArray index)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, index.ToJsonString(IndentedJson));
     }
 
     private string CreateTestClip(string name)
@@ -596,5 +889,34 @@ public sealed class ClipStorageManagerTests : IDisposable
         public Task<IReadOnlyList<string>> GenerateThumbnailStripAsync(
             string inputPath, int frameCount, int thumbnailWidth, CancellationToken ct)
             => Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+    }
+
+    private sealed class RecordingLogger : ILogger<ClipStorageManager>
+    {
+        private readonly List<(LogLevel Level, string Message)> _entries = [];
+
+        public IReadOnlyList<(LogLevel Level, string Message)> Entries
+        {
+            get
+            {
+                lock (_entries)
+                    return [.. _entries];
+            }
+        }
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            lock (_entries)
+                _entries.Add((logLevel, formatter(state, exception)));
+        }
     }
 }
