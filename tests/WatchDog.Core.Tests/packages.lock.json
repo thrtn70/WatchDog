@@ -274,13 +274,13 @@
       "watchdog.captureisolation": {
         "type": "Project",
         "dependencies": {
-          "WatchDog.CaptureProtocol": "[1.4.0, )"
+          "WatchDog.CaptureProtocol": "[1.4.1, )"
         }
       },
       "watchdog.captureisolation.windows": {
         "type": "Project",
         "dependencies": {
-          "WatchDog.CaptureIsolation": "[1.4.0, )"
+          "WatchDog.CaptureIsolation": "[1.4.1, )"
         }
       },
       "watchdog.capturemetadata": {
@@ -299,8 +299,8 @@
           "NAudio": "[2.4.0, )",
           "ObsKit.NET": "[1.6.0, )",
           "System.Management": "[10.0.12, )",
-          "WatchDog.CaptureMetadata": "[1.4.0, )",
-          "WatchDog.Native": "[1.4.0, )"
+          "WatchDog.CaptureMetadata": "[1.4.1, )",
+          "WatchDog.Native": "[1.4.1, )"
         }
       },
       "watchdog.native": {

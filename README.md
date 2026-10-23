@@ -40,6 +40,7 @@ Think of it as **Outplayed / Medal without the bloat** — and also without the 
 | **Session Engine** | Clips organized by gaming session (like Outplayed). Drill into sessions to see clips, matches, and stats. Desktop capture clips grouped by day. |
 | **Clip Library** | Session-grouped library with grid/list views, favorites, game filter, sort, and hover-to-scrub thumbnails. |
 | **Game Detection** | Auto-detects 100+ games by process name. Auto-starts/stops capture. |
+| **Desktop Capture** | Optional: keep a replay buffer of the desktop when no game is running. **Off by default for new installs**; turn on **Always-on desktop capture** in Settings. Existing users keep their setting. |
 | **Encoding** | Replay buffer: **x264** (software) or **NVENC** H.264/HEVC/AV1 (NVIDIA). Session recordings and separate webcam files use x264. AMD AMF and Intel QSV are not supported. |
 | **Audio Mixing** | Live volume sliders, mute toggles, device selection, and separate audio tracks. |
 | **Floating Panels** | Draggable, resizable Performance and Audio overlays. |
@@ -74,7 +75,9 @@ The installer places WatchDog in Program Files, creates Desktop and Start Menu s
 
 **System Requirements:** Windows 10/11 (64-bit). Select x264 for software encoding, or an implemented NVENC option whose availability depends on your hardware/runtime and remains unverified. There is no automatic encoder fallback. The engine prepares the selected encoder even for session-only starts; AMF and Intel/QSV selections are unsupported.
 
-> **Auto-Update:** WatchDog checks for updates on launch. When a new version is available, a banner appears with a one-click install button. The updater runs an installer only when its signed update manifest verifies against the key built into the app and matches the downloaded bytes.
+> **Auto-Update:** WatchDog checks for updates on launch. When a new version is available, a banner appears with a one-click install button. The updater runs an installer only when its signed update manifest verifies against the key built into the app and matches the downloaded bytes. WatchDog reopens by itself once the update is installed.
+>
+> **Updating from v1.4.0 or older on a slow connection:** those versions stop an update download after 5 minutes. If the in-app update doesn't finish, download `WatchDog-Setup.exe` from [Releases](https://github.com/thrtn70/WatchDog/releases) and run it. Your settings and clips are kept.
 >
 > **Portable:** Prefer no installer? Download `WatchDog-win-x64.zip` from the same releases page and run `WatchDog.App.exe` directly.
 
