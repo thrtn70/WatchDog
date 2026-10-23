@@ -52,3 +52,24 @@ jobs:
             --no-build `
             --no-restore `
             --logger "console;verbosity=normal"
+
+  installer-compile:
+    name: Installer script compiles
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      # The release workflow packages the real publish output. A placeholder app is enough to
+      # check the script itself (sections, flags and paths) before a release tag is pushed.
+      - name: Compile installer against a placeholder publish folder
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force publish | Out-Null
+          Set-Content publish/WatchDog.App.exe 'placeholder'
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          & $iscc "/DAppVersion=0.0.0" "/O$env:RUNNER_TEMP\installer-check" installer/watchdog.iss
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Write-Host "Installer script compiled"
