@@ -246,14 +246,17 @@ public sealed class StorageMaintenanceService :
         }
 
         var volume = _volumeProbe.Measure(_config.BasePath);
-        var quotaMet = cleanup?.QuotaMet == true &&
-            cleanupFailure is null &&
-            catalog?.Failures.Count == 0;
+        var measured = cleanupFailure is null && catalog?.Failures.Count == 0;
+        var quotaMet = cleanup?.QuotaMet == true && measured;
+        // Suspended cleanup deleted nothing and could not measure the quota. Capture stays
+        // admitted so new recordings still reach disk; the free-space reserve still applies.
+        var cleanupSuspended = cleanup?.IsSuspended == true && measured;
+        var quotaAdmits = quotaMet || cleanupSuspended;
         var belowReserve = volume.AvailableFreeSpaceBytes is long available &&
             available < _config.MinimumFreeSpaceReserveBytes;
-        var pressure = !volume.IsAvailable || !quotaMet || belowReserve;
+        var pressure = !volume.IsAvailable || !quotaAdmits || belowReserve;
         var canRecover = volume.IsAvailable &&
-            quotaMet &&
+            quotaAdmits &&
             volume.AvailableFreeSpaceBytes >= _config.FreeSpaceRecoveryBytes;
 
         string message;
@@ -263,15 +266,20 @@ public sealed class StorageMaintenanceService :
             message = $"{catalog.Failures.Count} session media file(s) could not be measured safely.";
         else if (!volume.IsAvailable)
             message = $"Storage volume is unavailable: {volume.FailureMessage ?? "unknown error"}";
-        else if (!quotaMet)
+        else if (!quotaAdmits)
             message = cleanup?.Failures.Count > 0
                 ? $"Storage quota remains exceeded after cleanup; {cleanup.Failures.Count} deletion(s) failed."
-                : "Storage quota remains exceeded because no eligible media can be deleted safely.";
+                : cleanup?.RetainedRecoveredClips > 0
+                    ? $"Storage quota remains exceeded: {cleanup.RetainedRecoveredClips} clip(s) restored by a library rebuild " +
+                      "are never deleted automatically. Delete clips you don't need or raise the storage limit."
+                    : "Storage quota remains exceeded because no eligible media can be deleted safely.";
         else if (belowReserve)
             message = $"Storage has {FormatBytes(volume.AvailableFreeSpaceBytes!.Value)} free; " +
                 $"{FormatBytes(_config.MinimumFreeSpaceReserveBytes)} is required.";
         else if (_captureLifecycle.IsStorageAdmissionBlocked && !canRecover)
             message = $"Storage is recovering; {FormatBytes(_config.FreeSpaceRecoveryBytes)} free is required to resume capture.";
+        else if (cleanupSuspended)
+            message = $"Automatic cleanup is paused: {cleanup!.SuspendedReason} The free-space reserve is still enforced.";
         else
             message = "Storage quota and free-space reserve are healthy.";
 

@@ -23,4 +23,10 @@ public sealed record ClipMetadata
 
     /// <summary>Source of highlight detection: "native", "ai-audio", or "manual".</summary>
     public string? HighlightSource { get; init; }
+
+    /// <summary>
+    /// Set when a library rebuild re-added the clip from disk. Its favorite and tags were lost
+    /// with the damaged index, so automatic cleanup never deletes it.
+    /// </summary>
+    public DateTimeOffset? RecoveredAt { get; init; }
 }

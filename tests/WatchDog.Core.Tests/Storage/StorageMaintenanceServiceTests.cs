@@ -131,6 +131,50 @@ public sealed class StorageMaintenanceServiceTests
     }
 
     [Fact]
+    public async Task SuspendedCleanup_KeepsCaptureAdmissionOpenAndSaysCleanupIsPaused()
+    {
+        var cleanup = new FakeMaintenance { Result = SuspendedCleanup() };
+        await using var fixture = CreateFixture(cleanup, Available(10_000));
+
+        var status = await fixture.Service.RunOnceAsync();
+        var started = await fixture.Coordinator.StartAsync(ManualGameRequest());
+
+        Assert.False(status.IsPressure);
+        Assert.False(fixture.Coordinator.IsStorageAdmissionBlocked);
+        Assert.Contains("paused", status.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.True(started.Succeeded);
+    }
+
+    [Fact]
+    public async Task SuspendedCleanup_StillStopsAdmissionBelowTheFreeSpaceReserve()
+    {
+        var cleanup = new FakeMaintenance { Result = SuspendedCleanup() };
+        await using var fixture = CreateFixture(cleanup, Available(50));
+
+        var status = await fixture.Service.RunOnceAsync();
+
+        Assert.True(status.IsPressure);
+        Assert.True(fixture.Coordinator.IsStorageAdmissionBlocked);
+        Assert.Contains("required", status.Message);
+    }
+
+    [Fact]
+    public async Task QuotaHeldByRecoveredClips_SaysWhyAndHowToFreeSpace()
+    {
+        var cleanup = new FakeMaintenance
+        {
+            Result = new StorageCleanupResult(0, 0, [], 500, false) { RetainedRecoveredClips = 3 },
+        };
+        await using var fixture = CreateFixture(cleanup, Available(10_000));
+
+        var status = await fixture.Service.RunOnceAsync();
+
+        Assert.True(status.IsPressure);
+        Assert.Contains("3 clip(s) restored by a library rebuild", status.Message);
+        Assert.Contains("storage limit", status.Message);
+    }
+
+    [Fact]
     public async Task StartAsync_PerformsInitialSafetyCheckBeforeReturning()
     {
         var cleanup = new FakeMaintenance();
@@ -209,6 +253,20 @@ public sealed class StorageMaintenanceServiceTests
     }
 
     private static StorageVolumeSnapshot Available(long bytes) => new(true, bytes);
+
+    private static StorageCleanupResult SuspendedCleanup() =>
+        new(0, 0, [], 0, false) { SuspendedReason = "The clip library is unavailable." };
+
+    private static CaptureRequest ManualGameRequest() => new(
+        Guid.NewGuid(),
+        DateTimeOffset.UtcNow,
+        CaptureInitiation.Manual,
+        new GameCaptureTarget(
+            "game",
+            42,
+            "game.exe",
+            DateTimeOffset.UtcNow.AddSeconds(-1),
+            "Game"));
 
     private sealed class Fixture(
         StorageMaintenanceService service,

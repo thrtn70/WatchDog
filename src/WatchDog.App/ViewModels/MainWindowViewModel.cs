@@ -35,6 +35,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly Action<StorageSafetyStatus> _storageStatusHandler;
     private readonly Action<CaptureState> _stateChangedHandler;
     private readonly Action<CaptureLifecycleSnapshot> _lifecycleSnapshotHandler;
+    private readonly Action? _libraryRestoredHandler;
     private volatile bool _disposed;
 
     // Session-grouped view
@@ -70,6 +71,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     // Performance overlay
     public PerformanceViewModel? Performance { get; }
+
+    // "Library unavailable" banner and rebuild action
+    public LibraryRecoveryViewModel? LibraryRecovery { get; }
 
     // Status
     [ObservableProperty] private string _statusText = string.Empty;
@@ -125,10 +129,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IStorageSafetyMonitor storageSafety,
         Core.Storage.StorageConfig storageConfig,
         AudioMixerViewModel? audioMixer = null,
-        PerformanceViewModel? performance = null)
+        PerformanceViewModel? performance = null,
+        LibraryRecoveryViewModel? libraryRecovery = null)
     {
         AudioMixer = audioMixer;
         Performance = performance;
+        LibraryRecovery = libraryRecovery;
         _clipStorage = clipStorage;
         _clipEditorService = clipEditor;
         _clipExports = clipExports;
@@ -150,6 +156,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _storageStatusHandler = _ =>
             Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(UpdateStorageStatus));
         _storageSafety.StatusChanged += _storageStatusHandler;
+        if (libraryRecovery is not null)
+        {
+            _libraryRestoredHandler = () =>
+                Application.Current?.Dispatcher.InvokeAsync(() => PostToUi(RefreshClips));
+            libraryRecovery.LibraryRestored += _libraryRestoredHandler;
+        }
 
         _stateChangedHandler = _ =>
             Application.Current?.Dispatcher.InvokeAsync(() =>
@@ -270,6 +282,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         var totalSize = allClips.Sum(c => c.FileSizeBytes);
         var sizeMb = totalSize / (1024.0 * 1024.0);
         var ingestion = _completedMedia.Status;
+        if (LibraryRecovery?.IsLibraryUnavailable == true)
+        {
+            StatusText = "Library unavailable • new clips are still saved to disk";
+            return;
+        }
+
         StatusText = ingestion.NeedsAttention
             ? $"{allClips.Count} clips ({sizeMb:F0} MB) • " +
               $"{ingestion.PendingRetryCount + ingestion.UnattributedCount} need attention"
@@ -419,6 +437,16 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private async Task DeleteSessionAsync(SessionGroupViewModel? session)
     {
         if (session is null) return;
+
+        // Every session looks empty while its clips are unknown; never delete on that basis.
+        if (LibraryRecovery?.IsLibraryUnavailable == true)
+        {
+            MessageBox.Show(
+                "Sessions can't be deleted while the clip library is unavailable, because WatchDog " +
+                "can't tell which clips belong to them. Rebuild the library first.",
+                "Delete Session", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
 
         var clipCount = session.ClipCount;
         var msg = clipCount > 0
@@ -829,6 +857,14 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 return;
             }
 
+            // Without the clip index the tracked total would be wrong, and nothing is cleaned up.
+            if (safety.LastCleanup?.IsSuspended == true)
+            {
+                StorageText = "Cleanup paused";
+                StorageTextBrush = _warningBrush;
+                return;
+            }
+
             var clips = _clipStorage.GetAllClips();
             var totalBytes = safety.LastCleanup?.TotalTrackedBytes ?? clips.Sum(c => c.FileSizeBytes);
             var totalGb = totalBytes / (1024.0 * 1024.0 * 1024.0);
@@ -954,6 +990,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _captureLifecycle.SnapshotChanged -= _lifecycleSnapshotHandler;
         _completedMedia.StatusChanged -= _ingestionStatusHandler;
         _storageSafety.StatusChanged -= _storageStatusHandler;
+        if (LibraryRecovery is not null && _libraryRestoredHandler is not null)
+            LibraryRecovery.LibraryRestored -= _libraryRestoredHandler;
         _clipSavedSub.Dispose();
         _automaticPolicySub.Dispose();
         _disposed = true;

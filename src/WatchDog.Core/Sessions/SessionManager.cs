@@ -9,6 +9,7 @@ public sealed class SessionManager
 {
     private readonly ISessionRepository _repository;
     private readonly IClipStorage _clipStorage;
+    private readonly IClipLibraryHealth? _libraryHealth;
     private readonly IEventBus _eventBus;
     private readonly ILogger<SessionManager> _logger;
     private readonly SemaphoreSlim _lock = new(1, 1);
@@ -25,13 +26,21 @@ public sealed class SessionManager
         ISessionRepository repository,
         IClipStorage clipStorage,
         IEventBus eventBus,
-        ILogger<SessionManager> logger)
+        ILogger<SessionManager> logger,
+        IClipLibraryHealth? libraryHealth = null)
     {
         _repository = repository;
         _clipStorage = clipStorage;
+        _libraryHealth = libraryHealth;
         _eventBus = eventBus;
         _logger = logger;
     }
+
+    // While the clip library is unavailable a session's clips are unknown, not absent,
+    // so the session must never be discarded as empty.
+    private bool MayHaveClips(Guid sessionId) =>
+        _libraryHealth?.LibraryStatus.IsAvailable == false ||
+        _clipStorage.GetClipsBySession(sessionId).Count > 0;
 
     public async Task StartSessionAsync(
         GameInfo game,
@@ -297,7 +306,7 @@ public sealed class SessionManager
 
                 // A lifecycle generation cannot truthfully adopt this prior process instance.
                 // Preserve non-empty media as crashed and let capture create a fresh session.
-                var hasClips = _clipStorage.GetClipsBySession(session.Id).Count > 0;
+                var hasClips = MayHaveClips(session.Id);
                 var hasRecordings = session.RecordingPaths.Count > 0 || session.MediaSegments.Count > 0;
                 var hasMatches = session.Matches.Count > 0;
 
@@ -390,7 +399,7 @@ public sealed class SessionManager
 
         var duration = DateTimeOffset.UtcNow - _currentSession.StartedAt;
         var sessionId = _currentSession.Id;
-        var hasClips = _clipStorage.GetClipsBySession(sessionId).Count > 0;
+        var hasClips = MayHaveClips(sessionId);
         var hasRecordings = _currentSession.RecordingPaths.Count > 0 || _currentSession.MediaSegments.Count > 0;
         var hasMatches = _currentSession.Matches.Count > 0;
 
