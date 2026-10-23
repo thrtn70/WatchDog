@@ -7,15 +7,16 @@ namespace WatchDog.Core.Tests.Helpers;
 internal static class TestFs
 {
     /// <summary>
-    /// Recursively delete a directory, retrying on IOException for up to ~500ms.
+    /// Recursively delete a directory, retrying on IOException for up to ~5s.
     /// IOException can happen on Windows when an async write's temp file is
-    /// still being closed by the OS at the moment of deletion.
+    /// still being closed by the OS at the moment of deletion. Half a second was
+    /// not enough on loaded CI runners (a sessions-index temp file was still open).
     /// </summary>
     public static void DeleteDirectoryWithRetry(string path)
     {
         if (!Directory.Exists(path)) return;
 
-        const int maxAttempts = 10;
+        const int maxAttempts = 50;
         for (var attempt = 0; attempt < maxAttempts; attempt++)
         {
             try
@@ -25,11 +26,11 @@ internal static class TestFs
             }
             catch (IOException) when (attempt < maxAttempts - 1)
             {
-                Thread.Sleep(50);
+                Thread.Sleep(100);
             }
             catch (UnauthorizedAccessException) when (attempt < maxAttempts - 1)
             {
-                Thread.Sleep(50);
+                Thread.Sleep(100);
             }
         }
     }
