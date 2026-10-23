@@ -905,6 +905,8 @@ public sealed class ClipStorageManager : IClipStorage, IStorageMaintenance
             AddLoadedClips(primary.Clips!);
             _primaryNeedsRecovery = false;
             _logger.LogInformation("Loaded metadata from {Index}", primary.Path);
+            if (primary.MergedDuplicates > 0)
+                RewriteMergedIndex(primary);
             return;
         }
 
@@ -912,7 +914,11 @@ public sealed class ClipStorageManager : IClipStorage, IStorageMaintenance
         {
             try
             {
-                RepairIndexFromBytes(primaryPath, backup.Bytes!);
+                // The backup keeps its original bytes, so the repaired primary can
+                // take the merged form directly.
+                RepairIndexFromBytes(
+                    primaryPath,
+                    backup.MergedDuplicates > 0 ? SerializeIndex(backup.Clips!) : backup.Bytes!);
             }
             catch (Exception ex)
             {
@@ -973,8 +979,19 @@ public sealed class ClipStorageManager : IClipStorage, IStorageMaintenance
             bytes = File.ReadAllBytes(path);
             var deserialized = JsonSerializer.Deserialize<List<ClipMetadata?>>(bytes, JsonOptions)
                 ?? throw new JsonException("Clip index contains null instead of a list.");
-            var clips = ValidateIndexSnapshot(deserialized, path);
-            return IndexCandidate.Valid(path, bytes, clips);
+            // Every entry is validated before any is merged, so a defect on a
+            // duplicate copy still rejects the index.
+            var merge = ClipIndexDuplicateMerger.Merge(NormalizeIndexEntries(deserialized, path));
+            if (merge.MergedCount > 0)
+            {
+                _logger.LogWarning(
+                    "Clip index {Index} lists {DuplicateCount} duplicate entries for the same media, " +
+                    "left by an older WatchDog version; merged them into {ClipCount} clips",
+                    path,
+                    merge.MergedCount,
+                    merge.Clips.Count);
+            }
+            return IndexCandidate.Valid(path, bytes, merge.Clips, merge.MergedCount);
         }
         catch (FileNotFoundException)
         {
@@ -996,8 +1013,18 @@ public sealed class ClipStorageManager : IClipStorage, IStorageMaintenance
         IReadOnlyList<ClipMetadata?> clips,
         string sourcePath)
     {
-        var normalized = new List<ClipMetadata>(clips.Count);
+        var normalized = NormalizeIndexEntries(clips, sourcePath);
         var knownPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (normalized.Any(clip => !knownPaths.Add(clip.FilePath)))
+            throw new InvalidDataException($"Clip index {sourcePath} contains duplicate equivalent media paths.");
+        return normalized;
+    }
+
+    private static IReadOnlyList<ClipMetadata> NormalizeIndexEntries(
+        IReadOnlyList<ClipMetadata?> clips,
+        string sourcePath)
+    {
+        var normalized = new List<ClipMetadata>(clips.Count);
         for (var index = 0; index < clips.Count; index++)
         {
             var clip = clips[index]
@@ -1013,10 +1040,7 @@ public sealed class ClipStorageManager : IClipStorage, IStorageMaintenance
             if (clip.CaptureGeneration is < 0)
                 throw new InvalidDataException($"Clip index {sourcePath} contains an invalid capture generation at position {index}.");
 
-            var canonicalPath = StoragePath.Canonicalize(clip.FilePath);
-            if (!knownPaths.Add(canonicalPath))
-                throw new InvalidDataException($"Clip index {sourcePath} contains duplicate equivalent media paths.");
-            normalized.Add(clip with { FilePath = canonicalPath });
+            normalized.Add(clip with { FilePath = StoragePath.Canonicalize(clip.FilePath) });
         }
 
         return normalized;
@@ -1046,7 +1070,36 @@ public sealed class ClipStorageManager : IClipStorage, IStorageMaintenance
                 candidate.Error);
         }
 
-        var evidencePath = $"{candidate.Path}.corrupt-{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}";
+        var evidencePath = PreserveIndexBytes(candidate.Path, "corrupt", candidate.Bytes);
+        _logger.LogWarning("Preserved corrupt clip index bytes at {Evidence}", evidencePath);
+    }
+
+    // The merged clips are already loaded, so a failed rewrite does not block startup:
+    // the index stays as it was, and the next successful save replaces it and moves
+    // these bytes to the .bak.
+    private void RewriteMergedIndex(IndexCandidate candidate)
+    {
+        try
+        {
+            var evidencePath = PreserveIndexBytes(candidate.Path, "duplicates", candidate.Bytes!);
+            RepairIndexFromBytes(candidate.Path, SerializeIndex(candidate.Clips!));
+            _logger.LogWarning(
+                "Rewrote {Index} without duplicate entries; its original bytes were preserved at {Evidence}",
+                candidate.Path,
+                evidencePath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarning(
+                ex,
+                "Could not rewrite {Index} without duplicate entries; it was left unchanged",
+                candidate.Path);
+        }
+    }
+
+    private static string PreserveIndexBytes(string indexPath, string reason, byte[] bytes)
+    {
+        var evidencePath = $"{indexPath}.{reason}-{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}";
         using var evidence = new FileStream(
             evidencePath,
             FileMode.CreateNew,
@@ -1054,10 +1107,13 @@ public sealed class ClipStorageManager : IClipStorage, IStorageMaintenance
             FileShare.Read,
             bufferSize: 4096,
             FileOptions.WriteThrough);
-        evidence.Write(candidate.Bytes);
+        evidence.Write(bytes);
         evidence.Flush(flushToDisk: true);
-        _logger.LogWarning("Preserved corrupt clip index bytes at {Evidence}", evidencePath);
+        return evidencePath;
     }
+
+    private static byte[] SerializeIndex(IReadOnlyList<ClipMetadata> clips) =>
+        JsonSerializer.SerializeToUtf8Bytes(clips, JsonOptions);
 
     private static void RepairIndexFromBytes(string indexPath, byte[] validBytes)
     {
@@ -1141,18 +1197,20 @@ public sealed class ClipStorageManager : IClipStorage, IStorageMaintenance
         IndexCandidateState State,
         byte[]? Bytes,
         IReadOnlyList<ClipMetadata>? Clips,
-        Exception? Error)
+        Exception? Error,
+        int MergedDuplicates)
     {
         public static IndexCandidate Missing(string path) =>
-            new(path, IndexCandidateState.Missing, null, null, null);
+            new(path, IndexCandidateState.Missing, null, null, null, 0);
 
         public static IndexCandidate Valid(
             string path,
             byte[] bytes,
-            IReadOnlyList<ClipMetadata> clips) =>
-            new(path, IndexCandidateState.Valid, bytes, clips, null);
+            IReadOnlyList<ClipMetadata> clips,
+            int mergedDuplicates) =>
+            new(path, IndexCandidateState.Valid, bytes, clips, null, mergedDuplicates);
 
         public static IndexCandidate Invalid(string path, byte[]? bytes, Exception error) =>
-            new(path, IndexCandidateState.Invalid, bytes, null, error);
+            new(path, IndexCandidateState.Invalid, bytes, null, error, 0);
     }
 }
