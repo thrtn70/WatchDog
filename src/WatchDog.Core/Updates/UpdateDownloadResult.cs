@@ -12,6 +12,9 @@ public enum UpdateVerificationFailure
     ReleaseMismatch,
     Downgrade,
     InstallerMismatch,
+
+    /// <summary>The user cancelled the download; not an error worth warning about.</summary>
+    Cancelled,
 }
 
 /// <summary>
@@ -44,6 +47,8 @@ public sealed record UpdateDownloadResult
         UpdateVerificationFailure.MissingManifest =>
             "This release has no signed update manifest, so WatchDog can't verify it and it wasn't installed. " +
             "Your current version is unchanged.",
+        UpdateVerificationFailure.Cancelled =>
+            "The update download was cancelled, so it wasn't installed. Your current version is unchanged.",
         _ => "WatchDog couldn't verify that this update came from the WatchDog release, so it wasn't installed. " +
             "Your current version is unchanged.",
     };

@@ -186,19 +186,49 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="12"
                            Foreground="{StaticResource TextBrush}"
                            Text="{Binding UpdateBannerText, Mode=OneWay}"/>
-                <Button Grid.Column="1" Content="Install Update"
+                <!-- While the installer downloads, progress and Cancel replace Install and Dismiss -->
+                <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="12"
+                           Foreground="{StaticResource SubtextBrush}"
+                           Visibility="{Binding IsUpdateDownloading, Converter={StaticResource BoolToVis}}"
+                           Text="{Binding UpdateDownloadProgress, StringFormat='Downloading {0:P0}'}"/>
+                <Button Grid.Column="2" Content="Install Update"
                         Command="{Binding InstallUpdateCommand}"
+                        Margin="8,0" Padding="12,4">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource ActionButton}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsUpdateDownloading}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <Button Grid.Column="2" Content="Cancel"
+                        Command="{Binding CancelUpdateDownloadCommand}"
+                        Visibility="{Binding IsUpdateDownloading, Converter={StaticResource BoolToVis}}"
                         Margin="8,0" Padding="12,4"
-                        Style="{StaticResource ActionButton}"/>
-                <Button Grid.Column="2" Content="&#xE711;" FontFamily="{StaticResource IconFont}"
+                        AutomationProperties.Name="Cancel update download"/>
+                <Button Grid.Column="3" Content="&#xE711;" FontFamily="{StaticResource IconFont}"
                         Command="{Binding DismissUpdateCommand}"
-                        Style="{StaticResource IconButton}" FontSize="10"
+                        FontSize="10"
                         ToolTip="Dismiss"
-                        AutomationProperties.Name="Dismiss update notification"/>
+                        AutomationProperties.Name="Dismiss update notification">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource IconButton}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsUpdateDownloading}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
             </Grid>
         </Border>
 
