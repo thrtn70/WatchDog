@@ -87,7 +87,7 @@ public sealed class SettingsPersistenceTests : IDisposable
             {
               "startMinimized": false,
               "startWithWindows": true,
-              "desktopCaptureEnabled": false,
+              "desktopCaptureEnabled": true,
               "sessionSegmentLiveness": "invalid"
             }
             """);
@@ -103,7 +103,7 @@ public sealed class SettingsPersistenceTests : IDisposable
             {
               "startMinimized": false,
               "startWithWindows": true,
-              "desktopCaptureEnabled": false,
+              "desktopCaptureEnabled": true,
               "sessionSegmentLiveness": {
                 "enabled": true,
                 "policy": "invalid"
@@ -122,7 +122,7 @@ public sealed class SettingsPersistenceTests : IDisposable
             {
               "startMinimized": false,
               "startWithWindows": true,
-              "desktopCaptureEnabled": false,
+              "desktopCaptureEnabled": true,
               "sessionSegmentLiveness": {
                 "enabled": true,
                 "policy": {
@@ -143,7 +143,7 @@ public sealed class SettingsPersistenceTests : IDisposable
             {
               "startMinimized": false,
               "startWithWindows": true,
-              "desktopCaptureEnabled": false,
+              "desktopCaptureEnabled": true,
               "sessionSegmentLiveness": {
                 "enabled": "true",
                 "policy": null
@@ -162,7 +162,7 @@ public sealed class SettingsPersistenceTests : IDisposable
             {
               "startMinimized": false,
               "startWithWindows": true,
-              "desktopCaptureEnabled": false,
+              "desktopCaptureEnabled": true,
               "sessionSegmentLiveness": null
             }
             """);
@@ -172,12 +172,33 @@ public sealed class SettingsPersistenceTests : IDisposable
     }
 
     [Fact]
+    public void NewInstallLeavesDesktopCaptureOff()
+    {
+        var settings = new JsonSettingsService(NullLogger<JsonSettingsService>.Instance, SettingsPath).Load();
+
+        Assert.False(settings.DesktopCaptureEnabled);
+    }
+
+    [Fact]
+    public void ExistingSettingsThatEnabledDesktopCaptureKeepIt()
+    {
+        // Settings written by v1.2.x-v1.4.0 store the field explicitly, so upgrading users keep their choice.
+        var settings = LoadRawSettings("""
+            {
+              "desktopCaptureEnabled": true
+            }
+            """);
+
+        Assert.True(settings.DesktopCaptureEnabled);
+    }
+
+    [Fact]
     public void MalformedUnrelatedFieldStillFallsBackToWholeSettingsDefaults()
     {
         var settings = LoadRawSettings("""
             {
               "startMinimized": "false",
-              "desktopCaptureEnabled": false,
+              "desktopCaptureEnabled": true,
               "sessionSegmentLiveness": {
                 "enabled": true,
                 "policy": {
@@ -399,6 +420,6 @@ public sealed class SettingsPersistenceTests : IDisposable
     {
         Assert.False(settings.StartMinimized);
         Assert.True(settings.StartWithWindows);
-        Assert.False(settings.DesktopCaptureEnabled);
+        Assert.True(settings.DesktopCaptureEnabled);
     }
 }

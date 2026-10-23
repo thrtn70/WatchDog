@@ -22,7 +22,9 @@ public sealed record AppSettings
     public IReadOnlyList<GameRecordingProfile> GameProfiles { get; init; } = [];
     public UpdateSettings Update { get; init; } = new();
     public SessionSegmentLivenessSettings? SessionSegmentLiveness { get; init; }
-    public bool DesktopCaptureEnabled { get; init; } = true;
+    // Off for new installs: WatchDog records only detected games unless the user opts in.
+    // Existing settings files store this field explicitly, so upgrading users keep their choice.
+    public bool DesktopCaptureEnabled { get; init; } = false;
     public bool StartWithWindows { get; init; } = false;
     public bool StartMinimized { get; init; } = true;
     public OverlaySettings Overlay { get; init; } = new();
