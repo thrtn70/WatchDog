@@ -114,6 +114,62 @@ public sealed class CompletedMediaIngestionServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ReconcileWithLibrary_IndexesPendingReceiptsWithTheirAttribution()
+    {
+        var storage = new RecordingClipStorage
+        {
+            Failure = new ClipLibraryUnavailableException("library unavailable"),
+        };
+        await using var service = CreateService(storage);
+        await service.StartAsync(CancellationToken.None);
+        var receipt = Receipt("saved-while-unavailable.mp4", 9);
+        Assert.Equal(
+            CompletedMediaIngestionDisposition.PendingRetry,
+            (await service.AcceptAsync(receipt)).Disposition);
+        Assert.Equal(
+            CompletedMediaIngestionDisposition.PendingRetry,
+            (await service.EnrichAsync(receipt, HighlightType.Kill)).Disposition);
+
+        storage.Failure = null;
+        var result = await service.ReconcileWithLibraryAsync();
+
+        Assert.Equal(1, result.PendingIndexed);
+        Assert.Equal(0, result.PendingRemaining);
+        Assert.Equal(receipt, Assert.Single(storage.Indexed));
+        Assert.Equal(HighlightType.Kill, Assert.Single(storage.IndexedHighlightTypes));
+        Assert.Equal(0, service.Status.PendingRetryCount);
+        Assert.Null(service.Status.LastFailure);
+    }
+
+    [Fact]
+    public async Task ReconcileWithLibrary_ForgetsUnattributedMediaOnlyOnceItIsIndexed()
+    {
+        var orphan = Path.Combine(_path, "orphan.mp4");
+        var other = Path.Combine(_path, "other.mp4");
+        var storage = new RecordingClipStorage { UnindexedFiles = [orphan, other] };
+        await using (var service = CreateService(storage))
+        {
+            await service.StartAsync(CancellationToken.None);
+            Assert.Equal(2, service.Status.UnattributedCount);
+            storage.Clips.Add(new ClipMetadata
+            {
+                FilePath = orphan,
+                FileName = "orphan.mp4",
+                CreatedAt = DateTimeOffset.UtcNow,
+            });
+
+            var result = await service.ReconcileWithLibraryAsync();
+
+            Assert.Equal(1, result.UnattributedForgotten);
+            Assert.Equal(1, service.Status.UnattributedCount);
+        }
+
+        await using var restarted = CreateService(new RecordingClipStorage());
+        await restarted.StartAsync(CancellationToken.None);
+        Assert.Equal(1, restarted.Status.UnattributedCount);
+    }
+
+    [Fact]
     public async Task DrainAsync_IsBoundedWhileAcceptedReceiptRemainsDurable()
     {
         var storage = new RecordingClipStorage { BlockIndexing = true };
@@ -232,9 +288,10 @@ public sealed class CompletedMediaIngestionServiceTests : IDisposable
     {
         private int _concurrency;
         public int MaximumConcurrency { get; private set; }
-        public Exception? Failure { get; init; }
+        public Exception? Failure { get; set; }
         public bool BlockIndexing { get; init; }
         public IReadOnlyList<string> UnindexedFiles { get; init; } = [];
+        public List<ClipMetadata> Clips { get; } = [];
         public List<CompletedMediaReceipt> Indexed { get; } = [];
         public List<HighlightType?> IndexedHighlightTypes { get; } = [];
         public TaskCompletionSource IndexingStarted { get; } = new(
@@ -278,7 +335,7 @@ public sealed class CompletedMediaIngestionServiceTests : IDisposable
         }
 
         public IReadOnlyList<string> FindUnindexedMediaFiles() => UnindexedFiles;
-        public IReadOnlyList<ClipMetadata> GetAllClips() => [];
+        public IReadOnlyList<ClipMetadata> GetAllClips() => Clips;
         public IReadOnlyList<ClipMetadata> GetClipsByGame(string gameName) => [];
         public IReadOnlyList<ClipMetadata> GetClipsBySession(Guid sessionId) => [];
         public Task<ClipMetadata> IndexClipAsync(string filePath, string? gameName, CancellationToken ct = default) => throw new NotSupportedException();
