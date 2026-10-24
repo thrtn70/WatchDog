@@ -120,7 +120,7 @@ public sealed class CompletedMediaIngestionServiceTests : IDisposable
         await using var service = CreateService(storage);
         await service.StartAsync(CancellationToken.None);
         var accept = service.AcceptAsync(Receipt("blocked.mp4", 4));
-        await storage.IndexingStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await storage.IndexingStarted.Task.WaitAsync(Helpers.TestTimeouts.Signal);
 
         var drain = await service.DrainAsync(TimeSpan.FromMilliseconds(20));
 
@@ -146,7 +146,7 @@ public sealed class CompletedMediaIngestionServiceTests : IDisposable
         var receipt = Receipt("protected.mp4", 5);
 
         var accept = service.AcceptAsync(receipt);
-        await storage.IndexingStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await storage.IndexingStarted.Task.WaitAsync(Helpers.TestTimeouts.Signal);
 
         Assert.True(registry.IsProtected(receipt.FilePath));
         storage.ReleaseIndexing.TrySetResult();

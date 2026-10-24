@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using WatchDog.Core.Audio;
+using WatchDog.Core.Tests.Helpers;
 
 namespace WatchDog.Core.Tests.Audio;
 
@@ -65,14 +66,14 @@ public sealed class ObsAudioMixerTests
                 if (Interlocked.Increment(ref applyCount) == 1)
                 {
                     firstApplyEntered.Set();
-                    releaseFirstApply.Wait(TimeSpan.FromSeconds(3));
+                    releaseFirstApply.Wait(TestTimeouts.Signal);
                 }
                 applied = (desktopVolume, desktopMuted);
             },
             NullLogger<ObsAudioMixer>.Instance);
 
         var rebind = Task.Run(mixer.ApplyToCurrentSources);
-        Assert.True(firstApplyEntered.Wait(TimeSpan.FromSeconds(3)));
+        Assert.True(firstApplyEntered.Wait(TestTimeouts.Signal));
         var mutation = Task.Run(() =>
         {
             mutationAttempting.Set();
@@ -80,7 +81,7 @@ public sealed class ObsAudioMixerTests
             mixer.ToggleDesktopMute();
         });
 
-        Assert.True(mutationAttempting.Wait(TimeSpan.FromSeconds(3)));
+        Assert.True(mutationAttempting.Wait(TestTimeouts.Signal));
         Assert.False(mutation.IsCompleted);
         releaseFirstApply.Set();
         await Task.WhenAll(rebind, mutation);

@@ -1,4 +1,5 @@
 using WatchDog.Core.Capture;
+using WatchDog.Core.Tests.Helpers;
 using WatchDog.Core.Webcam;
 
 namespace WatchDog.Core.Tests.Capture;
@@ -264,7 +265,7 @@ public sealed class CaptureOwnedManualStopTests
         Task<CaptureTransitionResult>? stopping = null;
         try
         {
-            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await entered.Task.WaitAsync(TestTimeouts.Signal);
             Assert.Equal(CaptureLifecycleStatus.Starting, coordinator.Snapshot.Status);
             stopping = coordinator.StopOwnedManualAsync(first, cancellation.Token);
             Assert.False(stopping.IsCompleted);
@@ -273,16 +274,16 @@ public sealed class CaptureOwnedManualStopTests
             {
                 cancellation.Cancel();
                 Assert.Equal(CaptureFailureKind.Cancelled,
-                    (await stopping.WaitAsync(TimeSpan.FromSeconds(5))).Failure?.Kind);
+                    (await stopping.WaitAsync(TestTimeouts.Signal)).Failure?.Kind);
             }
         }
         finally
         {
             release.TrySetResult();
         }
-        Assert.True((await switching.WaitAsync(TimeSpan.FromSeconds(5))).Succeeded);
+        Assert.True((await switching.WaitAsync(TestTimeouts.Signal)).Succeeded);
         var second = coordinator.Snapshot.Context!;
-        var stopped = await stopping!.WaitAsync(TimeSpan.FromSeconds(5));
+        var stopped = await stopping!.WaitAsync(TestTimeouts.Signal);
         Assert.Equal(cancel ? CaptureCommandDisposition.Failed : CaptureCommandDisposition.Rejected, stopped.Disposition);
         Assert.Same(second, coordinator.Snapshot.Context);
         Assert.Single(backend.StopCalls);

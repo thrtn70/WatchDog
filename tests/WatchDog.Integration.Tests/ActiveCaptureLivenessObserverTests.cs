@@ -2,6 +2,7 @@ using System.Threading.Channels;
 using Microsoft.Extensions.Logging.Abstractions;
 using WatchDog.App.Services;
 using WatchDog.Core.Capture;
+using WatchDog.Core.Tests.Helpers;
 
 namespace WatchDog.Integration.Tests;
 
@@ -38,12 +39,12 @@ public sealed class ActiveCaptureLivenessObserverTests
 
         Assert.Equal(
             TimeSpan.FromMilliseconds(100),
-            await ticks.Waits.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(3)));
+            await ticks.Waits.Reader.ReadAsync().AsTask().WaitAsync(TestTimeouts.Signal));
         time.Advance(TimeSpan.FromMilliseconds(100));
         ticks.Tick();
         Assert.Equal(
             1,
-            await provider.Reads.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(3)));
+            await provider.Reads.Reader.ReadAsync().AsTask().WaitAsync(TestTimeouts.Signal));
 
         await observer.StopAsync(CancellationToken.None);
     }
@@ -108,13 +109,13 @@ public sealed class ActiveCaptureLivenessObserverTests
         await observer.StartAsync(CancellationToken.None);
         Assert.Equal(
             TimeSpan.FromMilliseconds(100),
-            await ticks.Waits.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(3)));
+            await ticks.Waits.Reader.ReadAsync().AsTask().WaitAsync(TestTimeouts.Signal));
         time.Advance(TimeSpan.FromMilliseconds(100));
         ticks.Tick();
-        await provider.Entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await provider.Entered.Task.WaitAsync(TestTimeouts.Signal);
 
-        await observer.StopAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(3));
-        await provider.CancellationObserved.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await observer.StopAsync(CancellationToken.None).WaitAsync(TestTimeouts.Signal);
+        await provider.CancellationObserved.Task.WaitAsync(TestTimeouts.Signal);
 
         Assert.False(provider.Release.Task.IsCompleted);
     }

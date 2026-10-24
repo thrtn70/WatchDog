@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using WatchDog.CaptureIsolation.Windows.Qualification;
+using WatchDog.Core.Tests.Helpers;
 
 namespace WatchDog.Core.Tests.Isolation;
 
@@ -105,7 +106,7 @@ public sealed class FixtureB1WrapperContractTests
             new BarrierReadStream(Encoding.UTF8.GetBytes("stderr"), barrier),
             QualificationExitCode.Pass);
 
-        var result = await ObserveAsync(process, overallDeadline: TimeSpan.FromSeconds(2));
+        var result = await ObserveAsync(process);
 
         Assert.Equal(FixtureB1WrapperDisposition.Parsed, result.Disposition);
         Assert.Equal(2, barrier.ReaderCount);
@@ -257,7 +258,7 @@ public sealed class FixtureB1WrapperContractTests
 
         var pending = ObserveAsync(
             process, TimeSpan.FromMilliseconds(25), TimeSpan.FromSeconds(2));
-        await process.TerminateAndReapEntered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await process.TerminateAndReapEntered.Task.WaitAsync(TestTimeouts.Signal);
         Assert.False(pending.IsCompleted);
 
         allowCleanup.SetResult();
@@ -317,7 +318,7 @@ public sealed class FixtureB1WrapperContractTests
                 process,
                 overallDeadline: TimeSpan.FromMilliseconds(20),
                 cleanupDeadline: TimeSpan.FromMilliseconds(25))
-            .WaitAsync(TimeSpan.FromSeconds(1));
+            .WaitAsync(TestTimeouts.Signal);
 
         Assert.Equal(FixtureB1WrapperDisposition.TimedOut, result.Disposition);
         Assert.Equal(QualificationExitCode.CleanupIncomplete, result.ExitCode);
@@ -342,7 +343,7 @@ public sealed class FixtureB1WrapperContractTests
         var result = await ObserveAsync(
                 process,
                 cleanupDeadline: TimeSpan.FromMilliseconds(25))
-            .WaitAsync(TimeSpan.FromSeconds(1));
+            .WaitAsync(TestTimeouts.Signal);
 
         Assert.Equal(FixtureB1WrapperDisposition.StreamFault, result.Disposition);
         Assert.Equal(QualificationExitCode.CleanupIncomplete, result.ExitCode);
@@ -401,8 +402,8 @@ public sealed class FixtureB1WrapperContractTests
         FixtureB1WrapperContract.ObserveAsync(
             RunNonce,
             process,
-            overallDeadline ?? TimeSpan.FromSeconds(1),
-            cleanupDeadline ?? TimeSpan.FromSeconds(1),
+            overallDeadline ?? TestTimeouts.Signal,
+            cleanupDeadline ?? TestTimeouts.Signal,
             cancellationToken);
 
     private static byte[] Status(QualificationExitCode exitCode) =>

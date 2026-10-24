@@ -1,8 +1,13 @@
 using System.Diagnostics;
 using WatchDog.Core.Recording;
+using WatchDog.Core.Tests.Helpers;
 
 namespace WatchDog.Core.Tests.Recording;
 
+// Runs outside the parallel suite: TimedOutProcessIsKilledWithinTerminationBound times a cold
+// powershell.exe start, which has taken more than 20 seconds under full parallel load on
+// GitHub's Windows runners.
+[Collection(SerialProcessCollection.Name)]
 public sealed class FFmpegWebcamVideoOnlyFinalizerTests
 {
     [Fact]
