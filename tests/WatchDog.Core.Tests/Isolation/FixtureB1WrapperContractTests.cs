@@ -106,7 +106,7 @@ public sealed class FixtureB1WrapperContractTests
             new BarrierReadStream(Encoding.UTF8.GetBytes("stderr"), barrier),
             QualificationExitCode.Pass);
 
-        var result = await ObserveAsync(process, overallDeadline: TimeSpan.FromSeconds(2));
+        var result = await ObserveAsync(process);
 
         Assert.Equal(FixtureB1WrapperDisposition.Parsed, result.Disposition);
         Assert.Equal(2, barrier.ReaderCount);
@@ -402,8 +402,8 @@ public sealed class FixtureB1WrapperContractTests
         FixtureB1WrapperContract.ObserveAsync(
             RunNonce,
             process,
-            overallDeadline ?? TimeSpan.FromSeconds(1),
-            cleanupDeadline ?? TimeSpan.FromSeconds(1),
+            overallDeadline ?? TestTimeouts.Signal,
+            cleanupDeadline ?? TestTimeouts.Signal,
             cancellationToken);
 
     private static byte[] Status(QualificationExitCode exitCode) =>

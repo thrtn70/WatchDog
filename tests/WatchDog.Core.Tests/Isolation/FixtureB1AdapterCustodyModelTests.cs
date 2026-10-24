@@ -86,7 +86,7 @@ public sealed class FixtureB1AdapterCustodyModelTests
     {
         var fake = new FakeAdapter { BlockFirstDuplicate = true };
         using var cancellation = new CancellationTokenSource();
-        var pending = Model(fake, TimeSpan.FromSeconds(2)).ExecuteAsync(
+        var pending = Model(fake).ExecuteAsync(
             RunNonce, LaunchId, cancellation.Token);
         await fake.DuplicateEntered.Task.WaitAsync(TestTimeouts.Signal);
 

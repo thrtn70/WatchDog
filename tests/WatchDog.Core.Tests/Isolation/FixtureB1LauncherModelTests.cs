@@ -227,7 +227,7 @@ public sealed class FixtureB1LauncherModelTests
     {
         var session = new FakeSession { BlockProof = true, BlockDrain = true };
         using var cancellation = new CancellationTokenSource();
-        var pending = new FixtureB1LauncherModel(session, TimeSpan.FromSeconds(2))
+        var pending = new FixtureB1LauncherModel(session)
             .ExecuteAsync(Command(), cancellation.Token);
         await session.ProofEntered.Task.WaitAsync(TestTimeouts.Signal);
 
@@ -493,7 +493,7 @@ public sealed class FixtureB1LauncherModelTests
         {
             session.BlockProof = true;
             session.AbortThrowsAfterRelease = true;
-            pending = new FixtureB1LauncherModel(session, TimeSpan.FromSeconds(2))
+            pending = new FixtureB1LauncherModel(session)
                 .ExecuteAsync(Command(), cancellation.Token);
             await session.ProofEntered.Task.WaitAsync(TestTimeouts.Signal);
             cancellation.Cancel();
