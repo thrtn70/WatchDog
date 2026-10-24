@@ -1,5 +1,6 @@
 using WatchDog.Core.Recording;
 using WatchDog.Core.Devices;
+using WatchDog.Core.Tests.Helpers;
 using WatchDog.Core.Webcam;
 
 namespace WatchDog.Core.Tests.Recording;
@@ -177,7 +178,7 @@ public sealed class ObsWebcamRecorderTests
         var start = recorder.StartAsync(CreateSelection(), CreateOutputPath());
         try
         {
-            await startEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            await startEntered.Task.WaitAsync(TestTimeouts.Signal);
 
             Assert.False(start.IsCompleted);
             Assert.False(recorder.IsRecording);

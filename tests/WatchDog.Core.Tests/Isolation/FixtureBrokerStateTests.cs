@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using WatchDog.CaptureIsolation.Windows.Qualification;
+using WatchDog.Core.Tests.Helpers;
 
 namespace WatchDog.Core.Tests.Isolation;
 
@@ -489,7 +490,7 @@ public sealed class FixtureBrokerStateTests
 
         var commit = Task.Run(() => exchange.Broker.AcceptGrantAck(
             Frame(fixture, fixture.Parties.Target, ack)));
-        Assert.True(fixture.Authority.PeerObservationEntered.Wait(TimeSpan.FromSeconds(5)));
+        Assert.True(fixture.Authority.PeerObservationEntered.Wait(TestTimeouts.Signal));
         var fail = Task.Run(() =>
             exchange.Broker.Fail(FixtureBrokerFailureKind.CleanupAmbiguous));
         fixture.Authority.PeerObservationRelease.Set();
@@ -510,8 +511,7 @@ public sealed class FixtureBrokerStateTests
         fixture.Observer.ThrowOnDeliveredObservation = true;
 
         var write = Task.Run(() => exchange.Child.MayWrite);
-        Assert.True(fixture.Observer.DeliveredObservationEntered.Wait(
-            TimeSpan.FromSeconds(5)));
+        Assert.True(fixture.Observer.DeliveredObservationEntered.Wait(TestTimeouts.Signal));
         var activate = Task.Run(() => Record.Exception(() =>
             exchange.Child.AcceptActivation(
                 Frame(fixture, fixture.Parties.Issuer, activation))));
@@ -952,7 +952,7 @@ public sealed class FixtureBrokerStateTests
             if (BlockPeerObservation)
             {
                 PeerObservationEntered.Set();
-                PeerObservationRelease.Wait(TimeSpan.FromSeconds(5));
+                PeerObservationRelease.Wait(TestTimeouts.Signal);
             }
             return _connections[connectionReceipt];
         }
@@ -1000,7 +1000,7 @@ public sealed class FixtureBrokerStateTests
             if (BlockDeliveredObservation)
             {
                 DeliveredObservationEntered.Set();
-                DeliveredObservationRelease.Wait(TimeSpan.FromSeconds(5));
+                DeliveredObservationRelease.Wait(TestTimeouts.Signal);
             }
             if (ThrowOnDeliveredObservation)
                 throw new InvalidOperationException("injected child-local observation failure");

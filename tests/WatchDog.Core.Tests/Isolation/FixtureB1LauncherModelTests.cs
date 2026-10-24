@@ -1,4 +1,5 @@
 using WatchDog.CaptureIsolation.Windows.Qualification;
+using WatchDog.Core.Tests.Helpers;
 
 namespace WatchDog.Core.Tests.Isolation;
 
@@ -187,10 +188,10 @@ public sealed class FixtureB1LauncherModelTests
         using var cancellation = new CancellationTokenSource();
         var pending = new FixtureB1LauncherModel(session)
             .ExecuteAsync(Command(), cancellation.Token);
-        await session.DuplicateEntered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await session.DuplicateEntered.Task.WaitAsync(TestTimeouts.Signal);
 
         cancellation.Cancel();
-        var result = await pending.WaitAsync(TimeSpan.FromSeconds(1));
+        var result = await pending.WaitAsync(TestTimeouts.Signal);
 
         Assert.Equal(QualificationExitCode.AssertionFailedCleanupConfirmed,
             result.ExitCode);
@@ -209,10 +210,10 @@ public sealed class FixtureB1LauncherModelTests
         using var cancellation = new CancellationTokenSource();
         var pending = new FixtureB1LauncherModel(session)
             .ExecuteAsync(Command(), cancellation.Token);
-        await session.DuplicateEntered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await session.DuplicateEntered.Task.WaitAsync(TestTimeouts.Signal);
 
         cancellation.Cancel();
-        var result = await pending.WaitAsync(TimeSpan.FromSeconds(1));
+        var result = await pending.WaitAsync(TestTimeouts.Signal);
 
         Assert.Equal(QualificationExitCode.CleanupIncomplete, result.ExitCode);
         Assert.False(result.CleanupConfirmed);
@@ -228,15 +229,15 @@ public sealed class FixtureB1LauncherModelTests
         using var cancellation = new CancellationTokenSource();
         var pending = new FixtureB1LauncherModel(session, TimeSpan.FromSeconds(2))
             .ExecuteAsync(Command(), cancellation.Token);
-        await session.ProofEntered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await session.ProofEntered.Task.WaitAsync(TestTimeouts.Signal);
 
         cancellation.Cancel();
-        await session.AbortEntered.Task.WaitAsync(TimeSpan.FromSeconds(1));
-        await session.DrainEntered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await session.AbortEntered.Task.WaitAsync(TestTimeouts.Signal);
+        await session.DrainEntered.Task.WaitAsync(TestTimeouts.Signal);
         Assert.False(pending.IsCompleted);
 
         session.DrainRelease.TrySetResult();
-        var result = await pending.WaitAsync(TimeSpan.FromSeconds(1));
+        var result = await pending.WaitAsync(TestTimeouts.Signal);
 
         Assert.Equal(QualificationExitCode.AssertionFailedCleanupConfirmed,
             result.ExitCode);
@@ -252,11 +253,11 @@ public sealed class FixtureB1LauncherModelTests
         using var cancellation = new CancellationTokenSource();
         var pending = new FixtureB1LauncherModel(session)
             .ExecuteAsync(Command(), cancellation.Token);
-        await session.DrainEntered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await session.DrainEntered.Task.WaitAsync(TestTimeouts.Signal);
 
         cancellation.Cancel();
         session.DrainRelease.TrySetResult();
-        var result = await pending.WaitAsync(TimeSpan.FromSeconds(1));
+        var result = await pending.WaitAsync(TestTimeouts.Signal);
 
         Assert.True(result.ActivationAcknowledged);
         Assert.Equal(QualificationExitCode.AssertionFailedCleanupConfirmed,
@@ -277,14 +278,14 @@ public sealed class FixtureB1LauncherModelTests
         var pending = new FixtureB1LauncherModel(
             session, TimeSpan.FromSeconds(1))
             .ExecuteAsync(Command(), CancellationToken.None);
-        await session.ProofEntered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await session.ProofEntered.Task.WaitAsync(TestTimeouts.Signal);
         clock.Advance(TimeSpan.FromSeconds(1));
-        await session.AbortEntered.Task.WaitAsync(TimeSpan.FromSeconds(1));
-        await session.DrainEntered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await session.AbortEntered.Task.WaitAsync(TestTimeouts.Signal);
+        await session.DrainEntered.Task.WaitAsync(TestTimeouts.Signal);
         Assert.False(pending.IsCompleted);
 
         session.DrainRelease.TrySetResult();
-        var result = await pending.WaitAsync(TimeSpan.FromSeconds(1));
+        var result = await pending.WaitAsync(TestTimeouts.Signal);
 
         Assert.Equal(QualificationExitCode.TimeoutCleanupConfirmed, result.ExitCode);
         Assert.True(result.AbortConfirmed);
@@ -305,14 +306,14 @@ public sealed class FixtureB1LauncherModelTests
         using var cancellation = new CancellationTokenSource();
         var pending = new FixtureB1LauncherModel(session)
             .ExecuteAsync(Command(), cancellation.Token);
-        await session.ProofEntered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await session.ProofEntered.Task.WaitAsync(TestTimeouts.Signal);
 
         cancellation.Cancel();
-        await session.DrainEntered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await session.DrainEntered.Task.WaitAsync(TestTimeouts.Signal);
         clock.Advance(QualificationConstants.CleanupTimeout);
         try
         {
-            var result = await pending.WaitAsync(TimeSpan.FromSeconds(1));
+            var result = await pending.WaitAsync(TestTimeouts.Signal);
 
             Assert.Equal(QualificationExitCode.CleanupIncomplete, result.ExitCode);
             Assert.False(result.CleanupConfirmed);
@@ -494,7 +495,7 @@ public sealed class FixtureB1LauncherModelTests
             session.AbortThrowsAfterRelease = true;
             pending = new FixtureB1LauncherModel(session, TimeSpan.FromSeconds(2))
                 .ExecuteAsync(Command(), cancellation.Token);
-            await session.ProofEntered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+            await session.ProofEntered.Task.WaitAsync(TestTimeouts.Signal);
             cancellation.Cancel();
         }
         else
@@ -506,7 +507,7 @@ public sealed class FixtureB1LauncherModelTests
                 .ExecuteAsync(Command(), CancellationToken.None);
         }
 
-        var result = await pending.WaitAsync(TimeSpan.FromSeconds(2));
+        var result = await pending.WaitAsync(TestTimeouts.Signal);
 
         Assert.Equal(QualificationExitCode.CleanupIncomplete, result.ExitCode);
         Assert.False(result.CleanupConfirmed);

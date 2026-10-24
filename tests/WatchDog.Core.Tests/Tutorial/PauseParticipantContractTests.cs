@@ -4,6 +4,7 @@ using WatchDog.Core.Audio;
 using WatchDog.Core.Capture;
 using WatchDog.Core.Devices;
 using WatchDog.Core.Settings;
+using WatchDog.Core.Tests.Helpers;
 using WatchDog.Core.Tutorial;
 using WatchDog.Core.Webcam;
 
@@ -267,7 +268,7 @@ public sealed class PauseParticipantContractTests
             Assert.True(secondGate.IsClosed);
         }
         finally { lease!.Dispose(); }
-        await drain.WaitAsync(TimeSpan.FromSeconds(5));
+        await drain.WaitAsync(TestTimeouts.Signal);
         Assert.True(cleanup.TryAccept(cleanup.Tickets[0], fixture.Context,
             Release(terminal, cleanup.Tickets[0], mediaFailed: true)));
         Assert.True(cleanup.Evaluate().CleanupCompleted);
@@ -305,7 +306,7 @@ public sealed class PauseParticipantContractTests
             Assert.False(cleanup.Evaluate().CleanupCompleted);
         }
         finally { lease!.Dispose(); }
-        await drain!.WaitAsync(TimeSpan.FromSeconds(5));
+        await drain!.WaitAsync(TestTimeouts.Signal);
         var otherTicket = cleanup!.Tickets.Single(ticket => ticket.OutputEpoch == otherGate.Registration.OutputEpoch);
         Assert.True(cleanup.TryAccept(otherTicket, fixture.Context,
             Release(terminal!, otherTicket, mediaFailed: true)));
@@ -759,17 +760,17 @@ public sealed class PauseParticipantContractTests
         var copy = Task.Run(() => operation.TryAcceptMediaCoverage(registration, fixture.Context,
             canonical with { Streams = blocking }));
 
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await entered.Task.WaitAsync(TestTimeouts.Signal);
         try
         {
             Assert.Equal(1, await Task.Run(() => operation.PendingMediaCoverageCount)
-                .WaitAsync(TimeSpan.FromSeconds(3)));
+                .WaitAsync(TestTimeouts.Signal));
         }
         finally
         {
             release.TrySetResult();
         }
-        Assert.True(await copy.WaitAsync(TimeSpan.FromSeconds(3)));
+        Assert.True(await copy.WaitAsync(TestTimeouts.Signal));
         Assert.Equal(0, operation.PendingMediaCoverageCount);
     }
 

@@ -1,5 +1,6 @@
 using WatchDog.CaptureIsolation;
 using WatchDog.CaptureIsolation.Windows;
+using WatchDog.Core.Tests.Helpers;
 
 namespace WatchDog.Core.Tests.Isolation;
 
@@ -280,7 +281,7 @@ public sealed class WindowsReaperTests
         disposeThread.Start();
         try
         {
-            Assert.True(closeEntered.Wait(TimeSpan.FromSeconds(5)));
+            Assert.True(closeEntered.Wait(TestTimeouts.Signal));
             var unavailable = Assert.Throws<HelperBoundaryException>(() =>
                 owned.Boundary.CreateReaper(owned.Job, owned.Process));
             Assert.Equal("helper.windows.reaper.unavailable", unavailable.FailureCode);
@@ -288,7 +289,7 @@ public sealed class WindowsReaperTests
         finally
         {
             releaseClose.Set();
-            Assert.True(disposeThread.Join(TimeSpan.FromSeconds(5)));
+            Assert.True(disposeThread.Join(TestTimeouts.Signal));
         }
         Assert.Null(disposeFailure);
         await owned.Boundary.DisposeAsync();

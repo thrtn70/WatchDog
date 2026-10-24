@@ -1,4 +1,5 @@
 using WatchDog.CaptureIsolation.Windows.Qualification;
+using WatchDog.Core.Tests.Helpers;
 
 namespace WatchDog.Core.Tests.Isolation;
 
@@ -87,15 +88,15 @@ public sealed class FixtureB1AdapterCustodyModelTests
         using var cancellation = new CancellationTokenSource();
         var pending = Model(fake, TimeSpan.FromSeconds(2)).ExecuteAsync(
             RunNonce, LaunchId, cancellation.Token);
-        await fake.DuplicateEntered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await fake.DuplicateEntered.Task.WaitAsync(TestTimeouts.Signal);
 
         cancellation.Cancel();
-        await fake.AbortEntered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await fake.AbortEntered.Task.WaitAsync(TestTimeouts.Signal);
         Assert.False(pending.IsCompleted);
         Assert.Equal(0, fake.DrainCalls);
 
         fake.DuplicateRelease.TrySetResult();
-        var result = await pending.WaitAsync(TimeSpan.FromSeconds(1));
+        var result = await pending.WaitAsync(TestTimeouts.Signal);
 
         Assert.Equal(FixtureB1AdapterTerminalState.Rejected, result.TerminalState);
         Assert.Equal(FixtureB1AdapterDiagnosticCode.CallerCanceled,
@@ -255,14 +256,14 @@ public sealed class FixtureB1AdapterCustodyModelTests
         var advancing = Task.Run(() => clock.Advance(TimeSpan.FromSeconds(1)));
         try
         {
-            await callbackEntered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+            await callbackEntered.Task.WaitAsync(TestTimeouts.Signal);
             Assert.True(token.IsCancellationRequested);
             Assert.True(cleanup.IsExpired);
         }
         finally
         {
             releaseCallback.TrySetResult();
-            await advancing.WaitAsync(TimeSpan.FromSeconds(1));
+            await advancing.WaitAsync(TestTimeouts.Signal);
         }
     }
 

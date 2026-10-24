@@ -1,6 +1,7 @@
 using WatchDog.Core.ClipEditor;
 using WatchDog.Core.Highlights;
 using WatchDog.Core.Storage;
+using WatchDog.Core.Tests.Helpers;
 
 namespace WatchDog.Core.Tests.ClipEditor;
 
@@ -86,7 +87,7 @@ public sealed class ClipExportCoordinatorTests
         };
         await using var coordinator = new ClipExportCoordinator(editor, new FakeIngestion());
         var export = coordinator.ExportAsync(Source(), TimeSpan.Zero, TimeSpan.FromSeconds(2));
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await entered.Task.WaitAsync(TestTimeouts.Signal);
 
         var drain = await coordinator.DrainAsync(TimeSpan.FromSeconds(1));
 

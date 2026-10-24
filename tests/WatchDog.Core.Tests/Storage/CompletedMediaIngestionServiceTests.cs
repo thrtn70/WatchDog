@@ -10,11 +10,6 @@ public sealed class CompletedMediaIngestionServiceTests : IDisposable
     private readonly string _path = Path.Combine(
         Path.GetTempPath(), "WatchDog_Ingestion_" + Guid.NewGuid().ToString("N"));
 
-    // Upper bound for a signal that must arrive. AcceptAsync writes the pending record durably
-    // before indexing starts, which took over a second on a loaded CI runner. Passing runs
-    // return as soon as the signal fires, so a generous bound costs nothing.
-    private static readonly TimeSpan SignalTimeout = TimeSpan.FromSeconds(30);
-
     [Fact]
     public async Task AcceptAsync_SerializesAndPreservesImmutableAttribution()
     {
@@ -125,7 +120,7 @@ public sealed class CompletedMediaIngestionServiceTests : IDisposable
         await using var service = CreateService(storage);
         await service.StartAsync(CancellationToken.None);
         var accept = service.AcceptAsync(Receipt("blocked.mp4", 4));
-        await storage.IndexingStarted.Task.WaitAsync(SignalTimeout);
+        await storage.IndexingStarted.Task.WaitAsync(Helpers.TestTimeouts.Signal);
 
         var drain = await service.DrainAsync(TimeSpan.FromMilliseconds(20));
 
@@ -151,7 +146,7 @@ public sealed class CompletedMediaIngestionServiceTests : IDisposable
         var receipt = Receipt("protected.mp4", 5);
 
         var accept = service.AcceptAsync(receipt);
-        await storage.IndexingStarted.Task.WaitAsync(SignalTimeout);
+        await storage.IndexingStarted.Task.WaitAsync(Helpers.TestTimeouts.Signal);
 
         Assert.True(registry.IsProtected(receipt.FilePath));
         storage.ReleaseIndexing.TrySetResult();

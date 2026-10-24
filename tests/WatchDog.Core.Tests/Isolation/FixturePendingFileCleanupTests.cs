@@ -1,5 +1,6 @@
 using WatchDog.CaptureIsolation.Windows;
 using WatchDog.CaptureIsolation.Windows.Qualification;
+using WatchDog.Core.Tests.Helpers;
 
 namespace WatchDog.Core.Tests.Isolation;
 
@@ -98,20 +99,20 @@ public sealed class FixturePendingFileCleanupTests
             lock (lifetimeGate)
             {
                 operationEntered.Set();
-                if (!releaseOperation.Wait(TimeSpan.FromSeconds(5)))
+                if (!releaseOperation.Wait(TestTimeouts.Signal))
                     throw new TimeoutException();
                 Assert.Equal(0, closer.Calls);
             }
         });
         try
         {
-            Assert.True(operationEntered.Wait(TimeSpan.FromSeconds(5)));
+            Assert.True(operationEntered.Wait(TestTimeouts.Signal));
             var close = Task.Run(() =>
             {
                 closeStarted.Set();
                 return owner.TryClose(observed);
             });
-            Assert.True(closeStarted.Wait(TimeSpan.FromSeconds(5)));
+            Assert.True(closeStarted.Wait(TestTimeouts.Signal));
             var early = await Task.WhenAny(close, Task.Delay(TimeSpan.FromMilliseconds(100)));
             Assert.NotSame(close, early);
             Assert.Equal(0, closer.Calls);
@@ -137,7 +138,7 @@ public sealed class FixturePendingFileCleanupTests
         var owner = new FixturePendingFileCleanup(new object(), _ =>
         {
             marking.Set();
-            if (!releaseMark.Wait(TimeSpan.FromSeconds(5)))
+            if (!releaseMark.Wait(TestTimeouts.Signal))
                 throw new TimeoutException();
             return true;
         });
@@ -145,7 +146,7 @@ public sealed class FixturePendingFileCleanupTests
         var cleanup = Task.Run(() => owner.TryCleanup(handle));
         try
         {
-            Assert.True(marking.Wait(TimeSpan.FromSeconds(5)));
+            Assert.True(marking.Wait(TestTimeouts.Signal));
             var drain = Task.Run(owner.TryDrain);
             Assert.Equal(0, closer.Calls);
             releaseMark.Set();

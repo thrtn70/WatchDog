@@ -7,6 +7,7 @@ using WatchDog.Core.Events;
 using WatchDog.Core.GameDetection;
 using WatchDog.Core.Highlights;
 using WatchDog.Core.Settings;
+using WatchDog.Core.Tests.Helpers;
 using WatchDog.Core.Tutorial;
 using WatchDog.Core.Webcam;
 
@@ -144,7 +145,7 @@ public sealed class TutorialCaptureControllerTests
             Assert.True(called);
             Assert.Null(callbackFailure);
             Assert.NotNull(start);
-            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await entered.Task.WaitAsync(TestTimeouts.Signal);
             Assert.Equal(replacementRevision, controller.State.ConfirmationRevision);
             Assert.Same(replacement, owner.ActivePlan);
             Assert.False(submittedToken.IsCancellationRequested);
@@ -212,7 +213,7 @@ public sealed class TutorialCaptureControllerTests
         var pending = commands.StartAsync();
         try
         {
-            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await entered.Task.WaitAsync(TestTimeouts.Signal);
             if (throwAfterConfirmation) Assert.Throws<AggregateException>(() => commands.Confirm(h.Plan()));
             else commands.Confirm(h.Plan());
             Assert.Equal(1, callbacks);
@@ -570,7 +571,7 @@ public sealed class TutorialCaptureControllerTests
         var owned = vm.Plan;
         var exactSource = vm.ExactWindowText;
         var pending = vm.StartCommand.ExecuteAsync(null);
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await entered.Task.WaitAsync(TestTimeouts.Signal);
         try
         {
             vm.RegionXText = "-200";
@@ -687,7 +688,7 @@ public sealed class TutorialCaptureControllerTests
             capture: commands, isDisplayCurrent: _ => true);
         ConfirmWorkspaceDisplay(vm, WorkspaceDisplay("display-a"));
         var pending = vm.StartCommand.ExecuteAsync(null);
-        var token = await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var token = await entered.Task.WaitAsync(TestTimeouts.Signal);
         var revokedBeforeEnumeration = false;
         try
         {
@@ -743,7 +744,7 @@ public sealed class TutorialCaptureControllerTests
         var exactSource = vm.ExactWindowText;
         var boundary = vm.BoundaryText;
         var pending = vm.StartCommand.ExecuteAsync(null);
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await entered.Task.WaitAsync(TestTimeouts.Signal);
         try
         {
             ConfirmWorkspaceDisplay(vm, WorkspaceDisplay("display-b"));
@@ -810,7 +811,7 @@ public sealed class TutorialCaptureControllerTests
         using var commands = new TutorialWorkspaceCapture(h.Manager.TutorialCapture, startAdmitted: true);
         commands.Confirm(h.Plan());
         var pending = commands.StartAsync();
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await entered.Task.WaitAsync(TestTimeouts.Signal);
         try { h.Backend.FailStop = true; commands.Revoke(); }
         finally { release.TrySetResult(true); }
         var result = await pending;
@@ -892,7 +893,7 @@ public sealed class TutorialCaptureControllerTests
         using var vm = new TutorialWorkspaceViewModel(h.Baseline, new TutorialLifecycleObservation(h.Lifecycle), _ => true, commands);
         ConfirmWorkspaceWindow(vm);
         var start = ((IAsyncRelayCommand)vm.StartCommand).ExecuteAsync(null);
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await entered.Task.WaitAsync(TestTimeouts.Signal);
         var close = vm.RequestCloseAsync();
         try { Assert.False(close.IsCompleted); }
         finally { release.TrySetResult(true); }
@@ -977,7 +978,7 @@ public sealed class TutorialCaptureControllerTests
         };
         var revision = controller.Confirm(h.Plan());
         await controller.StartAsync(revision);
-        Assert.Equal(revision, (await completedStart.Task.WaitAsync(TimeSpan.FromSeconds(5))).RetainedRevision);
+        Assert.Equal(revision, (await completedStart.Task.WaitAsync(TestTimeouts.Signal)).RetainedRevision);
         await controller.StopAsync(revision);
         Assert.Null(controller.State.RetainedRevision);
         Assert.Null(controller.State.RetainedCleanupContext);
@@ -1018,7 +1019,7 @@ public sealed class TutorialCaptureControllerTests
         using var vm = new TutorialWorkspaceViewModel(h.Baseline, new TutorialLifecycleObservation(h.Lifecycle), _ => true, commands);
         ConfirmWorkspaceWindow(vm);
         var start = ((IAsyncRelayCommand)vm.StartCommand).ExecuteAsync(null);
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await entered.Task.WaitAsync(TestTimeouts.Signal);
         try { vm.OfferWindows([]); Assert.Null(vm.Plan); }
         finally { release.TrySetResult(true); }
         await start;
@@ -1049,7 +1050,7 @@ public sealed class TutorialCaptureControllerTests
         var output = vm.OutputText;
         var exactWindow = vm.ExactWindowText;
         var start = vm.StartCommand.ExecuteAsync(null);
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await entered.Task.WaitAsync(TestTimeouts.Signal);
         try
         {
             vm.OfferWindows([]);
@@ -1116,7 +1117,7 @@ public sealed class TutorialCaptureControllerTests
         using var owner = new TutorialWorkspaceCapture(h.Manager.TutorialCapture, startAdmitted: true);
         owner.Confirm(h.Plan());
         var start = owner.StartAsync();
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await entered.Task.WaitAsync(TestTimeouts.Signal);
         using var foreign = new TutorialWorkspaceCapture(h.Manager.TutorialCapture, startAdmitted: true);
         try
         {
@@ -1235,7 +1236,7 @@ public sealed class TutorialCaptureControllerTests
         var pending = c.StartAsync(revision, cancel.Token);
         try
         {
-            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await entered.Task.WaitAsync(TestTimeouts.Signal);
             cancel.Cancel();
             var duplicate = await c.StartAsync(revision);
             Assert.False(duplicate.StartTransition.Succeeded);
@@ -1383,7 +1384,7 @@ public sealed class TutorialCaptureControllerTests
         var automatic = Task.Run(() => h.Manager.HandleGameStartedAsync(game));
         try
         {
-            await reached.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await reached.Task.WaitAsync(TestTimeouts.Signal);
             var c = h.Manager.TutorialCapture;
             Assert.True((await c.StartAsync(c.Confirm(h.Plan()))).StartTransition.Succeeded);
         }
@@ -1411,7 +1412,7 @@ public sealed class TutorialCaptureControllerTests
         long replacement;
         try
         {
-            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await entered.Task.WaitAsync(TestTimeouts.Signal);
             replacement = c.Confirm(h.Plan());
             Assert.Equal(CaptureFailureKind.InvalidState, (await c.StartAsync(replacement)).StartTransition.Failure!.Kind);
         }
@@ -1572,7 +1573,7 @@ public sealed class TutorialCaptureControllerTests
         Task shutdown;
         try
         {
-            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await entered.Task.WaitAsync(TestTimeouts.Signal);
             if (dispose) { h.Manager.Dispose(); shutdown = h.Manager.AwaitDisposalAsync(); }
             else shutdown = h.Manager.StopAsync(CancellationToken.None);
             Assert.True(h.Lifecycle.IsAdmissionClosed);
@@ -1610,7 +1611,7 @@ public sealed class TutorialCaptureControllerTests
         var stop = c.StopAsync(cancellation.Token);
         try
         {
-            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await entered.Task.WaitAsync(TestTimeouts.Signal);
             h.Bus.Publish(new CaptureSourceLostEvent(start.RetainedCleanupContext!, "fixture"));
             cancellation.Cancel();
         }
@@ -1644,10 +1645,10 @@ public sealed class TutorialCaptureControllerTests
         TutorialStartResult result;
         try
         {
-            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await entered.Task.WaitAsync(TestTimeouts.Signal);
             var start = c.StartAsync(c.Confirm(h.Plan()), cancellation.Token);
             cancellation.Cancel();
-            result = await start.WaitAsync(TimeSpan.FromSeconds(5));
+            result = await start.WaitAsync(TestTimeouts.Signal);
         }
         finally { release.TrySetResult(true); }
         await save;
@@ -1702,11 +1703,11 @@ public sealed class TutorialCaptureControllerTests
         var c = h.Manager.TutorialCapture;
         try
         {
-            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await entered.Task.WaitAsync(TestTimeouts.Signal);
             var start = c.StartAsync(c.Confirm(plan), cancellation.Token);
             h.Bus.Publish(new CaptureSourceLostEvent(old.After.Context!, "fixture"));
             cancellation.Cancel();
-            var result = await start.WaitAsync(TimeSpan.FromSeconds(5));
+            var result = await start.WaitAsync(TestTimeouts.Signal);
             Assert.Null(result.RetainedCleanupContext);
             Assert.Null(result.ReconciliationStopTransition);
         }

@@ -2,6 +2,7 @@ using System.Collections;
 using WatchDog.Core.Audio;
 using WatchDog.Core.Capture;
 using WatchDog.Core.Settings;
+using WatchDog.Core.Tests.Helpers;
 using WatchDog.Core.Tutorial;
 
 namespace WatchDog.Core.Tests.Tutorial;
@@ -35,7 +36,7 @@ public sealed class PauseParticipantCallbackGateTests
             lease.Dispose();
         }
 
-        await fixture.Gate.CloseAsync().WaitAsync(TimeSpan.FromSeconds(3));
+        await fixture.Gate.CloseAsync().WaitAsync(TestTimeouts.Signal);
         Assert.True(fixture.Gate.TryGetAcknowledgment(out var copied));
         AssertAcknowledgmentEqual(fixture.Acknowledgment, copied);
     }
@@ -62,7 +63,7 @@ public sealed class PauseParticipantCallbackGateTests
             }
         });
 
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await entered.Task.WaitAsync(TestTimeouts.Signal);
         var close = fixture.Gate.CloseAsync();
         try
         {
@@ -78,8 +79,8 @@ public sealed class PauseParticipantCallbackGateTests
             release.TrySetResult();
         }
 
-        await callback.WaitAsync(TimeSpan.FromSeconds(3));
-        await close.WaitAsync(TimeSpan.FromSeconds(3));
+        await callback.WaitAsync(TestTimeouts.Signal);
+        await close.WaitAsync(TestTimeouts.Signal);
         Assert.True(fixture.Gate.IsDrained);
         Assert.True(fixture.Gate.TryGetAcknowledgment(out var copied));
         AssertAcknowledgmentEqual(fixture.Acknowledgment, copied);
@@ -100,7 +101,7 @@ public sealed class PauseParticipantCallbackGateTests
         Assert.False(fixture.Gate.IsDrained);
 
         lease.Dispose();
-        await fixture.Gate.CloseAsync().WaitAsync(TimeSpan.FromSeconds(3));
+        await fixture.Gate.CloseAsync().WaitAsync(TestTimeouts.Signal);
         Assert.True(fixture.Gate.IsDrained);
     }
 
@@ -120,7 +121,7 @@ public sealed class PauseParticipantCallbackGateTests
         Assert.False(fixture.Gate.IsDrained);
 
         second.Dispose();
-        await close.WaitAsync(TimeSpan.FromSeconds(3));
+        await close.WaitAsync(TestTimeouts.Signal);
         Assert.True(fixture.Gate.IsDrained);
     }
 
@@ -148,7 +149,7 @@ public sealed class PauseParticipantCallbackGateTests
                 lease.Dispose();
         }
 
-        await fixture.Gate.CloseAsync().WaitAsync(TimeSpan.FromSeconds(3));
+        await fixture.Gate.CloseAsync().WaitAsync(TestTimeouts.Signal);
         Assert.False(fixture.Gate.TryGetAcknowledgment(out _));
     }
 
@@ -169,7 +170,7 @@ public sealed class PauseParticipantCallbackGateTests
             lease.Dispose();
         }
 
-        await fixture.Gate.CloseAsync().WaitAsync(TimeSpan.FromSeconds(3));
+        await fixture.Gate.CloseAsync().WaitAsync(TestTimeouts.Signal);
         Assert.False(fixture.Gate.TryGetAcknowledgment(out _));
     }
 
@@ -198,7 +199,7 @@ public sealed class PauseParticipantCallbackGateTests
         }
 
         Assert.False(fixture.Gate.TryGetAcknowledgment(out _));
-        await fixture.Gate.CloseAsync().WaitAsync(TimeSpan.FromSeconds(3));
+        await fixture.Gate.CloseAsync().WaitAsync(TestTimeouts.Signal);
         Assert.True(fixture.Gate.TryGetAcknowledgment(out var copied));
         Assert.NotNull(copied);
         Assert.NotSame(input, copied);
@@ -229,7 +230,7 @@ public sealed class PauseParticipantCallbackGateTests
             lease.Dispose();
         }
 
-        await close.WaitAsync(TimeSpan.FromSeconds(3));
+        await close.WaitAsync(TestTimeouts.Signal);
         Assert.True(fixture.Gate.IsDrained);
         Assert.False(fixture.Gate.TryGetAcknowledgment(out _));
     }
@@ -270,7 +271,7 @@ public sealed class PauseParticipantCallbackGateTests
             second.Dispose();
         }
 
-        await fixture.Gate.CloseAsync().WaitAsync(TimeSpan.FromSeconds(3));
+        await fixture.Gate.CloseAsync().WaitAsync(TestTimeouts.Signal);
         Assert.False(fixture.Gate.TryGetAcknowledgment(out _));
     }
 
@@ -289,7 +290,7 @@ public sealed class PauseParticipantCallbackGateTests
             releaseCount);
         var copy = Task.Run(() => lease.TryCopy(fixture.Acknowledgment with { Streams = streams }));
 
-        await countEntered.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await countEntered.Task.WaitAsync(TestTimeouts.Signal);
         var closeInvoker = Task.Run(() =>
         {
             var close = fixture.Gate.CloseAsync();
@@ -298,7 +299,7 @@ public sealed class PauseParticipantCallbackGateTests
         var closeReturnedBeforeReaderRelease = false;
         try
         {
-            await closeReturned.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            await closeReturned.Task.WaitAsync(TestTimeouts.Signal);
             closeReturnedBeforeReaderRelease = true;
             Assert.True(fixture.Gate.IsClosed);
             Assert.False(fixture.Gate.IsDrained);
@@ -312,11 +313,11 @@ public sealed class PauseParticipantCallbackGateTests
             releaseCount.TrySetResult();
         }
 
-        Assert.True(await copy.WaitAsync(TimeSpan.FromSeconds(3)));
-        await closeInvoker.WaitAsync(TimeSpan.FromSeconds(3));
+        Assert.True(await copy.WaitAsync(TestTimeouts.Signal));
+        await closeInvoker.WaitAsync(TestTimeouts.Signal);
         lease.Dispose();
-        await (await closeReturned.Task.WaitAsync(TimeSpan.FromSeconds(3)))
-            .WaitAsync(TimeSpan.FromSeconds(3));
+        await (await closeReturned.Task.WaitAsync(TestTimeouts.Signal))
+            .WaitAsync(TestTimeouts.Signal);
         Assert.True(closeReturnedBeforeReaderRelease);
         Assert.True(fixture.Gate.IsDrained);
     }
@@ -350,7 +351,7 @@ public sealed class PauseParticipantCallbackGateTests
 
         Assert.Equal(false, drainedDuringRead);
         Assert.NotNull(close);
-        await close.WaitAsync(TimeSpan.FromSeconds(3));
+        await close.WaitAsync(TestTimeouts.Signal);
         Assert.True(fixture.Gate.IsDrained);
         Assert.True(fixture.Gate.TryGetAcknowledgment(out _));
     }
@@ -371,16 +372,16 @@ public sealed class PauseParticipantCallbackGateTests
             lease.Dispose();
         }
 
-        await fixture.Gate.CloseAsync().WaitAsync(TimeSpan.FromSeconds(3));
-        await fixture.Gate.CloseAsync().WaitAsync(TimeSpan.FromSeconds(3));
+        await fixture.Gate.CloseAsync().WaitAsync(TestTimeouts.Signal);
+        await fixture.Gate.CloseAsync().WaitAsync(TestTimeouts.Signal);
         Assert.True(fixture.Gate.IsClosed);
         Assert.True(fixture.Gate.IsDrained);
         Assert.True(fixture.Gate.HasInvalidEvidence);
         Assert.False(fixture.Gate.TryGetAcknowledgment(out _));
 
         var empty = CreateFixture().Gate;
-        await empty.CloseAsync().WaitAsync(TimeSpan.FromSeconds(3));
-        await empty.CloseAsync().WaitAsync(TimeSpan.FromSeconds(3));
+        await empty.CloseAsync().WaitAsync(TestTimeouts.Signal);
+        await empty.CloseAsync().WaitAsync(TestTimeouts.Signal);
         Assert.True(empty.IsClosed);
         Assert.True(empty.IsDrained);
         Assert.False(empty.HasInvalidEvidence);

@@ -1,4 +1,5 @@
 using WatchDog.Core.Buffer;
+using WatchDog.Core.Tests.Helpers;
 
 namespace WatchDog.Core.Tests.ReplayBuffer;
 
@@ -17,16 +18,16 @@ public sealed class ReplaySaveCoordinatorTests
         try
         {
             saves.Complete("clip.mp4");
-            Assert.True(entered.Wait(TimeSpan.FromSeconds(5)));
+            Assert.True(entered.Wait(TestTimeouts.Signal));
             if (dispose)
             {
                 saves.Dispose();
-                await Assert.ThrowsAsync<ObjectDisposedException>(() => save.WaitAsync(TimeSpan.FromSeconds(5)));
+                await Assert.ThrowsAsync<ObjectDisposedException>(() => save.WaitAsync(TestTimeouts.Signal));
             }
             else
             {
                 cancellation.Cancel();
-                await Assert.ThrowsAnyAsync<OperationCanceledException>(() => save.WaitAsync(TimeSpan.FromSeconds(5)));
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() => save.WaitAsync(TestTimeouts.Signal));
             }
         }
         finally { release.Set(); }

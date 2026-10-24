@@ -1,4 +1,5 @@
 using WatchDog.CaptureIsolation.Windows.Qualification;
+using WatchDog.Core.Tests.Helpers;
 
 namespace WatchDog.Core.Tests.Isolation;
 
@@ -56,12 +57,12 @@ public sealed class FixtureB1HandshakeModelTests
         fixture.Transport.BlockDescriptor = true;
         fixture.Transport.IgnoreDescriptorCancellation = true;
         var pending = fixture.Model.ExecuteAsync(Arguments(), CancellationToken.None);
-        await fixture.Transport.DescriptorReceiveEntered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await fixture.Transport.DescriptorReceiveEntered.Task.WaitAsync(TestTimeouts.Signal);
 
         fixture.Clock.Advance(QualificationConstants.ReadinessTimeout);
         fixture.Transport.ReleaseDescriptor();
         var failure = await Assert.ThrowsAsync<FixtureB1HandshakeException>(
-            () => pending.WaitAsync(TimeSpan.FromSeconds(1)));
+            () => pending.WaitAsync(TestTimeouts.Signal));
 
         Assert.Equal("fixture.b1.handshake.deadline-expired", failure.Code);
         Assert.False(fixture.Observer.DescriptorReceived);
@@ -82,11 +83,11 @@ public sealed class FixtureB1HandshakeModelTests
         await (blockGrant
                 ? fixture.Transport.GrantReceiveEntered.Task
                 : fixture.Transport.ActivationReceiveEntered.Task)
-            .WaitAsync(TimeSpan.FromSeconds(1));
+            .WaitAsync(TestTimeouts.Signal);
 
         fixture.Clock.Advance(QualificationConstants.ReadinessTimeout);
         var failure = await Assert.ThrowsAsync<FixtureB1HandshakeException>(
-            () => pending.WaitAsync(TimeSpan.FromSeconds(1)));
+            () => pending.WaitAsync(TestTimeouts.Signal));
 
         Assert.Equal("fixture.b1.handshake.deadline-expired", failure.Code);
         Assert.Equal(1, fixture.Transport.ProofSends);
@@ -214,7 +215,7 @@ public sealed class FixtureB1HandshakeModelTests
         using var cancellation = new CancellationTokenSource();
         fixture.Transport.BlockDescriptor = true;
         var pending = fixture.Model.ExecuteAsync(Arguments(), cancellation.Token);
-        await fixture.Transport.DescriptorReceiveEntered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await fixture.Transport.DescriptorReceiveEntered.Task.WaitAsync(TestTimeouts.Signal);
 
         var duplicate = await Assert.ThrowsAsync<FixtureB1HandshakeException>(
             () => fixture.Model.ExecuteAsync(Arguments(), CancellationToken.None));

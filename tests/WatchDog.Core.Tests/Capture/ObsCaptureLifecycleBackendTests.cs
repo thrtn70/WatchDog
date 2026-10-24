@@ -70,7 +70,7 @@ public sealed class ObsCaptureLifecycleBackendTests
         using var subscription = fixture.Bus.Subscribe<SessionRecordingSegmentSavedEvent>(_ => persisted.TrySetResult());
         recorder.EmitReceipt(receipt with { EndOffset = receipt.EndOffset + TimeSpan.FromSeconds(99) });
         recorder.EmitReceipt(receipt);
-        await persisted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await persisted.Task.WaitAsync(TestTimeouts.Signal);
         Assert.True((await fixture.Backend.StopAsync(context)).Succeeded);
         var media = Assert.Single((await fixture.Repository.GetByIdAsync(context.SessionId))!.MediaSegments);
         Assert.Equal(receipt.MediaId, media.MediaId);
@@ -347,18 +347,18 @@ public sealed class ObsCaptureLifecycleBackendTests
         var latest = CaptureStartupBaselineTests.Request(fixture.Baseline);
         try
         {
-            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await entered.Task.WaitAsync(TestTimeouts.Signal);
             queued = lifecycle.SwitchAsync(CaptureStartupBaselineTests.Request(fixture.Baseline,
                 CaptureStartupBaselineTests.Change(fixture.Baseline.Baseline!.Expectation, "mic-id")));
             if (superseded) newest = lifecycle.SwitchAsync(latest);
         }
         finally { release.TrySetResult(); }
-        var active = await switching.WaitAsync(TimeSpan.FromSeconds(5));
-        var rejected = await queued!.WaitAsync(TimeSpan.FromSeconds(5));
+        var active = await switching.WaitAsync(TestTimeouts.Signal);
+        var rejected = await queued!.WaitAsync(TestTimeouts.Signal);
         Assert.True(active.Succeeded);
         Assert.Equal(superseded ? "capture.manual.superseded" : "capture.startup-binding.mismatch", rejected.Failure?.Code);
         Assert.Same(active.After, rejected.After);
-        if (newest is not null) Assert.True((await newest.WaitAsync(TimeSpan.FromSeconds(5))).Succeeded);
+        if (newest is not null) Assert.True((await newest.WaitAsync(TestTimeouts.Signal)).Succeeded);
         Assert.Same(superseded ? latest : valid, lifecycle.Snapshot.Context!.Request);
         Assert.Equal(superseded ? 2 : 1, engine.Stops);
         var competing = await lifecycle.StartAsync(new CaptureRequest(Guid.NewGuid(), DateTimeOffset.UnixEpoch,
@@ -808,7 +808,7 @@ public sealed class ObsCaptureLifecycleBackendTests
         var persisted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var subscription = fixture.Bus.Subscribe<SessionRecordingSegmentSavedEvent>(_ => persisted.TrySetResult());
         recorder.EmitSegment("completed-segment.mkv");
-        await persisted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await persisted.Task.WaitAsync(TestTimeouts.Signal);
         Assert.Contains("completed-segment.mkv", (await fixture.Repository.GetByIdAsync(context.SessionId))!.RecordingPaths);
         Assert.True(recorder.IsRecording);
         Assert.True((await fixture.Backend.StopAsync(context)).Succeeded);
