@@ -3,7 +3,7 @@
 ; OBS runtime, FFmpeg, and .NET runtime (self-contained publish).
 ;
 ; Build:
-;   ISCC.exe /DAppVersion=1.4.0 watchdog.iss
+;   ISCC.exe /DAppVersion=1.4.1 watchdog.iss
 ; Or via the build script:
 ;   .\tools\package.ps1
 

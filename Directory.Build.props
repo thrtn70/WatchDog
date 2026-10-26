@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <Version>1.4.0</Version>
+    <Version>1.4.1</Version>
     <AssemblyVersion>$(Version).0</AssemblyVersion>
     <FileVersion>$(Version).0</FileVersion>
     <TargetFramework>net10.0-windows</TargetFramework>
