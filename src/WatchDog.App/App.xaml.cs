@@ -137,6 +137,10 @@ public partial class App : Application
         if (overlaySettings.Enabled)
             ShowOverlay();
 
+        // A damaged clip index no longer stops startup. Open the window so its banner is seen.
+        if (!host.Services.GetRequiredService<Core.Storage.IClipLibraryHealth>().LibraryStatus.IsAvailable)
+            host.Services.GetRequiredService<TrayIconViewModel>().ShowMainWindowCommand.Execute(null);
+
         // Check for updates (non-blocking, failure is silent)
         _ = Task.Run(async () =>
         {
@@ -661,9 +665,16 @@ public partial class App : Application
             sp.GetRequiredService<Core.Storage.ClipStorageManager>());
         services.AddSingleton<Core.Storage.IStorageMaintenance>(sp =>
             sp.GetRequiredService<Core.Storage.ClipStorageManager>());
+        services.AddSingleton<Core.Storage.IClipLibraryHealth>(sp =>
+            sp.GetRequiredService<Core.Storage.ClipStorageManager>());
+        services.AddSingleton<Core.Storage.IClipLibraryRecovery>(sp =>
+            sp.GetRequiredService<Core.Storage.ClipStorageManager>());
         services.AddSingleton<Core.Storage.CompletedMediaIngestionService>();
         services.AddSingleton<Core.Storage.ICompletedMediaIngestion>(sp =>
             sp.GetRequiredService<Core.Storage.CompletedMediaIngestionService>());
+        services.AddSingleton<Core.Storage.ICompletedMediaReconciliation>(sp =>
+            sp.GetRequiredService<Core.Storage.CompletedMediaIngestionService>());
+        services.AddSingleton<Core.Storage.IClipLibraryRebuild, Core.Storage.ClipLibraryRebuilder>();
         services.AddSingleton<Core.ClipEditor.IClipExportCoordinator, Core.ClipEditor.ClipExportCoordinator>();
         services.AddSingleton<Core.Storage.IStorageVolumeProbe, Core.Storage.DriveInfoStorageVolumeProbe>();
         services.AddSingleton<Core.Storage.StorageMaintenanceService>();
@@ -715,6 +726,7 @@ public partial class App : Application
 
         // ViewModels
         services.AddSingleton<TrayIconViewModel>();
+        services.AddSingleton<LibraryRecoveryViewModel>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddTransient<StatusOverlayViewModel>();
         services.AddTransient<SettingsViewModel>();

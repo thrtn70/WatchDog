@@ -13,6 +13,7 @@ namespace WatchDog.Core.Storage;
 /// </summary>
 public sealed class CompletedMediaIngestionService :
     ICompletedMediaIngestion,
+    ICompletedMediaReconciliation,
     IHostedService,
     IAsyncDisposable
 {
@@ -30,6 +31,7 @@ public sealed class CompletedMediaIngestionService :
     private readonly Dictionary<string, IDisposable> _pendingProtection =
         new(StringComparer.OrdinalIgnoreCase);
     private readonly object _stateLock = new();
+    private readonly object _ledgerWriteLock = new();
     private Task _worker = Task.CompletedTask;
     private bool _started;
     private bool _accepting;
@@ -128,6 +130,39 @@ public sealed class CompletedMediaIngestionService :
         HighlightType highlightType,
         CancellationToken cancellationToken = default) =>
         EnqueueAsync(media, highlightType, cancellationToken);
+
+    public async Task<CompletedMediaReconciliationResult> ReconcileWithLibraryAsync(
+        CancellationToken ct = default)
+    {
+        // Retries travel through the single ingestion queue, so each keeps its receipt's
+        // attribution and the same durable accept-then-index order as a new capture.
+        var indexed = 0;
+        foreach (var entry in PendingSnapshot())
+        {
+            ct.ThrowIfCancellationRequested();
+            var result = await EnqueueAsync(entry.Media, entry.HighlightType, ct).ConfigureAwait(false);
+            if (result.Indexed) indexed++;
+        }
+
+        var forgotten = ForgetIndexedUnattributed();
+        return new CompletedMediaReconciliationResult(indexed, Status.PendingRetryCount, forgotten);
+    }
+
+    private int ForgetIndexedUnattributed()
+    {
+        var indexed = _clipStorage.GetAllClips()
+            .Select(clip => StoragePath.Canonicalize(clip.FilePath))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        int forgotten;
+        lock (_stateLock)
+            forgotten = _unattributed.RemoveAll(entry => indexed.Contains(StoragePath.Canonicalize(entry.FilePath)));
+        if (forgotten == 0) return 0;
+
+        PersistLedger();
+        ClearFailureIfRecovered();
+        PublishStatus();
+        return forgotten;
+    }
 
     public async Task<CompletedMediaDrainResult> DrainAsync(
         TimeSpan timeout,
@@ -460,24 +495,29 @@ public sealed class CompletedMediaIngestionService :
 
     private void PersistLedger()
     {
-        Ledger snapshot;
-        lock (_stateLock)
-            snapshot = new Ledger(CurrentSchemaVersion, [.. _pending], [.. _unattributed]);
+        // Reconciliation also persists outside the queue. Serialize snapshot and replacement
+        // so an older snapshot can never overwrite a newer one.
+        lock (_ledgerWriteLock)
+        {
+            Ledger snapshot;
+            lock (_stateLock)
+                snapshot = new Ledger(CurrentSchemaVersion, [.. _pending], [.. _unattributed]);
 
-        var directory = Path.GetDirectoryName(_ledgerPath)!;
-        Directory.CreateDirectory(directory);
-        var temp = Path.Combine(directory, $"completed-media-pending.{Guid.NewGuid():N}.tmp");
-        try
-        {
-            File.WriteAllText(temp, JsonSerializer.Serialize(snapshot, JsonOptions));
-            if (File.Exists(_ledgerPath))
-                File.Replace(temp, _ledgerPath, _backupPath);
-            else
-                File.Move(temp, _ledgerPath);
-        }
-        finally
-        {
-            try { if (File.Exists(temp)) File.Delete(temp); } catch { /* best effort */ }
+            var directory = Path.GetDirectoryName(_ledgerPath)!;
+            Directory.CreateDirectory(directory);
+            var temp = Path.Combine(directory, $"completed-media-pending.{Guid.NewGuid():N}.tmp");
+            try
+            {
+                File.WriteAllText(temp, JsonSerializer.Serialize(snapshot, JsonOptions));
+                if (File.Exists(_ledgerPath))
+                    File.Replace(temp, _ledgerPath, _backupPath);
+                else
+                    File.Move(temp, _ledgerPath);
+            }
+            finally
+            {
+                try { if (File.Exists(temp)) File.Delete(temp); } catch { /* best effort */ }
+            }
         }
     }
 

@@ -396,6 +396,58 @@ public sealed class SessionManagerTests : IDisposable
     }
 
     [Fact]
+    public async Task RecoverOrphanedSessionsAsync_KeepsSessionsWhoseClipsAreUnknownWhileLibraryIsUnavailable()
+    {
+        var orphan = new GameSession
+        {
+            Id = Guid.NewGuid(),
+            GameName = "CS2",
+            GameExecutableName = "cs2.exe",
+            StartedAt = DateTimeOffset.UtcNow.AddHours(-2),
+            Status = SessionStatus.InProgress,
+        };
+        await _repo.SaveAsync(orphan);
+        var manager = new SessionManager(
+            _repo,
+            _clipStorage,
+            _eventBus,
+            NullLogger<SessionManager>.Instance,
+            new UnavailableLibrary());
+
+        await manager.RecoverOrphanedSessionsAsync();
+
+        var recovered = await _repo.GetByIdAsync(orphan.Id);
+        Assert.NotNull(recovered);
+        Assert.Equal(SessionStatus.Crashed, recovered.Status);
+    }
+
+    [Fact]
+    public async Task EndSessionAsync_KeepsSessionWhoseClipsAreUnknownWhileLibraryIsUnavailable()
+    {
+        var manager = new SessionManager(
+            _repo,
+            _clipStorage,
+            _eventBus,
+            NullLogger<SessionManager>.Instance,
+            new UnavailableLibrary());
+        var game = MakeGame();
+        await manager.StartSessionAsync(game);
+        var sessionId = manager.CurrentSessionId!.Value;
+
+        await manager.EndSessionAsync(game);
+
+        var ended = await _repo.GetByIdAsync(sessionId);
+        Assert.NotNull(ended);
+        Assert.Equal(SessionStatus.Completed, ended.Status);
+    }
+
+    private sealed class UnavailableLibrary : Core.Storage.IClipLibraryHealth
+    {
+        public Core.Storage.ClipLibraryStatus LibraryStatus { get; } =
+            new(false, "The clip index and its backup are both damaged.", [], true);
+    }
+
+    [Fact]
     public async Task RecoverOrphanedSessionsAsync_DoesNotClaimResumeWithoutLifecycleIdentity()
     {
         using var process = System.Diagnostics.Process.GetCurrentProcess();

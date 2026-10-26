@@ -177,8 +177,42 @@
             </Grid>
         </Border>
 
+        <StackPanel Grid.Row="1">
+        <!-- ═══ Library Unavailable Banner (damaged clip index) ═══════════ -->
+        <!-- Capture keeps saving to disk; mutations and cleanup stay paused until a rebuild. -->
+        <Border Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource WarningBrush}" BorderThickness="3,0,0,0"
+                Visibility="{Binding LibraryRecovery.IsBannerVisible, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
+                Padding="12,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="&#xE7BA;" FontFamily="{StaticResource IconFont}"
+                           Foreground="{StaticResource WarningBrush}" FontSize="14"
+                           VerticalAlignment="Top" Margin="0,1,10,0"/>
+                <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="12"
+                           TextWrapping="Wrap"
+                           Foreground="{StaticResource TextBrush}"
+                           Text="{Binding LibraryRecovery.BannerText, Mode=OneWay}"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="12,0,0,0">
+                    <TextBlock Text="Rebuilding&#x2026;" VerticalAlignment="Center" FontSize="12"
+                               Foreground="{StaticResource SubtextBrush}" Margin="0,0,8,0"
+                               Visibility="{Binding LibraryRecovery.IsRebuilding, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
+                    <Button Content="Rebuild library from folder&#x2026;"
+                            Command="{Binding LibraryRecovery.RebuildLibraryCommand}"
+                            Padding="12,4"
+                            Style="{StaticResource ActionButton}"
+                            AutomationProperties.Name="Rebuild clip library from recordings folder"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
         <!-- ═══ Update Banner (collapses when no update) ═════════════════ -->
-        <Border Grid.Row="1" Background="{StaticResource AccentMutedBrush}"
+        <Border Background="{StaticResource AccentMutedBrush}"
                 Visibility="{Binding AvailableUpdate, Converter={StaticResource NullToVisConverter}}"
                 Padding="12,8">
             <Grid>
@@ -201,6 +235,7 @@
                         AutomationProperties.Name="Dismiss update notification"/>
             </Grid>
         </Border>
+        </StackPanel>
 
         <!-- ═══ Content Area ═════════════════════════════════════════════ -->
         <Grid Grid.Row="2">

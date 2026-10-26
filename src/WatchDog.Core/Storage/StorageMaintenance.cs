@@ -24,6 +24,17 @@ public sealed record StorageCleanupResult(
     long ProtectedExternalBytes = 0)
 {
     public long TotalTrackedBytes => checked(RemainingIndexedBytes + ProtectedExternalBytes);
+
+    /// <summary>
+    /// Set when cleanup did not run because the clip library is unavailable. Nothing was deleted
+    /// and the quota could not be measured.
+    /// </summary>
+    public string? SuspendedReason { get; init; }
+
+    public bool IsSuspended => SuspendedReason is not null;
+
+    /// <summary>Clips restored by a library rebuild, which cleanup never deletes.</summary>
+    public int RetainedRecoveredClips { get; init; }
 }
 
 public sealed record StorageCleanupFailure(

@@ -53,6 +53,20 @@ public sealed record CompletedMediaDrainResult(
     int UnattributedCount,
     string? WarningMessage);
 
+public sealed record CompletedMediaReconciliationResult(
+    int PendingIndexed,
+    int PendingRemaining,
+    int UnattributedForgotten);
+
+public interface ICompletedMediaReconciliation
+{
+    /// <summary>
+    /// Retries every pending receipt through the ingestion queue, keeping its capture attribution,
+    /// then forgets unattributed files that the clip library has since indexed.
+    /// </summary>
+    Task<CompletedMediaReconciliationResult> ReconcileWithLibraryAsync(CancellationToken ct = default);
+}
+
 public interface ICompletedMediaIngestion
 {
     CompletedMediaIngestionStatus Status { get; }

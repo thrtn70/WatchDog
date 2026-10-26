@@ -200,7 +200,7 @@ public sealed class ClipStorageManagerTests : IDisposable
     }
 
     [Fact]
-    public async Task BothCorruptIndexesFailVisiblyAndPreserveOriginalBytes()
+    public async Task BothCorruptIndexesStartLibraryUnavailableAndPreserveOriginalBytes()
     {
         var manager = CreateManager();
         await manager.IndexClipAsync(CreateTestClip("both-corrupt.mp4"), "Game");
@@ -210,7 +210,7 @@ public sealed class ClipStorageManagerTests : IDisposable
         File.WriteAllText(primary, "corrupt primary bytes");
         File.WriteAllText(backup, "corrupt backup bytes");
 
-        Assert.Throws<InvalidDataException>(() => CreateManager());
+        Assert.False(CreateManager().LibraryStatus.IsAvailable);
 
         Assert.Equal("corrupt primary bytes", File.ReadAllText(primary));
         Assert.Equal("corrupt backup bytes", File.ReadAllText(backup));
@@ -230,7 +230,11 @@ public sealed class ClipStorageManagerTests : IDisposable
         var backupBytes = File.ReadAllBytes(backup);
 
         using (File.Open(primary, FileMode.Open, FileAccess.Read, FileShare.Read))
-            Assert.Throws<InvalidDataException>(() => CreateManager());
+        {
+            var unavailable = CreateManager().LibraryStatus;
+            Assert.False(unavailable.IsAvailable);
+            Assert.False(unavailable.CanBuildNewIndex);
+        }
 
         Assert.Equal("corrupt primary bytes", File.ReadAllText(primary));
         Assert.Equal(backupBytes, File.ReadAllBytes(backup));
@@ -243,7 +247,10 @@ public sealed class ClipStorageManagerTests : IDisposable
         var primary = Path.Combine(_tempDir, "clips-index.json");
         File.WriteAllText(primary, "[{\"filePath\":\"\",\"fileName\":\"bad.mp4\"}]");
 
-        Assert.Throws<InvalidDataException>(() => CreateManager());
+        var manager = CreateManager();
+
+        Assert.False(manager.LibraryStatus.IsAvailable);
+        Assert.Empty(manager.GetAllClips());
 
         Assert.Equal("[{\"filePath\":\"\",\"fileName\":\"bad.mp4\"}]", File.ReadAllText(primary));
     }
