@@ -1,5 +1,6 @@
 using WatchDog.Core.Capture;
 using WatchDog.Core.Devices;
+using WatchDog.Core.Tests.Helpers;
 
 namespace WatchDog.Core.Tests.Capture;
 
@@ -947,9 +948,9 @@ public sealed class CaptureLivenessRegistryTests
         using var callerCancellation = new CancellationTokenSource();
 
         var observe = registry.ObserveAsync(target, callerCancellation.Token).AsTask();
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await entered.Task.WaitAsync(TestTimeouts.Signal);
         callerCancellation.Cancel();
-        await cancellationObserved.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await cancellationObserved.Task.WaitAsync(TestTimeouts.Signal);
         Assert.False(observe.IsCompleted);
         Assert.DoesNotContain(
             registry.SnapshotReadDiagnostics().Events,
@@ -957,7 +958,7 @@ public sealed class CaptureLivenessRegistryTests
 
         release.TrySetResult();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => observe.WaitAsync(TimeSpan.FromSeconds(3)));
+            () => observe.WaitAsync(TestTimeouts.Signal));
         var completed = Assert.Single(
             registry.DrainReadDiagnostics().Events,
             diagnostic => diagnostic.Kind == CaptureLivenessReadEventKind.Completed);
@@ -994,14 +995,14 @@ public sealed class CaptureLivenessRegistryTests
         using var callerCancellation = new CancellationTokenSource();
 
         var claim = registry.TryClaimAsync(candidate, callerCancellation.Token).AsTask();
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await entered.Task.WaitAsync(TestTimeouts.Signal);
         callerCancellation.Cancel();
-        await cancellationObserved.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await cancellationObserved.Task.WaitAsync(TestTimeouts.Signal);
         Assert.False(claim.IsCompleted);
 
         release.TrySetResult();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => claim.WaitAsync(TimeSpan.FromSeconds(3)));
+            () => claim.WaitAsync(TestTimeouts.Signal));
         Assert.NotNull(await registry.TryClaimAsync(candidate, CancellationToken.None));
         Assert.Empty(registry.GetPollTargets());
     }
@@ -1017,8 +1018,8 @@ public sealed class CaptureLivenessRegistryTests
                 identity: Identity(timingPolicy: ExecutionPolicy(TimeSpan.FromMilliseconds(50))))).Current);
 
         var observe = registry.ObserveAsync(target).AsTask();
-        await provider.Entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
-        await provider.CancellationObserved.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await provider.Entered.Task.WaitAsync(TestTimeouts.Signal);
+        await provider.CancellationObserved.Task.WaitAsync(TestTimeouts.Signal);
         Assert.False(observe.IsCompleted);
         var pendingDiagnostics = registry.SnapshotReadDiagnostics();
         Assert.Equal(CaptureLivenessReadEventKind.Started, pendingDiagnostics.Events[0].Kind);
@@ -1028,7 +1029,7 @@ public sealed class CaptureLivenessRegistryTests
 
         provider.Release.TrySetResult();
         var candidate = Assert.IsType<CaptureLivenessFailureCandidate>(
-            await observe.WaitAsync(TimeSpan.FromSeconds(3)));
+            await observe.WaitAsync(TestTimeouts.Signal));
 
         Assert.Equal(CaptureLivenessStatus.Unobservable, candidate.Evidence.Status);
         Assert.Equal(CaptureLivenessReason.ProviderExecutionTimeout, candidate.Evidence.Reason);
@@ -1209,10 +1210,10 @@ public sealed class CaptureLivenessRegistryTests
                 provider,
                 identity: Identity(timingPolicy: ExecutionPolicy(TimeSpan.FromMilliseconds(50))))).Current);
         var candidate = Assert.IsType<CaptureLivenessFailureCandidate>(
-            await registry.ObserveAsync(target).AsTask().WaitAsync(TimeSpan.FromSeconds(3)));
+            await registry.ObserveAsync(target).AsTask().WaitAsync(TestTimeouts.Signal));
 
         var claim = await registry.TryClaimAsync(candidate, CancellationToken.None)
-            .AsTask().WaitAsync(TimeSpan.FromSeconds(3));
+            .AsTask().WaitAsync(TestTimeouts.Signal);
 
         Assert.Null(claim);
         Assert.Single(registry.GetPollTargets());
@@ -1243,11 +1244,11 @@ public sealed class CaptureLivenessRegistryTests
                 provider,
                 identity: Identity(timingPolicy: ExecutionPolicy(TimeSpan.FromMilliseconds(50))))).Current);
         var candidate = Assert.IsType<CaptureLivenessFailureCandidate>(
-            await registry.ObserveAsync(target).AsTask().WaitAsync(TimeSpan.FromSeconds(3)));
+            await registry.ObserveAsync(target).AsTask().WaitAsync(TestTimeouts.Signal));
 
         var claim = Assert.IsType<CaptureLivenessFailureClaim>(
             await registry.TryClaimAsync(candidate, CancellationToken.None)
-                .AsTask().WaitAsync(TimeSpan.FromSeconds(3)));
+                .AsTask().WaitAsync(TestTimeouts.Signal));
 
         Assert.Equal(
             CaptureLivenessReason.ProviderExecutionTimeout,
@@ -1298,7 +1299,7 @@ public sealed class CaptureLivenessRegistryTests
             identity: Identity(timingPolicy: ExecutionPolicy(TimeSpan.FromMilliseconds(50))));
         var target = Assert.IsType<CaptureLivenessPollTarget>(registry.Register(original).Current);
         var observe = registry.ObserveAsync(target).AsTask();
-        await provider.CancellationObserved.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await provider.CancellationObserved.Task.WaitAsync(TestTimeouts.Signal);
         var replacement = Registration(
             new QueueProvider(Available(1)),
             identity: Identity(
@@ -1310,7 +1311,7 @@ public sealed class CaptureLivenessRegistryTests
             registry.Replace(target, replacement).Disposition);
         provider.Release.TrySetResult();
 
-        Assert.Null(await observe.WaitAsync(TimeSpan.FromSeconds(3)));
+        Assert.Null(await observe.WaitAsync(TestTimeouts.Signal));
         var diagnostics = registry.DrainReadDiagnostics();
         Assert.Single(
             diagnostics.Events,

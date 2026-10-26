@@ -8,6 +8,7 @@ using WatchDog.Core.Events;
 using WatchDog.Core.GameDetection;
 using WatchDog.Core.Highlights;
 using WatchDog.Core.Settings;
+using WatchDog.Core.Tests.Helpers;
 using WatchDog.Core.Webcam;
 using WatchDog.Native.Win32;
 
@@ -53,7 +54,7 @@ public sealed class CaptureSourceManagerTests
         var detection = Task.Run(() => harness.Detector.EmitStarted(PolicyHarness.Game("game.exe", 42)));
         try
         {
-            await reached.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            await reached.Task.WaitAsync(TestTimeouts.Signal);
             profiles[0] = profile with { BitrateKbps = 99_000, Mode = GameRecordingMode.SessionRecording };
             harness.Settings.Save(settings with { Capture = settings.Capture with { Quality = 40 }, GameProfiles = profiles });
         }
@@ -91,7 +92,7 @@ public sealed class CaptureSourceManagerTests
         var detection = Task.Run(() => harness.Detector.EmitStarted(oldGame));
         try
         {
-            await reached.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            await reached.Task.WaitAsync(TestTimeouts.Signal);
             harness.Detector.EmitStarted(PolicyHarness.Game("new.exe", 43));
             await harness.Manager.AwaitLastGameStartHandlingAsync();
         }
@@ -178,7 +179,7 @@ public sealed class CaptureSourceManagerTests
         };
 
         detector.EmitStarted(game);
-        var context = await backend.Started.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        var context = await backend.Started.Task.WaitAsync(TestTimeouts.Signal);
 
         var requested = Assert.IsType<GameCaptureTarget>(context.RequestedTarget);
         Assert.Equal(game.ProcessId, requested.ProcessId);
@@ -236,7 +237,7 @@ public sealed class CaptureSourceManagerTests
             ProcessStartedAt = DateTimeOffset.UnixEpoch,
         }));
 
-        await resolutionReached.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await resolutionReached.Task.WaitAsync(TestTimeouts.Signal);
         var manualStart = manager.StartManualCaptureAsync(
             "manual.exe",
             "Manual Window",
@@ -246,8 +247,8 @@ public sealed class CaptureSourceManagerTests
         releaseResolution.SetResult();
 
         Assert.True((await manualStart).Succeeded);
-        await detection.WaitAsync(TimeSpan.FromSeconds(3));
-        await manager.AwaitLastGameStartHandlingAsync().WaitAsync(TimeSpan.FromSeconds(3));
+        await detection.WaitAsync(TestTimeouts.Signal);
+        await manager.AwaitLastGameStartHandlingAsync().WaitAsync(TestTimeouts.Signal);
         var onlyStart = Assert.Single(backend.StartCalls);
         Assert.IsType<WindowCaptureTarget>(onlyStart.RequestedTarget);
         Assert.Null(onlyStart.Request.StartPolicy);
@@ -290,7 +291,7 @@ public sealed class CaptureSourceManagerTests
         var active = Assert.IsType<RegionCaptureTarget>(lifecycle.Snapshot.Context?.ActualTarget);
         engine.RegionAvailable = false;
 
-        var stopped = await backend.Stopped.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        var stopped = await backend.Stopped.Task.WaitAsync(TestTimeouts.Signal);
 
         Assert.Equal(active, stopped.ActualTarget);
         Assert.Equal(CaptureLifecycleStatus.Idle, lifecycle.Snapshot.Status);
@@ -340,7 +341,7 @@ public sealed class CaptureSourceManagerTests
         var stopCountAfterSwitch = backend.StopCalls.Count;
 
         eventBus.Publish(new CaptureSourceLostEvent(staleContext, "late callback"));
-        await manager.AwaitLastSourceLossHandlingAsync().WaitAsync(TimeSpan.FromSeconds(3));
+        await manager.AwaitLastSourceLossHandlingAsync().WaitAsync(TestTimeouts.Signal);
 
         Assert.Equal(stopCountAfterSwitch, backend.StopCalls.Count);
         Assert.Equal(currentContext.SessionId, lifecycle.Snapshot.Context?.SessionId);

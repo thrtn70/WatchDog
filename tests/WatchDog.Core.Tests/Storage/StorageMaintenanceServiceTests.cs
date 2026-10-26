@@ -3,6 +3,7 @@ using WatchDog.Core.Capture;
 using WatchDog.Core.GameDetection;
 using WatchDog.Core.Recording;
 using WatchDog.Core.Storage;
+using WatchDog.Core.Tests.Helpers;
 using WatchDog.Core.Webcam;
 
 namespace WatchDog.Core.Tests.Storage;
@@ -116,7 +117,7 @@ public sealed class StorageMaintenanceServiceTests
             webcam);
 
         var first = fixture.Service.RunOnceAsync();
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await entered.Task.WaitAsync(TestTimeouts.Signal);
         session.CurrentOutputPath = Path.Combine(Path.GetTempPath(), "active-session-growing.mp4");
         var second = fixture.Service.RunOnceAsync();
         await Task.Delay(20);

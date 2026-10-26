@@ -5,6 +5,7 @@ using WatchDog.Core.Devices;
 using WatchDog.Core.Recording;
 using WatchDog.Core.Sessions;
 using WatchDog.Core.Settings;
+using WatchDog.Core.Tests.Helpers;
 using WatchDog.Core.Tutorial;
 
 namespace WatchDog.Core.Tests.Recording;
@@ -372,12 +373,12 @@ public sealed class ObsSessionRecorderTests
                 () => cleanupRan.SetResult(true));
         });
 
-        await attempting.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await attempting.Task.WaitAsync(TestTimeouts.Signal);
         Assert.False(cleanupRan.Task.IsCompleted);
 
         gate.Release();
 
-        await cleanup.WaitAsync(TimeSpan.FromSeconds(5));
+        await cleanup.WaitAsync(TestTimeouts.Signal);
         Assert.True(cleanupRan.Task.IsCompletedSuccessfully);
     }
 
@@ -395,12 +396,12 @@ public sealed class ObsSessionRecorderTests
             completed.SetResult();
         });
 
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await entered.Task.WaitAsync(TestTimeouts.Signal);
         var drain = Task.Run(recorder.WaitForScheduledCallbacks);
         Assert.False(drain.IsCompleted);
 
         release.SetResult();
-        await drain.WaitAsync(TimeSpan.FromSeconds(5));
+        await drain.WaitAsync(TestTimeouts.Signal);
         Assert.True(completed.Task.IsCompletedSuccessfully);
     }
 
@@ -435,8 +436,8 @@ public sealed class ObsSessionRecorderTests
             return Task.CompletedTask;
         }));
 
-        await disposedInsideCallback.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        await queued.WaitAsync(TimeSpan.FromSeconds(5));
+        await disposedInsideCallback.Task.WaitAsync(TestTimeouts.Signal);
+        await queued.WaitAsync(TestTimeouts.Signal);
         recorder.WaitForScheduledCallbacks();
 
         var admittedAfterDispose = false;

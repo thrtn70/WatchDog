@@ -2,6 +2,7 @@ using Microsoft.Win32.SafeHandles;
 using System.Runtime.InteropServices;
 using WatchDog.CaptureIsolation;
 using WatchDog.CaptureIsolation.Windows;
+using WatchDog.Core.Tests.Helpers;
 
 namespace WatchDog.Core.Tests.Isolation;
 
@@ -461,7 +462,7 @@ public sealed class WindowsLaunchTests
         launchThread.Start();
         try
         {
-            Assert.True(launchEntered.Wait(TimeSpan.FromSeconds(5)));
+            Assert.True(launchEntered.Wait(TestTimeouts.Signal));
             var competing = await harness.Processes.LaunchSuspendedInJobAsync(
                 harness.Request,
                 harness.Job,
@@ -476,7 +477,7 @@ public sealed class WindowsLaunchTests
         finally
         {
             releaseLaunch.Set();
-            Assert.True(launchThread.Join(TimeSpan.FromSeconds(5)));
+            Assert.True(launchThread.Join(TestTimeouts.Signal));
         }
 
         Assert.Null(firstFailure);
