@@ -102,8 +102,11 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public string AppVersion { get; } = GetAppVersion();
 
     // Auto-update
+    private readonly UpdateDownloadSession _updateDownload = new();
     [ObservableProperty] private UpdateInfo? _availableUpdate;
-    [ObservableProperty] private bool _isUpdateDownloading;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CancelUpdateDownloadCommand))]
+    private bool _isUpdateDownloading;
     [ObservableProperty] private double _updateDownloadProgress;
 
     public string UpdateBannerText =>
@@ -860,12 +863,18 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         if (AvailableUpdate is null) return;
 
+        UpdateDownloadProgress = 0;
         IsUpdateDownloading = true;
         try
         {
             var checker = App.Services.GetRequiredService<IUpdateChecker>();
             var progress = new Progress<double>(p => UpdateDownloadProgress = p);
-            var download = await checker.DownloadVerifiedInstallerAsync(AvailableUpdate, progress);
+            var download = await _updateDownload.DownloadAsync(checker, AvailableUpdate, progress);
+            IsUpdateDownloading = false; // nothing left to cancel from here on
+
+            // Cancelling is the user's choice, not a failure: no warning, and the update stays offered for a retry.
+            if (download.Failure == UpdateVerificationFailure.Cancelled)
+                return;
 
             // Only an installer that matched the signed release manifest is ever launched.
             if (!download.IsVerified || download.InstallerPath is not { } installerPath)
@@ -931,6 +940,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
     }
 
+    [RelayCommand(CanExecute = nameof(IsUpdateDownloading))]
+    private void CancelUpdateDownload() => _updateDownload.Cancel();
+
     [RelayCommand]
     private void DismissUpdate() => AvailableUpdate = null;
 
@@ -949,6 +961,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        // Stop a download still running at close so the checker deletes its partial installer.
+        _updateDownload.Cancel();
         ClipEditor?.Retire();
         _captureEngine.StateChanged -= _stateChangedHandler;
         _captureLifecycle.SnapshotChanged -= _lifecycleSnapshotHandler;
