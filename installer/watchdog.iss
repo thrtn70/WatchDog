@@ -63,5 +63,8 @@ Name: "{group}\Uninstall WatchDog"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\WatchDog"; Filename: "{app}\WatchDog.App.exe"; Tasks: desktopicon; Comment: "Launch WatchDog"
 
 [Run]
-; Offer to launch after install (skipped in silent mode)
+; Interactive installs: offer to launch WatchDog on the last page
 Filename: "{app}\WatchDog.App.exe"; Description: "Launch WatchDog"; Flags: nowait postinstall skipifsilent
+; Silent installs come from the in-app updater (/SILENT /NORESTART), which closes WatchDog first.
+; Reopen it as the signed-in, non-elevated user who started Setup.
+Filename: "{app}\WatchDog.App.exe"; Flags: nowait runasoriginaluser skipifnotsilent
