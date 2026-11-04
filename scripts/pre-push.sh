@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Pre-push quality gate for WatchDog.
 # Runs format check + lightweight build via SSH to the Windows VM.
-# Heavy checks (warnaserror full build, tests, reviewer agents) run in CI.
+# Heavy checks (warnaserror full build, tests) run in CI.
 #
 # Architecture note: C:\Code\tikrclpr inside the VM is a symlink to the Mac
 # source folder (see scripts/build.sh). The remote dotnet commands therefore
@@ -83,7 +83,7 @@ main() {
 
     if [[ "$fails" -gt 0 ]]; then
         fail "Pre-push gate blocked push (${fails} check(s) failed)."
-        echo "  Heavy checks (full build, tests, reviewer agents) run in CI on PR." >&2
+        echo "  Heavy checks (full build, tests) run in CI on PR." >&2
         echo "  Bypass for emergencies: SKIP_PREPUSH=1 git push" >&2
         exit 1
     fi
