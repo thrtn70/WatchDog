@@ -50,6 +50,8 @@ internal static class ClipIndexDuplicateMerger
             MatchNumber = group.Select(clip => clip.MatchNumber).FirstOrDefault(value => value is not null),
             Tags = [.. group.SelectMany(clip => clip.Tags).Distinct(StringComparer.OrdinalIgnoreCase)],
             HighlightSource = group.Select(clip => clip.HighlightSource).FirstOrDefault(value => value is not null),
+            // Cleanup may delete the file only if every copy says this version recorded it.
+            AutoDeleteEligible = group.All(clip => clip.AutoDeleteEligible),
         };
     }
 }

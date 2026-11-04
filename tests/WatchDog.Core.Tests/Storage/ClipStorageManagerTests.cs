@@ -95,7 +95,7 @@ public sealed class ClipStorageManagerTests : IDisposable
         // Create a clip and backdate it
         var clipPath = CreateTestClip("old.mp4");
         File.SetCreationTimeUtc(clipPath, DateTime.UtcNow.AddDays(-2));
-        await manager.IndexClipAsync(clipPath, "Test");
+        await IndexRecordedClipAsync(manager, clipPath, "Test");
 
         await manager.RunCleanupAsync();
 
@@ -114,7 +114,7 @@ public sealed class ClipStorageManagerTests : IDisposable
         var manager = CreateManager(config);
         var clipPath = CreateTestClip("kept_old.mp4");
         File.SetCreationTimeUtc(clipPath, DateTime.UtcNow.AddDays(-200));
-        await manager.IndexClipAsync(clipPath, "Test");
+        await IndexRecordedClipAsync(manager, clipPath, "Test");
 
         var result = await ((IStorageMaintenance)manager).RunCleanupAsync();
 
@@ -133,7 +133,7 @@ public sealed class ClipStorageManagerTests : IDisposable
         var manager = CreateManager(config);
         var clipPath = CreateTestClip("within_limit.mp4");
         File.SetCreationTimeUtc(clipPath, DateTime.UtcNow.AddDays(-clipAgeDays));
-        await manager.IndexClipAsync(clipPath, "Test");
+        await IndexRecordedClipAsync(manager, clipPath, "Test");
 
         var result = await ((IStorageMaintenance)manager).RunCleanupAsync();
 
@@ -150,7 +150,7 @@ public sealed class ClipStorageManagerTests : IDisposable
 
         var clipPath = CreateTestClip("fav_old.mp4");
         File.SetCreationTimeUtc(clipPath, DateTime.UtcNow.AddDays(-2));
-        await manager.IndexClipAsync(clipPath, "Test");
+        await IndexRecordedClipAsync(manager, clipPath, "Test");
         manager.ToggleFavorite(clipPath);
 
         await manager.RunCleanupAsync();
@@ -575,11 +575,11 @@ public sealed class ClipStorageManagerTests : IDisposable
         using (var file = File.Create(archivedPath)) file.SetLength(2L * 1024 * 1024 * 1024);
         File.SetCreationTimeUtc(archivedPath, DateTime.UtcNow.AddDays(-10));
         var legacyManager = CreateManager(_config with { BasePath = legacyRoot });
-        await legacyManager.IndexClipAsync(archivedPath, "Game");
+        await IndexRecordedClipAsync(legacyManager, archivedPath, "Game");
         var activePath = CreateTestClip("active.mp4");
         File.SetCreationTimeUtc(activePath, DateTime.UtcNow.AddDays(-2));
         var manager = CreateManager(_config with { LegacyReadOnlyPaths = [legacyRoot] });
-        await manager.IndexClipAsync(activePath, "Game");
+        await IndexRecordedClipAsync(manager, activePath, "Game");
         await manager.RunCleanupAsync();
         Assert.Equal(2, manager.GetAllClips().Count);
         Assert.True(File.Exists(activePath));
@@ -592,11 +592,11 @@ public sealed class ClipStorageManagerTests : IDisposable
     {
         var manager = CreateManager();
         var path = CreateTestClip("unavailable.mp4");
-        await manager.IndexClipAsync(path, "Game");
+        await IndexRecordedClipAsync(manager, path, "Game");
         manager.ToggleFavorite(path);
         File.Move(path, path + ".offline");
         var restarted = CreateManager();
-        await restarted.IndexClipAsync(CreateTestClip("new.mp4"), "Game");
+        await IndexRecordedClipAsync(restarted, CreateTestClip("new.mp4"), "Game");
         await restarted.RunCleanupAsync();
         File.Move(path + ".offline", path);
         Assert.True(CreateManager().GetAllClips().Single(c => c.FilePath == path).IsFavorite);
@@ -609,7 +609,7 @@ public sealed class ClipStorageManagerTests : IDisposable
         var path = CreateTestClip("reclaimed.mp4");
         File.SetCreationTimeUtc(path, DateTime.UtcNow.AddDays(-2));
         var manager = CreateManager(config);
-        await manager.IndexClipAsync(path, "Game");
+        await IndexRecordedClipAsync(manager, path, "Game");
 
         var result = await ((IStorageMaintenance)manager).RunCleanupAsync();
 
@@ -629,7 +629,7 @@ public sealed class ClipStorageManagerTests : IDisposable
         var path = CreateTestClip("locked.mp4");
         File.SetCreationTimeUtc(path, DateTime.UtcNow.AddDays(-2));
         var manager = CreateManager(config);
-        await manager.IndexClipAsync(path, "Game");
+        await IndexRecordedClipAsync(manager, path, "Game");
 
         StorageCleanupResult result;
         using (File.Open(path, FileMode.Open, FileAccess.Read, FileShare.None))
@@ -652,7 +652,7 @@ public sealed class ClipStorageManagerTests : IDisposable
         File.SetCreationTimeUtc(path, DateTime.UtcNow.AddDays(-2));
         var registry = new ProtectedMediaRegistry();
         var manager = CreateManager(config, registry);
-        await manager.IndexClipAsync(path, "Game");
+        await IndexRecordedClipAsync(manager, path, "Game");
         var equivalentPath = Path.Combine(_tempDir, ".", "protected.mp4");
 
         using (registry.Protect(equivalentPath))
@@ -693,8 +693,8 @@ public sealed class ClipStorageManagerTests : IDisposable
         File.SetCreationTimeUtc(first, DateTime.UtcNow.AddDays(-3));
         File.SetCreationTimeUtc(second, DateTime.UtcNow.AddDays(-2));
         var manager = CreateManager(config);
-        await manager.IndexClipAsync(first, "Game");
-        await manager.IndexClipAsync(second, "Game");
+        await IndexRecordedClipAsync(manager, first, "Game");
+        await IndexRecordedClipAsync(manager, second, "Game");
         var index = Path.Combine(_tempDir, "clips-index.json");
 
         StorageCleanupResult result;
@@ -730,7 +730,7 @@ public sealed class ClipStorageManagerTests : IDisposable
         var clip = CreateTestClip("quota-clip.mp4");
         File.SetCreationTimeUtc(clip, DateTime.UtcNow.AddDays(-2));
         var manager = CreateManager(config);
-        await manager.IndexClipAsync(clip, "Game");
+        await IndexRecordedClipAsync(manager, clip, "Game");
 
         var result = await ((IStorageMaintenance)manager).RunCleanupAsync(1000);
 
@@ -746,7 +746,7 @@ public sealed class ClipStorageManagerTests : IDisposable
         var config = _config with { AutoDeleteDays = 0, MaxStorageBytesOverride = 1500 };
         var clip = CreateTestClip("overlapping-session-clip.mp4");
         var manager = CreateManager(config);
-        await manager.IndexClipAsync(clip, "Game");
+        await IndexRecordedClipAsync(manager, clip, "Game");
         IReadOnlyDictionary<string, long> sessionFiles = new Dictionary<string, long>(
             StringComparer.OrdinalIgnoreCase)
         {
@@ -768,7 +768,7 @@ public sealed class ClipStorageManagerTests : IDisposable
         var config = _config with { AutoDeleteDays = 0, MaxStorageBytesOverride = 0 };
         var path = CreateTestClip("recent.mp4");
         var manager = CreateManager(config);
-        await manager.IndexClipAsync(path, "Game");
+        await IndexRecordedClipAsync(manager, path, "Game");
 
         var result = await ((IStorageMaintenance)manager).RunCleanupAsync();
 
@@ -786,7 +786,7 @@ public sealed class ClipStorageManagerTests : IDisposable
         var path = CreateTestClip("cancel-cleanup.mp4");
         File.SetCreationTimeUtc(path, DateTime.UtcNow.AddDays(-2));
         var manager = CreateManager(config);
-        await manager.IndexClipAsync(path, "Game");
+        await IndexRecordedClipAsync(manager, path, "Game");
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
@@ -897,6 +897,18 @@ public sealed class ClipStorageManagerTests : IDisposable
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, index.ToJsonString(IndentedJson));
     }
+
+    // Cleanup applies only to clips this version recorded, which arrive with a capture receipt.
+    // The receipt's completion time is the file's creation time, as the tests backdate it.
+    private static Task<ClipMetadata> IndexRecordedClipAsync(ClipStorageManager manager, string path, string gameName) =>
+        manager.IndexCompletedMediaAsync(new CompletedMediaReceipt(
+            path,
+            gameName,
+            File.GetCreationTimeUtc(path),
+            SessionId: null,
+            CaptureRequestId: Guid.NewGuid(),
+            CaptureGeneration: 1,
+            MatchNumber: null));
 
     private string CreateTestClip(string name)
     {

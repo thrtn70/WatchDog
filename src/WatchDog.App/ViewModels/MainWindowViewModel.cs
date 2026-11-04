@@ -116,6 +116,23 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     partial void OnAvailableUpdateChanged(UpdateInfo? value) =>
         OnPropertyChanged(nameof(UpdateBannerText));
 
+    // One-time notice that clips older versions indexed are kept (see ExistingClipsNotice)
+    private Action? _onExistingClipsNoticeDismissed;
+    [ObservableProperty] private string? _existingClipsNoticeText;
+
+    public void ShowExistingClipsNotice(string text, Action onDismissed)
+    {
+        _onExistingClipsNoticeDismissed = onDismissed;
+        ExistingClipsNoticeText = text;
+    }
+
+    [RelayCommand]
+    private void DismissExistingClipsNotice()
+    {
+        ExistingClipsNoticeText = null;
+        Interlocked.Exchange(ref _onExistingClipsNoticeDismissed, null)?.Invoke();
+    }
+
     public MainWindowViewModel(
         IClipStorage clipStorage,
         IClipEditor clipEditor,
