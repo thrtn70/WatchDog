@@ -89,7 +89,7 @@ public sealed class ClipStorageManagerTests : IDisposable
     [Fact]
     public async Task RunCleanupAsync_DeletesOldClips()
     {
-        var config = _config with { AutoDeleteDays = 0 }; // Delete everything older than 0 days
+        var config = _config with { AutoDeleteDays = 1 };
         var manager = CreateManager(config);
 
         // Create a clip and backdate it
@@ -99,14 +99,53 @@ public sealed class ClipStorageManagerTests : IDisposable
 
         await manager.RunCleanupAsync();
 
-        // Clip should be deleted (older than 0 days and older than 24 hours)
+        // Clip should be deleted (older than 1 day and older than 24 hours)
         Assert.Empty(manager.GetAllClips());
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task RunCleanupAsync_KeepsOldClips_WhenAutoDeleteIsOff(int autoDeleteDays)
+    {
+        // Settings shows "0 = never auto-delete by age". v1.4.1 treated 0 as "older than 0 days" and,
+        // on first start over a v1.2.x library set to 0, deleted every clip older than a day.
+        var config = _config with { AutoDeleteDays = autoDeleteDays };
+        var manager = CreateManager(config);
+        var clipPath = CreateTestClip("kept_old.mp4");
+        File.SetCreationTimeUtc(clipPath, DateTime.UtcNow.AddDays(-200));
+        await manager.IndexClipAsync(clipPath, "Test");
+
+        var result = await ((IStorageMaintenance)manager).RunCleanupAsync();
+
+        Assert.Equal(0, result.DeletedCount);
+        Assert.True(result.QuotaMet);
+        Assert.True(File.Exists(clipPath));
+        Assert.Single(CreateManager(config).GetAllClips());
+    }
+
+    [Theory]
+    [InlineData(7, 2)]
+    [InlineData(int.MaxValue, 200)] // beyond TimeSpan's range: must not throw and block every cleanup
+    public async Task RunCleanupAsync_KeepsClipsYoungerThanTheAgeLimit(int autoDeleteDays, int clipAgeDays)
+    {
+        var config = _config with { AutoDeleteDays = autoDeleteDays };
+        var manager = CreateManager(config);
+        var clipPath = CreateTestClip("within_limit.mp4");
+        File.SetCreationTimeUtc(clipPath, DateTime.UtcNow.AddDays(-clipAgeDays));
+        await manager.IndexClipAsync(clipPath, "Test");
+
+        var result = await ((IStorageMaintenance)manager).RunCleanupAsync();
+
+        Assert.Equal(0, result.DeletedCount);
+        Assert.True(File.Exists(clipPath));
+        Assert.Single(manager.GetAllClips());
     }
 
     [Fact]
     public async Task RunCleanupAsync_PreservesFavorites()
     {
-        var config = _config with { AutoDeleteDays = 0 };
+        var config = _config with { AutoDeleteDays = 1 };
         var manager = CreateManager(config);
 
         var clipPath = CreateTestClip("fav_old.mp4");
