@@ -319,7 +319,7 @@
                         <Button Content="Browse" Command="{Binding BrowseSavePathCommand}" Margin="8,0,0,0"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Max Storage (GB):" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="When total clips exceed this size, the oldest non-favorited clips are automatically deleted. Clips recorded by older WatchDog versions are kept and don't count."/>
+                        <TextBlock Text="Max Storage (GB):" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="When total clips exceed this size, the oldest non-favorited clips are automatically deleted. Clips and session recordings made by older WatchDog versions are kept and don't count."/>
                         <TextBox Text="{Binding MaxStorageGb}" Width="48"
                                  AutomationProperties.Name="Max storage GB"/>
                         <TextBlock Text="Auto-delete after (days):" VerticalAlignment="Center" Margin="16,0,8,0" ToolTip="Clips older than this many days are automatically deleted (favorited clips and clips recorded by older WatchDog versions are kept). 0 = never auto-delete by age."/>
