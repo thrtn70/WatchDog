@@ -72,7 +72,7 @@ public sealed class JsonSettingsService : ISettingsService
     private static AppSettings NormalizePaths(AppSettings settings, AppSettings? previous = null)
     {
         var destination = settings.Storage.SavePath;
-        if (string.IsNullOrWhiteSpace(destination) || !Path.IsPathFullyQualified(destination))
+        if (!IsAbsoluteFolder(destination))
             throw new ArgumentException("Choose an absolute recording folder path.", nameof(settings));
         destination = Path.TrimEndingDirectorySeparator(Path.GetFullPath(destination));
         var olderPaths = settings.Storage.LegacySavePaths
@@ -110,7 +110,7 @@ public sealed class JsonSettingsService : ISettingsService
             }
 
             _logger.LogInformation("Settings loaded from {Path}", _settingsPath);
-            return NormalizePaths(settings);
+            return NormalizePaths(WithUsableSavePath(settings));
         }
         catch (Exception ex)
         {
@@ -118,6 +118,23 @@ public sealed class JsonSettingsService : ISettingsService
             return new AppSettings();
         }
     }
+
+    private AppSettings WithUsableSavePath(AppSettings settings)
+    {
+        if (IsAbsoluteFolder(settings.Storage.SavePath))
+            return settings;
+
+        var fallback = IsAbsoluteFolder(settings.Buffer.OutputDirectory)
+            ? settings.Buffer.OutputDirectory
+            : new StorageSettings().SavePath;
+        _logger.LogWarning(
+            "Saved recording folder is not an absolute path; using {Folder} and keeping the other settings",
+            fallback);
+        return settings with { Storage = settings.Storage with { SavePath = fallback } };
+    }
+
+    private static bool IsAbsoluteFolder(string? path) =>
+        !string.IsNullOrWhiteSpace(path) && Path.IsPathFullyQualified(path);
 
     private AppSettings? DeserializeSettings(string json)
     {
