@@ -54,6 +54,7 @@ public sealed class SessionManager
                 GameName = game.DisplayName,
                 GameExecutableName = game.ExecutableName,
                 StartedAt = DateTimeOffset.UtcNow,
+                CountsTowardStorageLimit = true,
             };
 
             await _repository.SaveAsync(session, ct);
@@ -100,6 +101,7 @@ public sealed class SessionManager
                 GameName = DesktopGameName,
                 GameExecutableName = DesktopExecutableName,
                 StartedAt = DateTimeOffset.UtcNow,
+                CountsTowardStorageLimit = true,
             };
 
             await _repository.SaveAsync(session, ct);
@@ -352,6 +354,7 @@ public sealed class SessionManager
                     GameName = DesktopGameName,
                     GameExecutableName = DesktopExecutableName,
                     StartedAt = DateTimeOffset.UtcNow,
+                    CountsTowardStorageLimit = true,
                 };
 
                 await _repository.SaveAsync(session, ct);

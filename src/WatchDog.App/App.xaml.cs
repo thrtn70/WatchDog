@@ -137,6 +137,8 @@ public partial class App : Application
         if (overlaySettings.Enabled)
             ShowOverlay();
 
+        ShowExistingClipsNotice(host.Services);
+
         // Check for updates (non-blocking, failure is silent)
         _ = Task.Run(async () =>
         {
@@ -157,6 +159,33 @@ public partial class App : Application
                 }
             }
             catch { /* update check failure is non-fatal */ }
+        });
+    }
+
+    /// <summary>Tells the user once that clips an older version indexed are never deleted automatically.</summary>
+    private static void ShowExistingClipsNotice(IServiceProvider services)
+    {
+        var settingsService = services.GetRequiredService<ISettingsService>();
+        var text = Core.Storage.ExistingClipsNotice.Create(
+            services.GetRequiredService<Core.Storage.IClipStorage>().GetAllClips(),
+            settingsService.Load().Storage);
+        if (text is null) return;
+
+        services.GetRequiredService<MainWindowViewModel>().ShowExistingClipsNotice(text, () =>
+        {
+            try
+            {
+                var current = settingsService.Load();
+                settingsService.Save(current with
+                {
+                    Storage = current.Storage with { ExistingClipsNoticeDismissed = true },
+                });
+            }
+            catch (Exception ex)
+            {
+                services.GetRequiredService<ILoggerFactory>().CreateLogger<App>()
+                    .LogWarning(ex, "Could not save that the existing-clips notice was dismissed");
+            }
         });
     }
 
