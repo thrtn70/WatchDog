@@ -12,6 +12,7 @@ public sealed class JsonSettingsService : ISettingsService
         "WatchDog");
 
     private readonly string _settingsPath;
+    private readonly Func<string?> _defaultRecordingFolder;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -30,9 +31,18 @@ public sealed class JsonSettingsService : ISettingsService
     public event Action<AppSettings>? SettingsChanged;
 
     public JsonSettingsService(ILogger<JsonSettingsService> logger, string? settingsPath = null)
+        : this(logger, settingsPath, () => new StorageSettings().SavePath)
+    {
+    }
+
+    internal JsonSettingsService(
+        ILogger<JsonSettingsService> logger,
+        string? settingsPath,
+        Func<string?> defaultRecordingFolder)
     {
         _logger = logger;
         _settingsPath = settingsPath ?? Path.Combine(SettingsDir, "settings.json");
+        _defaultRecordingFolder = defaultRecordingFolder;
         _cached = LoadFromDisk();
     }
 
@@ -71,15 +81,13 @@ public sealed class JsonSettingsService : ISettingsService
 
     private static AppSettings NormalizePaths(AppSettings settings, AppSettings? previous = null)
     {
-        var destination = settings.Storage.SavePath;
-        if (!IsAbsoluteFolder(destination))
+        if (!TryNormalizeAbsoluteFolder(settings.Storage.SavePath, out var destination))
             throw new ArgumentException("Choose an absolute recording folder path.", nameof(settings));
-        destination = Path.TrimEndingDirectorySeparator(Path.GetFullPath(destination));
-        var olderPaths = settings.Storage.LegacySavePaths
+        var olderPaths = (settings.Storage.LegacySavePaths ?? [])
             .Concat(previous?.Storage.LegacySavePaths ?? [])
             .Concat(new[] { settings.Buffer.OutputDirectory, previous?.Storage.SavePath, previous?.Buffer.OutputDirectory })
-            .Where(p => !string.IsNullOrWhiteSpace(p) && Path.IsPathFullyQualified(p))
-            .Select(p => Path.TrimEndingDirectorySeparator(Path.GetFullPath(p!)))
+            .Select(path => TryNormalizeAbsoluteFolder(path, out var folder) ? folder : null)
+            .OfType<string>()
             .Where(p => !string.Equals(p, destination, StringComparison.OrdinalIgnoreCase))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -92,6 +100,12 @@ public sealed class JsonSettingsService : ISettingsService
 
     private AppSettings LoadFromDisk()
     {
+        // Path repair must not turn a missing default folder into a reset of every preference.
+        return NormalizePaths(WithUsableSavePath(ReadSettingsOrDefaults()));
+    }
+
+    private AppSettings ReadSettingsOrDefaults()
+    {
         try
         {
             if (!File.Exists(_settingsPath))
@@ -103,14 +117,14 @@ public sealed class JsonSettingsService : ISettingsService
             var json = File.ReadAllText(_settingsPath);
             var settings = DeserializeSettings(json);
 
-            if (settings is null)
+            if (settings is null || settings.Storage is null || settings.Buffer is null)
             {
                 _logger.LogWarning("Settings file was empty or invalid, using defaults");
                 return new AppSettings();
             }
 
             _logger.LogInformation("Settings loaded from {Path}", _settingsPath);
-            return NormalizePaths(WithUsableSavePath(settings));
+            return settings;
         }
         catch (Exception ex)
         {
@@ -121,20 +135,36 @@ public sealed class JsonSettingsService : ISettingsService
 
     private AppSettings WithUsableSavePath(AppSettings settings)
     {
-        if (IsAbsoluteFolder(settings.Storage.SavePath))
+        if (TryNormalizeAbsoluteFolder(settings.Storage.SavePath, out _))
             return settings;
 
-        var fallback = IsAbsoluteFolder(settings.Buffer.OutputDirectory)
-            ? settings.Buffer.OutputDirectory
-            : new StorageSettings().SavePath;
-        _logger.LogWarning(
-            "Saved recording folder is not an absolute path; using {Folder} and keeping the other settings",
-            fallback);
+        if (!TryNormalizeAbsoluteFolder(settings.Buffer.OutputDirectory, out var fallback) &&
+            !TryNormalizeAbsoluteFolder(_defaultRecordingFolder(), out fallback))
+        {
+            throw new InvalidDataException(
+                "No usable absolute recording folder is available. Settings were not changed.");
+        }
+
+        _logger.LogWarning("Invalid saved recording folder was replaced; other settings were preserved");
         return settings with { Storage = settings.Storage with { SavePath = fallback } };
     }
 
-    private static bool IsAbsoluteFolder(string? path) =>
-        !string.IsNullOrWhiteSpace(path) && Path.IsPathFullyQualified(path);
+    private static bool TryNormalizeAbsoluteFolder(string? path, out string normalized)
+    {
+        normalized = string.Empty;
+        if (string.IsNullOrWhiteSpace(path) || !Path.IsPathFullyQualified(path))
+            return false;
+
+        try
+        {
+            normalized = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+            return true;
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return false;
+        }
+    }
 
     private AppSettings? DeserializeSettings(string json)
     {

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging.Abstractions;
 using WatchDog.Core.Capture;
 using WatchDog.Core.Settings;
@@ -113,15 +114,18 @@ public sealed class JsonSettingsServiceSavePathTests : IDisposable
     }
 
     [Theory]
+    [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("Clips")]
     [InlineData(@"\Clips")]
     [InlineData("{drive}:")]
     [InlineData("{drive}:Clips")]
-    public void OlderSettingsWithAnUnusableSavePathKeepEveryOtherChoice(string savedPath)
+    [InlineData("{drive}:\\Clips\0")]
+    public void OlderSettingsWithAnUnusableSavePathKeepEveryOtherChoice(string? savedPath)
     {
-        WriteSettingsFileInV123Format(OnOtherDrive(savedPath), OldVideosFolder);
+        WriteSettingsFileInV123Format(savedPath is null ? null : OnOtherDrive(savedPath), OldVideosFolder);
+        var bytesBefore = File.ReadAllBytes(SettingsPath);
 
         var settings = CreateService().Load();
 
@@ -129,6 +133,8 @@ public sealed class JsonSettingsServiceSavePathTests : IDisposable
         Assert.Equal(OldVideosFolder, settings.Buffer.OutputDirectory);
         Assert.Empty(settings.Storage.LegacySavePaths);
         AssertOlderChoicesKept(settings);
+        Assert.Equal(bytesBefore, File.ReadAllBytes(SettingsPath));
+        Assert.False(Directory.Exists(OldVideosFolder));
     }
 
     [Fact]
@@ -158,13 +164,152 @@ public sealed class JsonSettingsServiceSavePathTests : IDisposable
         Assert.Equal(0, reloaded.Storage.AutoDeleteDays);
         Assert.Equal(200, reloaded.Storage.MaxStorageGb);
         Assert.Equal(0x77, reloaded.Hotkey.SaveClipKey);
+        Assert.True(reloaded.DesktopCaptureEnabled);
         Assert.False(reloaded.StartWithWindows);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("Clips")]
+    [InlineData("Q:Clips")]
+    [InlineData("Q:\\Clips\0")]
+    public void InvalidSaveDoesNotChangeTheFileCacheOrPublish(string? invalidPath)
+    {
+        WriteSettingsFileInV123Format(OldVideosFolder, OldVideosFolder);
+        var service = CreateService();
+        var original = service.Load();
+        var bytesBefore = File.ReadAllBytes(SettingsPath);
+        var notifications = 0;
+        service.SettingsChanged += _ => notifications++;
+
+        Assert.Throws<ArgumentException>(() => service.Save(original with
+        {
+            Storage = original.Storage with { SavePath = invalidPath! }
+        }));
+
+        Assert.Same(original, service.Load());
+        Assert.Equal(bytesBefore, File.ReadAllBytes(SettingsPath));
+        Assert.Equal(0, notifications);
+        Assert.Equal(new[] { SettingsPath }, Directory.GetFiles(_directory));
+        Assert.False(Directory.Exists(OldVideosFolder));
+    }
+
+    [Theory]
+    [InlineData("Q:\\Unavailable recordings\\")]
+    [InlineData("\\\\unavailable-server\\share\\Clips\\")]
+    public void ValidAbsoluteDestinationIsKeptWithoutTestingItsAvailability(string savedPath)
+    {
+        WriteSettingsFileInV123Format(savedPath, OldVideosFolder);
+        var bytesBefore = File.ReadAllBytes(SettingsPath);
+
+        var settings = CreateService(() => throw new InvalidOperationException("Default must not be used")).Load();
+
+        Assert.Equal(Path.TrimEndingDirectorySeparator(Path.GetFullPath(savedPath)), settings.Storage.SavePath);
+        Assert.Equal(settings.Storage.SavePath, settings.Buffer.OutputDirectory);
+        Assert.Equal(OldVideosFolder, Assert.Single(settings.Storage.LegacySavePaths));
+        AssertOlderChoicesKept(settings);
+        Assert.Equal(bytesBefore, File.ReadAllBytes(SettingsPath));
+    }
+
+    [Fact]
+    public void ValidUnicodeDestinationIsCanonicalizedWithoutCreatingIt()
+    {
+        var savedPath = Path.Combine(_directory, "before", "..", "クリップ", "Ünïcode") + Path.DirectorySeparatorChar;
+        WriteSettingsFileInV123Format(savedPath, OldVideosFolder);
+        var bytesBefore = File.ReadAllBytes(SettingsPath);
+
+        var settings = CreateService().Load();
+
+        Assert.Equal(Path.Combine(_directory, "クリップ", "Ünïcode"), settings.Storage.SavePath);
+        Assert.Equal(settings.Storage.SavePath, settings.Buffer.OutputDirectory);
+        AssertOlderChoicesKept(settings);
+        Assert.Equal(bytesBefore, File.ReadAllBytes(SettingsPath));
+        Assert.False(Directory.Exists(settings.Storage.SavePath));
+    }
+
+    [Fact]
+    public void ValidBufferIsUsedBeforeTheDefaultFolder()
+    {
+        WriteSettingsFileInV123Format("Clips", OldVideosFolder);
+
+        var settings = CreateService(() => throw new InvalidOperationException("Default must not be used")).Load();
+
+        Assert.Equal(OldVideosFolder, settings.Storage.SavePath);
+        AssertOlderChoicesKept(settings);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("Clips")]
+    [InlineData("Q:\\Clips\0")]
+    public void UnusableBufferFallsBackToACanonicalAbsoluteDefault(string? bufferDirectory)
+    {
+        WriteSettingsFileInV123Format("Clips", bufferDirectory);
+        var bytesBefore = File.ReadAllBytes(SettingsPath);
+        var fallback = Path.Combine(_directory, "fallback", "..", "Default clips") + Path.DirectorySeparatorChar;
+
+        var settings = CreateService(() => fallback).Load();
+
+        Assert.Equal(Path.Combine(_directory, "Default clips"), settings.Storage.SavePath);
+        Assert.Equal(settings.Storage.SavePath, settings.Buffer.OutputDirectory);
+        AssertOlderChoicesKept(settings);
+        Assert.Equal(bytesBefore, File.ReadAllBytes(SettingsPath));
+        Assert.False(Directory.Exists(settings.Storage.SavePath));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("WatchDog")]
+    [InlineData("\\WatchDog")]
+    [InlineData("Q:\\WatchDog\0")]
+    public void InvalidDefaultRefusesToLoadInsteadOfResettingOrRewritingSettings(string? fallback)
+    {
+        WriteSettingsFileInV123Format("Clips", bufferDirectory: "");
+        var bytesBefore = File.ReadAllBytes(SettingsPath);
+
+        var failure = Assert.Throws<InvalidDataException>(() => CreateService(() => fallback));
+
+        Assert.Contains("absolute recording folder", failure.Message);
+        Assert.Equal(bytesBefore, File.ReadAllBytes(SettingsPath));
+        Assert.Equal(new[] { SettingsPath }, Directory.GetFiles(_directory));
+        Assert.Empty(Directory.GetDirectories(_directory));
+    }
+
+    [Fact]
+    public void InvalidLegacyEntriesDoNotDiscardValidLocationsOrOtherSettings()
+    {
+        WriteSettingsFileInV123Format("Clips", OldVideosFolder);
+        var retained = Path.Combine(_directory, "Earlier clips");
+        var root = JsonNode.Parse(File.ReadAllText(SettingsPath))!;
+        root["storage"]!["legacySavePaths"] = new JsonArray(
+            JsonValue.Create("Q:\\Broken\0"), null, JsonValue.Create("relative"),
+            JsonValue.Create(retained), JsonValue.Create(retained.ToUpperInvariant() + "\\"),
+            JsonValue.Create(OldVideosFolder));
+        File.WriteAllText(SettingsPath, root.ToJsonString());
+        var bytesBefore = File.ReadAllBytes(SettingsPath);
+
+        var service = CreateService();
+        var settings = service.Load();
+
+        Assert.Equal(retained, Assert.Single(settings.Storage.LegacySavePaths));
+        AssertOlderChoicesKept(settings);
+        Assert.Equal(bytesBefore, File.ReadAllBytes(SettingsPath));
+        service.Save(settings);
+        var reloaded = CreateService().Load();
+        Assert.Equal(retained, Assert.Single(reloaded.Storage.LegacySavePaths));
+        AssertOlderChoicesKept(reloaded);
     }
 
     public void Dispose() => TestFs.DeleteDirectoryWithRetry(_directory);
 
     private JsonSettingsService CreateService() =>
         new(NullLogger<JsonSettingsService>.Instance, SettingsPath);
+
+    private JsonSettingsService CreateService(Func<string?> defaultRecordingFolder) =>
+        new(NullLogger<JsonSettingsService>.Instance, SettingsPath, defaultRecordingFolder);
 
     private static void SaveSavePath(JsonSettingsService service, string savePath)
     {
@@ -178,28 +323,30 @@ public sealed class JsonSettingsServiceSavePathTests : IDisposable
         return path.Replace("{drive}", drive, StringComparison.Ordinal);
     }
 
-    private void WriteSettingsFileInV123Format(string savePath, string bufferDirectory)
+    private void WriteSettingsFileInV123Format(string? savePath, string? bufferDirectory)
     {
         Directory.CreateDirectory(_directory);
         File.WriteAllText(SettingsPath, $$"""
             {
               "buffer": {
-                "maxSeconds": 120,
-                "maxSizeMb": 512,
+                "maxSeconds": 35,
+                "maxSizeMb": 64,
                 "outputDirectory": {{JsonSerializer.Serialize(bufferDirectory)}},
                 "filenameFormat": "Clip %CCYY-%MM-%DD %hh-%mm-%ss"
               },
               "hotkey": {
                 "saveClipKey": 119,
-                "modifiers": 0,
-                "toggleRecordingKey": 121,
-                "toggleRecordingModifiers": 0
+                "modifiers": 2,
+                "toggleRecordingKey": 118,
+                "toggleRecordingModifiers": 3
               },
               "storage": {
                 "savePath": {{JsonSerializer.Serialize(savePath)}},
                 "maxStorageGb": 200,
                 "autoDeleteDays": 0
               },
+              "customGames": [{ "executableName": "legacy.exe", "displayName": "Legacy Game" }],
+              "desktopCaptureEnabled": true,
               "startWithWindows": true,
               "startMinimized": false
             }
@@ -211,6 +358,14 @@ public sealed class JsonSettingsServiceSavePathTests : IDisposable
         Assert.Equal(0, settings.Storage.AutoDeleteDays);
         Assert.Equal(200, settings.Storage.MaxStorageGb);
         Assert.Equal(0x77, settings.Hotkey.SaveClipKey);
+        Assert.Equal(2u, settings.Hotkey.Modifiers);
+        Assert.Equal(118, settings.Hotkey.ToggleRecordingKey);
+        Assert.Equal(3u, settings.Hotkey.ToggleRecordingModifiers);
+        Assert.Equal(35, settings.Buffer.MaxSeconds);
+        Assert.Equal(64, settings.Buffer.MaxSizeMb);
+        Assert.Equal("legacy.exe", Assert.Single(settings.CustomGames).ExecutableName);
+        Assert.Equal("Legacy Game", settings.CustomGames[0].DisplayName);
+        Assert.True(settings.DesktopCaptureEnabled);
         Assert.True(settings.StartWithWindows);
         Assert.False(settings.StartMinimized);
     }
