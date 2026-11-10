@@ -437,7 +437,11 @@ public sealed class ClipStorageManager : IClipStorage, IStorageMaintenance
         if (protectedExternalBytes < 0)
             throw new ArgumentOutOfRangeException(nameof(protectedExternalBytes));
         var now = DateTimeOffset.UtcNow;
-        var maxAge = TimeSpan.FromDays(_config.AutoDeleteDays);
+        // Settings promises "0 = never auto-delete by age". Values too large for a TimeSpan would throw
+        // and block every cleanup, so they also mean no limit. No clip age exceeds TimeSpan.MaxValue.
+        var maxAge = _config.AutoDeleteDays > 0 && _config.AutoDeleteDays < TimeSpan.MaxValue.TotalDays
+            ? TimeSpan.FromDays(_config.AutoDeleteDays)
+            : TimeSpan.MaxValue;
         var minAge = TimeSpan.FromHours(24);
         var maxBytes = GetMaxStorageBytes();
         var attemptedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
