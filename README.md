@@ -45,7 +45,7 @@ Think of it as **Outplayed / Medal without the bloat** — and also without the 
 | **Audio Mixing** | Live volume sliders, mute toggles, device selection, and separate audio tracks. |
 | **Floating Panels** | Draggable, resizable Performance and Audio overlays. |
 | **System Tray** | Runs minimized. Right-click for quick actions. Start with Windows. |
-| **Storage Management** | Auto-delete old clips, configurable quota, per-game folders, storage dashboard. |
+| **Storage Management** | Auto-delete old clips (0 days = never), configurable quota, per-game folders, storage dashboard. Clips and session recordings made by WatchDog v1.4.1 or older are never auto-deleted and don't count toward the quota. |
 | **Toast Notifications** | Visual popup near the tray when a clip is saved. |
 
 ---
