@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
+using WatchDog.Core.Buffer;
 
 namespace WatchDog.Core.Settings;
 
@@ -12,6 +13,7 @@ public sealed class JsonSettingsService : ISettingsService
         "WatchDog");
 
     private readonly string _settingsPath;
+    private readonly Func<string?> _defaultRecordingFolder;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -30,10 +32,35 @@ public sealed class JsonSettingsService : ISettingsService
     public event Action<AppSettings>? SettingsChanged;
 
     public JsonSettingsService(ILogger<JsonSettingsService> logger, string? settingsPath = null)
+        : this(logger, settingsPath, () => DefaultRecordingFolder(Environment.GetFolderPath))
+    {
+    }
+
+    internal JsonSettingsService(
+        ILogger<JsonSettingsService> logger,
+        string? settingsPath,
+        Func<string?> defaultRecordingFolder)
     {
         _logger = logger;
         _settingsPath = settingsPath ?? Path.Combine(SettingsDir, "settings.json");
+        _defaultRecordingFolder = defaultRecordingFolder;
         _cached = LoadFromDisk();
+    }
+
+    // Windows reports "" for a Videos folder that doesn't exist yet, so ask for its path without
+    // checking it. Local app data is the last resort, so a fresh install always has a folder.
+    internal static string? DefaultRecordingFolder(
+        Func<Environment.SpecialFolder, Environment.SpecialFolderOption, string> getFolderPath)
+    {
+        var videos = getFolderPath(Environment.SpecialFolder.MyVideos, Environment.SpecialFolderOption.DoNotVerify);
+        if (TryNormalizeAbsoluteFolder(videos, out var videosFolder))
+            return Path.Combine(videosFolder, "WatchDog");
+
+        var localData = getFolderPath(
+            Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify);
+        return TryNormalizeAbsoluteFolder(localData, out var localFolder)
+            ? Path.Combine(localFolder, "WatchDog", "Clips")
+            : null;
     }
 
     public AppSettings Load()
@@ -71,15 +98,13 @@ public sealed class JsonSettingsService : ISettingsService
 
     private static AppSettings NormalizePaths(AppSettings settings, AppSettings? previous = null)
     {
-        var destination = settings.Storage.SavePath;
-        if (string.IsNullOrWhiteSpace(destination) || !Path.IsPathFullyQualified(destination))
+        if (!TryNormalizeAbsoluteFolder(settings.Storage.SavePath, out var destination))
             throw new ArgumentException("Choose an absolute recording folder path.", nameof(settings));
-        destination = Path.TrimEndingDirectorySeparator(Path.GetFullPath(destination));
-        var olderPaths = settings.Storage.LegacySavePaths
+        var olderPaths = (settings.Storage.LegacySavePaths ?? [])
             .Concat(previous?.Storage.LegacySavePaths ?? [])
             .Concat(new[] { settings.Buffer.OutputDirectory, previous?.Storage.SavePath, previous?.Buffer.OutputDirectory })
-            .Where(p => !string.IsNullOrWhiteSpace(p) && Path.IsPathFullyQualified(p))
-            .Select(p => Path.TrimEndingDirectorySeparator(Path.GetFullPath(p!)))
+            .Select(path => TryNormalizeAbsoluteFolder(path, out var folder) ? folder : null)
+            .OfType<string>()
             .Where(p => !string.Equals(p, destination, StringComparison.OrdinalIgnoreCase))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -91,6 +116,13 @@ public sealed class JsonSettingsService : ISettingsService
     }
 
     private AppSettings LoadFromDisk()
+    {
+        // Folder repair runs outside the read's catch-all, so a bad folder never resets every
+        // other preference: it is replaced, or loading stops with a message. Loading never writes.
+        return NormalizePaths(WithUsableSavePath(ReadSettingsOrDefaults()));
+    }
+
+    private AppSettings ReadSettingsOrDefaults()
     {
         try
         {
@@ -109,13 +141,55 @@ public sealed class JsonSettingsService : ISettingsService
                 return new AppSettings();
             }
 
+            if (settings.Storage is null || settings.Buffer is null)
+                _logger.LogWarning("Settings file has an empty section; using its defaults and keeping the other settings");
+
             _logger.LogInformation("Settings loaded from {Path}", _settingsPath);
-            return NormalizePaths(settings);
+            return settings with
+            {
+                Storage = settings.Storage ?? new StorageSettings(),
+                Buffer = settings.Buffer ?? new BufferConfig(),
+            };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load settings, using defaults");
             return new AppSettings();
+        }
+    }
+
+    private AppSettings WithUsableSavePath(AppSettings settings)
+    {
+        if (TryNormalizeAbsoluteFolder(settings.Storage.SavePath, out _))
+            return settings;
+
+        if (!TryNormalizeAbsoluteFolder(settings.Buffer.OutputDirectory, out var fallback) &&
+            !TryNormalizeAbsoluteFolder(_defaultRecordingFolder(), out fallback))
+        {
+            _logger.LogError("No usable recording folder is available; the settings file was left unchanged");
+            throw new InvalidDataException(
+                $"No usable absolute recording folder is available. Set \"savePath\" in {_settingsPath} " +
+                "to a full folder path. The file was not changed.");
+        }
+
+        _logger.LogWarning("Invalid saved recording folder was replaced; other settings were preserved");
+        return settings with { Storage = settings.Storage with { SavePath = fallback } };
+    }
+
+    private static bool TryNormalizeAbsoluteFolder(string? path, out string normalized)
+    {
+        normalized = string.Empty;
+        if (string.IsNullOrWhiteSpace(path) || !Path.IsPathFullyQualified(path))
+            return false;
+
+        try
+        {
+            normalized = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+            return true;
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return false;
         }
     }
 
