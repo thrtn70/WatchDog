@@ -12,4 +12,11 @@ public sealed record GameSession
     public IReadOnlyList<string> RecordingPaths { get; init; } = [];
     public IReadOnlyList<SessionMediaSegment> MediaSegments { get; init; } = [];
     public bool IsAutoRecorded { get; init; }
+
+    /// <summary>
+    /// True for sessions started by v1.4.2 or later. Media of a session without it, one written
+    /// by v1.4.1 or older, does not count toward the storage limit: cleanup never deletes session
+    /// media, so counting an upgraded library's recordings could block capture for good.
+    /// </summary>
+    public bool CountsTowardStorageLimit { get; init; }
 }

@@ -4,7 +4,8 @@ namespace WatchDog.Core.Storage;
 
 /// <summary>
 /// Projects the durable session media graph into storage ownership. Graph-owned screen and
-/// camera files are not clips, but they still consume quota and must never be called orphans.
+/// camera files are not clips and must never be called orphans; those of sessions started by
+/// v1.4.2 or later also consume quota.
 /// </summary>
 public sealed class SessionStorageMediaCatalog(
     ISessionRepository sessions,
@@ -15,18 +16,22 @@ public sealed class SessionStorageMediaCatalog(
     {
         var recent = await sessions.GetRecentAsync(int.MaxValue, cancellationToken).ConfigureAwait(false);
         var ownedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var countedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var session in recent)
         {
+            // Sessions from v1.4.1 and older stay owned, so they are never called orphans, but are
+            // not measured: they don't count toward the quota and can't fail the safety check.
+            var counted = session.CountsTowardStorageLimit ? countedPaths : null;
             foreach (var segment in session.MediaSegments)
-                AddPath(segment.FilePath, ownedPaths);
+                AddPath(segment.FilePath, ownedPaths, counted);
             foreach (var path in session.RecordingPaths)
-                AddPath(path, ownedPaths);
+                AddPath(path, ownedPaths, counted);
         }
 
         long bytes = 0;
         var existingFiles = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
         var failures = new List<StorageCleanupFailure>();
-        foreach (var path in ownedPaths)
+        foreach (var path in countedPaths)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!IsUnderActiveRoot(path)) continue;
@@ -58,9 +63,11 @@ public sealed class SessionStorageMediaCatalog(
         return path.StartsWith(root, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static void AddPath(string path, ISet<string> ownedPaths)
+    private static void AddPath(string path, ISet<string> ownedPaths, ISet<string>? countedPaths)
     {
-        if (!string.IsNullOrWhiteSpace(path))
-            ownedPaths.Add(StoragePath.Canonicalize(path));
+        if (string.IsNullOrWhiteSpace(path)) return;
+        var canonical = StoragePath.Canonicalize(path);
+        ownedPaths.Add(canonical);
+        countedPaths?.Add(canonical);
     }
 }

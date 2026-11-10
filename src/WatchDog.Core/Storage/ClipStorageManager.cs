@@ -45,6 +45,15 @@ public sealed class ClipStorageManager : IClipStorage, IStorageMaintenance
         _persistedClips = [.. _clips];
         ReconcilePendingDeletion();
         _persistedClips = [.. _clips];
+
+        var keptCount = _clips.Count(clip => !clip.AutoDeleteEligible);
+        if (keptCount > 0)
+        {
+            _logger.LogInformation(
+                "{Count} clips were indexed by an older WatchDog version or without a capture receipt; " +
+                "cleanup never deletes them or counts them toward the quota",
+                keptCount);
+        }
     }
 
     public IReadOnlyList<ClipMetadata> GetAllClips()
@@ -85,6 +94,7 @@ public sealed class ClipStorageManager : IClipStorage, IStorageMaintenance
             captureGeneration: null,
             matchNumber,
             createdAt: null,
+            autoDeleteEligible: false,
             ct);
 
     public Task<ClipMetadata> IndexCompletedMediaAsync(
@@ -102,6 +112,7 @@ public sealed class ClipStorageManager : IClipStorage, IStorageMaintenance
             media.CaptureGeneration,
             media.MatchNumber,
             media.CompletedAt,
+            autoDeleteEligible: true,
             ct);
     }
 
@@ -114,6 +125,7 @@ public sealed class ClipStorageManager : IClipStorage, IStorageMaintenance
         long? captureGeneration,
         int? matchNumber,
         DateTimeOffset? createdAt,
+        bool autoDeleteEligible,
         CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
@@ -168,6 +180,7 @@ public sealed class ClipStorageManager : IClipStorage, IStorageMaintenance
             CaptureRequestId = captureRequestId,
             CaptureGeneration = captureGeneration,
             MatchNumber = matchNumber,
+            AutoDeleteEligible = autoDeleteEligible,
         };
 
         lock (_lock)
@@ -404,6 +417,8 @@ public sealed class ClipStorageManager : IClipStorage, IStorageMaintenance
             HashSet<string> indexedPaths;
             lock (_lock)
             {
+                // Every indexed file, protected or not: a protected clip that is also a session
+                // recording (v1.3.0 indexed those) must not come back as uncleanable session bytes.
                 indexedPaths = _clips
                     .Where(clip => IsManagedPath(clip.FilePath))
                     .Select(clip => StoragePath.Canonicalize(clip.FilePath))
@@ -471,7 +486,7 @@ public sealed class ClipStorageManager : IClipStorage, IStorageMaintenance
         lock (_lock)
         {
             expiredCandidates = _clips
-                .Where(clip => IsManagedPath(clip.FilePath) &&
+                .Where(clip => IsCountedTowardQuota(clip) &&
                     now - clip.CreatedAt > maxAge &&
                     now - clip.CreatedAt > minAge)
                 .Select(clip => clip.FilePath)
@@ -502,7 +517,7 @@ public sealed class ClipStorageManager : IClipStorage, IStorageMaintenance
                     break;
 
                 candidatePath = _clips
-                    .Where(clip => IsManagedPath(clip.FilePath) &&
+                    .Where(clip => IsCountedTowardQuota(clip) &&
                         now - clip.CreatedAt > minAge &&
                         !attemptedPaths.Contains(StoragePath.Canonicalize(clip.FilePath)))
                     .OrderBy(clip => clip.CreatedAt)
@@ -567,7 +582,7 @@ public sealed class ClipStorageManager : IClipStorage, IStorageMaintenance
         {
             var clip = _clips.FirstOrDefault(current => PathsEqual(current.FilePath, candidatePath));
             if (clip is null ||
-                !IsManagedPath(clip.FilePath) ||
+                !IsCountedTowardQuota(clip) ||
                 clip.IsFavorite ||
                 now - clip.CreatedAt <= minAge ||
                 (requireExpired && now - clip.CreatedAt <= maxAge) ||
@@ -656,7 +671,13 @@ public sealed class ClipStorageManager : IClipStorage, IStorageMaintenance
     }
 
     private long CalculateRemainingIndexedBytes() =>
-        _clips.Where(clip => IsManagedPath(clip.FilePath)).Sum(clip => clip.FileSizeBytes);
+        _clips.Where(IsCountedTowardQuota).Sum(clip => clip.FileSizeBytes);
+
+    // Retention and the quota cover only clips this version recorded into the active folder.
+    // Older versions never ran cleanup, so applying it to their libraries would delete clips
+    // their users never expected to lose.
+    private bool IsCountedTowardQuota(ClipMetadata clip) =>
+        clip.AutoDeleteEligible && IsManagedPath(clip.FilePath);
 
     private static bool IsQuotaMet(long indexedBytes, long protectedExternalBytes, long maxBytes) =>
         protectedExternalBytes <= maxBytes && indexedBytes <= maxBytes - protectedExternalBytes;

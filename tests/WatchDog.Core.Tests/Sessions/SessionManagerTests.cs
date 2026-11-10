@@ -131,6 +131,21 @@ public sealed class SessionManagerTests : IDisposable
     }
 
     [Fact]
+    public async Task SessionsThisVersionStartsCountTowardTheStorageLimit()
+    {
+        await _manager.StartSessionAsync(MakeGame());
+        var gameId = _manager.CurrentSessionId!.Value;
+        await _manager.AddRecordingPathAsync("/path/game.mp4");
+        await _manager.StartDesktopSessionAsync(); // ends and saves the game session
+
+        var game = await _repo.GetByIdAsync(gameId);
+        var desktop = await _repo.GetByIdAsync(_manager.CurrentSessionId!.Value);
+        Assert.Equal(SessionStatus.Completed, game!.Status);
+        Assert.True(game.CountsTowardStorageLimit);
+        Assert.True(desktop!.CountsTowardStorageLimit);
+    }
+
+    [Fact]
     public async Task StartDesktopSessionAsync_ReusesTodaySession()
     {
         await _manager.StartDesktopSessionAsync();

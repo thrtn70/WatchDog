@@ -63,6 +63,9 @@ public sealed record StorageSettings
         "WatchDog");
     public int MaxStorageGb { get; init; } = 50;
     public int AutoDeleteDays { get; init; } = 30;
+
+    /// <summary>Set once the user dismisses the notice that clips older versions indexed are kept.</summary>
+    public bool ExistingClipsNoticeDismissed { get; init; }
 }
 
 public sealed record UpdateSettings
