@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging.Abstractions;
+using WatchDog.Core.Buffer;
 using WatchDog.Core.Capture;
 using WatchDog.Core.Settings;
 using WatchDog.Core.Tests.Helpers;
@@ -273,6 +274,7 @@ public sealed class JsonSettingsServiceSavePathTests : IDisposable
         var failure = Assert.Throws<InvalidDataException>(() => CreateService(() => fallback));
 
         Assert.Contains("absolute recording folder", failure.Message);
+        Assert.Contains(SettingsPath, failure.Message);
         Assert.Equal(bytesBefore, File.ReadAllBytes(SettingsPath));
         Assert.Equal(new[] { SettingsPath }, Directory.GetFiles(_directory));
         Assert.Empty(Directory.GetDirectories(_directory));
@@ -301,6 +303,93 @@ public sealed class JsonSettingsServiceSavePathTests : IDisposable
         var reloaded = CreateService().Load();
         Assert.Equal(retained, Assert.Single(reloaded.Storage.LegacySavePaths));
         AssertOlderChoicesKept(reloaded);
+    }
+
+    [Fact]
+    public void NullStorageSectionUsesItsDefaultsAndKeepsEveryOtherChoice()
+    {
+        WriteSettingsFileInV123Format(OldVideosFolder, OldVideosFolder);
+        SetSectionToNull("storage");
+        var bytesBefore = File.ReadAllBytes(SettingsPath);
+
+        var settings = CreateService().Load();
+
+        Assert.Equal(new StorageSettings().AutoDeleteDays, settings.Storage.AutoDeleteDays);
+        Assert.Equal(new StorageSettings().MaxStorageGb, settings.Storage.MaxStorageGb);
+        Assert.Equal(settings.Storage.SavePath, settings.Buffer.OutputDirectory);
+        Assert.Equal(35, settings.Buffer.MaxSeconds);
+        Assert.Equal(64, settings.Buffer.MaxSizeMb);
+        AssertHotkeysGamesAndFlagsKept(settings);
+        Assert.Equal(bytesBefore, File.ReadAllBytes(SettingsPath));
+    }
+
+    [Fact]
+    public void NullBufferSectionUsesItsDefaultsAndKeepsEveryOtherChoice()
+    {
+        WriteSettingsFileInV123Format(OldVideosFolder, OldVideosFolder);
+        SetSectionToNull("buffer");
+        var bytesBefore = File.ReadAllBytes(SettingsPath);
+
+        var settings = CreateService().Load();
+
+        Assert.Equal(OldVideosFolder, settings.Storage.SavePath);
+        Assert.Equal(OldVideosFolder, settings.Buffer.OutputDirectory);
+        Assert.Equal(new BufferConfig().MaxSeconds, settings.Buffer.MaxSeconds);
+        Assert.Equal(new BufferConfig().MaxSizeMb, settings.Buffer.MaxSizeMb);
+        Assert.Equal(0, settings.Storage.AutoDeleteDays);
+        Assert.Equal(200, settings.Storage.MaxStorageGb);
+        AssertHotkeysGamesAndFlagsKept(settings);
+        Assert.Equal(bytesBefore, File.ReadAllBytes(SettingsPath));
+    }
+
+    [Fact]
+    public void NullLegacyFolderListLoadsAndSaves()
+    {
+        WriteSettingsFileInV123Format(OldVideosFolder, OldVideosFolder);
+        var root = JsonNode.Parse(File.ReadAllText(SettingsPath))!;
+        root["storage"]!["legacySavePaths"] = null;
+        File.WriteAllText(SettingsPath, root.ToJsonString());
+
+        var service = CreateService();
+        service.Save(service.Load());
+
+        var reloaded = CreateService().Load();
+        Assert.Empty(reloaded.Storage.LegacySavePaths);
+        AssertOlderChoicesKept(reloaded);
+    }
+
+    [Fact]
+    public void DefaultFolderUsesTheVideosFolderEvenWhenItDoesNotExistYet()
+    {
+        // Windows reports "" for a known folder that doesn't exist unless asked not to verify it.
+        var folder = JsonSettingsService.DefaultRecordingFolder((special, option) =>
+            special == Environment.SpecialFolder.MyVideos &&
+            option == Environment.SpecialFolderOption.DoNotVerify
+                ? @"Q:\Users\Player\Videos\"
+                : "");
+
+        Assert.Equal(@"Q:\Users\Player\Videos\WatchDog", folder);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("Videos")]
+    public void DefaultFolderFallsBackToLocalAppDataWithoutAUsableVideosFolder(string videos)
+    {
+        var folder = JsonSettingsService.DefaultRecordingFolder((special, _) => special switch
+        {
+            Environment.SpecialFolder.MyVideos => videos,
+            Environment.SpecialFolder.LocalApplicationData => @"Q:\Users\Player\AppData\Local",
+            _ => "",
+        });
+
+        Assert.Equal(@"Q:\Users\Player\AppData\Local\WatchDog\Clips", folder);
+    }
+
+    [Fact]
+    public void DefaultFolderIsMissingOnlyWhenWindowsReportsNoUsableFolder()
+    {
+        Assert.Null(JsonSettingsService.DefaultRecordingFolder((_, _) => ""));
     }
 
     public void Dispose() => TestFs.DeleteDirectoryWithRetry(_directory);
@@ -353,16 +442,28 @@ public sealed class JsonSettingsServiceSavePathTests : IDisposable
             """);
     }
 
+    private void SetSectionToNull(string section)
+    {
+        var root = JsonNode.Parse(File.ReadAllText(SettingsPath))!.AsObject();
+        root[section] = null;
+        File.WriteAllText(SettingsPath, root.ToJsonString());
+    }
+
     private static void AssertOlderChoicesKept(AppSettings settings)
     {
         Assert.Equal(0, settings.Storage.AutoDeleteDays);
         Assert.Equal(200, settings.Storage.MaxStorageGb);
+        Assert.Equal(35, settings.Buffer.MaxSeconds);
+        Assert.Equal(64, settings.Buffer.MaxSizeMb);
+        AssertHotkeysGamesAndFlagsKept(settings);
+    }
+
+    private static void AssertHotkeysGamesAndFlagsKept(AppSettings settings)
+    {
         Assert.Equal(0x77, settings.Hotkey.SaveClipKey);
         Assert.Equal(2u, settings.Hotkey.Modifiers);
         Assert.Equal(118, settings.Hotkey.ToggleRecordingKey);
         Assert.Equal(3u, settings.Hotkey.ToggleRecordingModifiers);
-        Assert.Equal(35, settings.Buffer.MaxSeconds);
-        Assert.Equal(64, settings.Buffer.MaxSizeMb);
         Assert.Equal("legacy.exe", Assert.Single(settings.CustomGames).ExecutableName);
         Assert.Equal("Legacy Game", settings.CustomGames[0].DisplayName);
         Assert.True(settings.DesktopCaptureEnabled);

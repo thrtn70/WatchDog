@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
+using WatchDog.Core.Buffer;
 
 namespace WatchDog.Core.Settings;
 
@@ -31,7 +32,7 @@ public sealed class JsonSettingsService : ISettingsService
     public event Action<AppSettings>? SettingsChanged;
 
     public JsonSettingsService(ILogger<JsonSettingsService> logger, string? settingsPath = null)
-        : this(logger, settingsPath, () => new StorageSettings().SavePath)
+        : this(logger, settingsPath, () => DefaultRecordingFolder(Environment.GetFolderPath))
     {
     }
 
@@ -44,6 +45,22 @@ public sealed class JsonSettingsService : ISettingsService
         _settingsPath = settingsPath ?? Path.Combine(SettingsDir, "settings.json");
         _defaultRecordingFolder = defaultRecordingFolder;
         _cached = LoadFromDisk();
+    }
+
+    // Windows reports "" for a Videos folder that doesn't exist yet, so ask for its path without
+    // checking it. Local app data is the last resort, so a fresh install always has a folder.
+    internal static string? DefaultRecordingFolder(
+        Func<Environment.SpecialFolder, Environment.SpecialFolderOption, string> getFolderPath)
+    {
+        var videos = getFolderPath(Environment.SpecialFolder.MyVideos, Environment.SpecialFolderOption.DoNotVerify);
+        if (TryNormalizeAbsoluteFolder(videos, out var videosFolder))
+            return Path.Combine(videosFolder, "WatchDog");
+
+        var localData = getFolderPath(
+            Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify);
+        return TryNormalizeAbsoluteFolder(localData, out var localFolder)
+            ? Path.Combine(localFolder, "WatchDog", "Clips")
+            : null;
     }
 
     public AppSettings Load()
@@ -100,7 +117,8 @@ public sealed class JsonSettingsService : ISettingsService
 
     private AppSettings LoadFromDisk()
     {
-        // Path repair must not turn a missing default folder into a reset of every preference.
+        // Folder repair runs outside the read's catch-all, so a bad folder never resets every
+        // other preference: it is replaced, or loading stops with a message. Loading never writes.
         return NormalizePaths(WithUsableSavePath(ReadSettingsOrDefaults()));
     }
 
@@ -117,14 +135,21 @@ public sealed class JsonSettingsService : ISettingsService
             var json = File.ReadAllText(_settingsPath);
             var settings = DeserializeSettings(json);
 
-            if (settings is null || settings.Storage is null || settings.Buffer is null)
+            if (settings is null)
             {
                 _logger.LogWarning("Settings file was empty or invalid, using defaults");
                 return new AppSettings();
             }
 
+            if (settings.Storage is null || settings.Buffer is null)
+                _logger.LogWarning("Settings file has an empty section; using its defaults and keeping the other settings");
+
             _logger.LogInformation("Settings loaded from {Path}", _settingsPath);
-            return settings;
+            return settings with
+            {
+                Storage = settings.Storage ?? new StorageSettings(),
+                Buffer = settings.Buffer ?? new BufferConfig(),
+            };
         }
         catch (Exception ex)
         {
@@ -141,8 +166,10 @@ public sealed class JsonSettingsService : ISettingsService
         if (!TryNormalizeAbsoluteFolder(settings.Buffer.OutputDirectory, out var fallback) &&
             !TryNormalizeAbsoluteFolder(_defaultRecordingFolder(), out fallback))
         {
+            _logger.LogError("No usable recording folder is available; the settings file was left unchanged");
             throw new InvalidDataException(
-                "No usable absolute recording folder is available. Settings were not changed.");
+                $"No usable absolute recording folder is available. Set \"savePath\" in {_settingsPath} " +
+                "to a full folder path. The file was not changed.");
         }
 
         _logger.LogWarning("Invalid saved recording folder was replaced; other settings were preserved");
